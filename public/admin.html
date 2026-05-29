@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NewHal Admin — Yönetim Paneli</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/admin.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+
+  <!-- ── GİRİŞ EKRANI ──────────────────────────────────────── -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-bg"></div>
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-icon">🏪</div>
+        <div>
+          <div class="login-logo-main">NewHal</div>
+          <div class="login-logo-sub">Yönetim Paneli</div>
+        </div>
+      </div>
+      <h2>Giriş Yap</h2>
+      <p class="login-desc">Admin hesabınızla giriş yapın</p>
+      <form class="login-form" id="loginForm" onsubmit="doLogin(event)">
+        <div class="form-group">
+          <label>Kullanıcı Adı</label>
+          <div class="input-wrap">
+            <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input type="text" id="loginUser" placeholder="admin" required autocomplete="username" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Şifre</label>
+          <div class="input-wrap">
+            <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="loginPass" placeholder="••••••••" required autocomplete="current-password" />
+          </div>
+        </div>
+        <div class="login-error" id="loginError"></div>
+        <button type="submit" class="btn-login" id="loginBtn">Giriş Yap</button>
+      </form>
+      <a href="/" class="back-link">← Siteye Dön</a>
+    </div>
+  </div>
+
+  <!-- ── ADMIN PANEL ────────────────────────────────────────── -->
+  <div class="admin-layout" id="adminLayout" style="display:none">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <span class="sidebar-logo-icon">🏪</span>
+        <div>
+          <div class="sidebar-logo-main">NewHal</div>
+          <div class="sidebar-logo-sub">Admin</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" id="navDashboard" onclick="showSection('dashboard')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Genel Bakış
+        </button>
+        <button class="nav-item" id="navPending" onclick="showSection('pending')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Bekleyen İğneler
+          <span class="nav-badge" id="pendingBadge">0</span>
+        </button>
+        <button class="nav-item" id="navApproved" onclick="showSection('approved')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          Onaylananlar
+        </button>
+        <button class="nav-item" id="navRejected" onclick="showSection('rejected')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Reddedilenler
+        </button>
+        <button class="nav-item" id="navCategories" onclick="showSection('categories')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          Kategoriler
+        </button>
+        <button class="nav-item" id="navReports" onclick="showSection('reports')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Hata Bildirimleri
+          <span class="nav-badge" id="reportsBadge" style="background:#dc2626;">0</span>
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/" class="sidebar-site-link">← Siteye Dön</a>
+        <button class="btn-logout" onclick="doLogout()">Çıkış Yap</button>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="admin-main">
+      <!-- Topbar -->
+      <div class="topbar">
+        <button class="topbar-toggle" onclick="toggleSidebar()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="topbar-title" id="topbarTitle">Genel Bakış</div>
+        <div class="topbar-admin">
+          <div class="admin-avatar">A</div>
+          <span id="adminName">admin</span>
+        </div>
+      </div>
+
+      <!-- ── DASHBOARD ── -->
+      <section class="section active" id="sectionDashboard">
+        <div class="section-head">
+          <h1>Genel Bakış</h1>
+          <p>Tüm iğne istatistikleri</p>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card stat-total">
+            <div class="stat-card-icon">📍</div>
+            <div class="stat-card-val" id="dashTotal">0</div>
+            <div class="stat-card-label">Toplam İğne</div>
+          </div>
+          <div class="stat-card stat-pending">
+            <div class="stat-card-icon">⏳</div>
+            <div class="stat-card-val" id="dashPending">0</div>
+            <div class="stat-card-label">Bekleyen</div>
+          </div>
+          <div class="stat-card stat-approved">
+            <div class="stat-card-icon">✅</div>
+            <div class="stat-card-val" id="dashApproved">0</div>
+            <div class="stat-card-label">Onaylanan</div>
+          </div>
+          <div class="stat-card stat-rejected">
+            <div class="stat-card-icon">❌</div>
+            <div class="stat-card-val" id="dashRejected">0</div>
+            <div class="stat-card-label">Reddedilen</div>
+          </div>
+        </div>
+        <div class="recent-section">
+          <div class="recent-header">
+            <h3>Son Eklenen İğneler</h3>
+            <button class="btn-sm" onclick="showSection('pending')">Tümünü Yönet →</button>
+          </div>
+          <div class="pins-table-wrap">
+            <table class="pins-table" id="dashRecentTable">
+              <thead>
+                <tr><th>İşletme</th><th>Kategori</th><th>Durum</th><th>Tarih</th><th>İşlem</th></tr>
+              </thead>
+              <tbody id="dashRecentBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── PENDING ── -->
+      <section class="section" id="sectionPending">
+        <div class="section-head">
+          <h1>Bekleyen İğneler</h1>
+          <p>Admin onayı bekleyen işletme kayıtları</p>
+        </div>
+        <div class="pins-table-wrap">
+          <table class="pins-table">
+            <thead>
+              <tr><th>İşletme</th><th>Kategori</th><th>Adres</th><th>İletişim</th><th>Konum</th><th>Tarih</th><th>İşlem</th></tr>
+            </thead>
+            <tbody id="pendingBody"></tbody>
+          </table>
+          <div class="empty-table" id="pendingEmpty">Bekleyen iğne yok ✅</div>
+        </div>
+      </section>
+
+      <!-- ── APPROVED ── -->
+      <section class="section" id="sectionApproved">
+        <div class="section-head">
+          <h1>Onaylanan İğneler</h1>
+          <p>Sitede yayında olan işletmeler</p>
+        </div>
+        <div class="pins-table-wrap">
+          <table class="pins-table">
+            <thead>
+              <tr><th>İşletme</th><th>Kategori</th><th>Adres</th><th>İletişim</th><th>Tarih</th><th>İşlem</th></tr>
+            </thead>
+            <tbody id="approvedBody"></tbody>
+          </table>
+          <div class="empty-table" id="approvedEmpty">Henüz onaylı iğne yok</div>
+        </div>
+      </section>
+
+      <!-- ── REJECTED ── -->
+      <section class="section" id="sectionRejected">
+        <div class="section-head">
+          <h1>Reddedilen İğneler</h1>
+          <p>Onaylanmayan işletme kayıtları</p>
+        </div>
+        <div class="pins-table-wrap">
+          <table class="pins-table">
+            <thead>
+              <tr><th>İşletme</th><th>Kategori</th><th>Red Sebebi</th><th>Tarih</th><th>İşlem</th></tr>
+            </thead>
+            <tbody id="rejectedBody"></tbody>
+          </table>
+          <div class="empty-table" id="rejectedEmpty">Reddedilen iğne yok</div>
+        </div>
+      </section>
+
+      <!-- ── CATEGORIES ── -->
+      <section class="section" id="sectionCategories">
+        <div class="section-head" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+          <div>
+            <h1>Kategori Yönetimi</h1>
+            <p>Uygulamada tanımlı olan iş kategorileri</p>
+          </div>
+          <button class="btn-sm btn-approve" onclick="openAddCategoryModal()" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); font-weight: 600; cursor: pointer; border: none; background: var(--green-600); color: white;">➕ Yeni Kategori</button>
+        </div>
+        <div class="pins-table-wrap" style="margin-top: 20px;">
+          <table class="pins-table">
+            <thead>
+              <tr><th>Kategori İkonu</th><th>Kategori Adı</th><th style="width: 180px;">İşlem</th></tr>
+            </thead>
+            <tbody id="categoriesBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── REPORTS ── -->
+      <section class="section" id="sectionReports">
+        <div class="section-head">
+          <h1>Hata Bildirimleri</h1>
+          <p>Kullanıcılar tarafından gönderilen hata veya düzeltme bildirimleri</p>
+        </div>
+        <div class="pins-table-wrap">
+          <table class="pins-table">
+            <thead>
+              <tr><th>İşletme</th><th>Bildirim Detayı</th><th>IP Adresi</th><th>Tarih</th><th>İşlem</th></tr>
+            </thead>
+            <tbody id="reportsBody"></tbody>
+          </table>
+          <div class="empty-table" id="reportsEmpty">Hata bildirimi yok 🎉</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ── RED MODAL ─────────────────────────────────────────── -->
+  <div class="modal-overlay" id="rejectModal">
+    <div class="modal-box">
+      <h3>İğneyi Reddet</h3>
+      <p>Red sebebi (isteğe bağlı)</p>
+      <textarea id="rejectReason" placeholder="Örn: Eksik bilgi, hatalı konum..." rows="3"></textarea>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeRejectModal()">İptal</button>
+        <button class="btn-reject-confirm" onclick="confirmReject()">Reddet</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD CATEGORY MODAL (ADMIN) ─────────────────────────────────── -->
+  <div class="modal-overlay" id="addCategoryModal">
+    <div class="modal-box">
+      <h3>Yeni Kategori Ekle</h3>
+      <div class="form-group" style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px;">
+        <label style="color:var(--text-2); font-size:12px;">Kategori Adı</label>
+        <input type="text" id="adminNewCatName" placeholder="Örn: Balıkçılık" style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; color: var(--text-1); outline: none;" />
+      </div>
+      <div class="form-group" style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px; position: relative;">
+        <label style="color:var(--text-2); font-size:12px;">İkon / Emoji</label>
+        <input type="text" id="adminNewCatIcon" placeholder="Örn: 🐟" readonly style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; color: var(--text-1); outline: none; text-align: center; cursor: pointer;" />
+      </div>
+      <div class="modal-actions" style="margin-top: 20px;">
+        <button class="btn-cancel" onclick="closeAddCategoryModal()">İptal</button>
+        <button class="btn-reapprove" onclick="submitAdminCategory()" style="background: var(--green-600); color: white; border: none; padding: 8px 16px; border-radius: var(--radius); cursor: pointer;">Ekle</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── EDIT CATEGORY MODAL (ADMIN) ─────────────────────────────────── -->
+  <div class="modal-overlay" id="editCategoryModal">
+    <div class="modal-box">
+      <h3>Kategoriyi Düzenle</h3>
+      <input type="hidden" id="adminEditCatOldName" />
+      <div class="form-group" style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px;">
+        <label style="color:var(--text-2); font-size:12px;">Kategori Adı</label>
+        <input type="text" id="adminEditCatName" placeholder="Örn: Balıkçılık" style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; color: var(--text-1); outline: none;" />
+      </div>
+      <div class="form-group" style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px; position: relative;">
+        <label style="color:var(--text-2); font-size:12px;">İkon / Emoji</label>
+        <input type="text" id="adminEditCatIcon" placeholder="Örn: 🐟" readonly style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; color: var(--text-1); outline: none; text-align: center; cursor: pointer;" />
+      </div>
+      <div class="modal-actions" style="margin-top: 20px;">
+        <button class="btn-cancel" onclick="closeEditCategoryModal()">İptal</button>
+        <button class="btn-reapprove" onclick="submitEditAdminCategory()" style="background: var(--green-600); color: white; border: none; padding: 8px 16px; border-radius: var(--radius); cursor: pointer;">Güncelle</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── EDIT PIN MODAL (ADMIN) ─────────────────────────────────────── -->
+  <div class="modal-overlay" id="editPinModal">
+    <div class="modal-box" style="max-width: 500px; width: 90%;">
+      <h3>İğneyi Düzenle</h3>
+      <p style="font-size:12px; color:var(--text-3); margin-bottom: 16px;">İşletme bilgilerini güncelleyin</p>
+      <form id="editPinForm" onsubmit="submitEditPin(event)">
+        <input type="hidden" id="editPinId" />
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div class="form-group" style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 12px; color: var(--text-2);">İşletme Ünvanı</label>
+            <input type="text" id="editPinTitle" required style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: var(--text-1); outline: none;" />
+          </div>
+          <div class="form-group" style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 12px; color: var(--text-2);">Kategori</label>
+            <select id="editPinCategory" style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: var(--text-1); outline: none;"></select>
+          </div>
+          <div class="form-group" style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 12px; color: var(--text-2);">Adres</label>
+            <input type="text" id="editPinAddress" required style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: var(--text-1); outline: none;" />
+          </div>
+          <div style="display: flex; gap: 12px;">
+            <div class="form-group" style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 12px; color: var(--text-2);">Telefon</label>
+              <input type="text" id="editPinPhone" style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: var(--text-1); outline: none;" />
+            </div>
+            <div class="form-group" style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 12px; color: var(--text-2);">E-posta</label>
+              <input type="text" id="editPinEmail" style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: var(--text-1); outline: none;" />
+            </div>
+          </div>
+          <div class="form-group" style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 12px; color: var(--text-2);">Website</label>
+            <input type="text" id="editPinWebsite" style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: var(--text-1); outline: none;" />
+          </div>
+          <div style="display: flex; gap: 12px;">
+            <div class="form-group" style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 12px; color: var(--text-2);">Enlem (Lat)</label>
+              <input type="number" step="any" id="editPinLat" required style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: var(--text-1); outline: none;" oninput="updateEditMapFromInputs()" />
+            </div>
+            <div class="form-group" style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 12px; color: var(--text-2);">Boylam (Lng)</label>
+              <input type="number" step="any" id="editPinLng" required style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: var(--text-1); outline: none;" oninput="updateEditMapFromInputs()" />
+            </div>
+          </div>
+          <!-- Konum Haritası -->
+          <div class="form-group" style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 12px; color: var(--text-2);">Konum Haritası (Sürüklenebilir)</label>
+            <div id="editMap" style="height: 180px; width: 100%; border-radius: var(--radius); border: 1px solid var(--border); z-index: 1;"></div>
+          </div>
+        </div>
+        <div class="modal-actions" style="margin-top: 20px;">
+          <button type="button" class="btn-cancel" onclick="closeEditPinModal()">İptal</button>
+          <button type="submit" class="btn-reapprove" style="background: var(--green-600); color: white; border: none; padding: 8px 16px; border-radius: var(--radius); cursor: pointer;">Güncelle</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── FLOATING EMOJI PICKER (ADMIN) ─────────────────────────────────── -->
+  <div class="emoji-picker-popup" id="adminEmojiPicker" style="display: none; position: absolute; z-index: 10000;">
+    <div class="emoji-picker-header">Kategori Emojisi Seçin</div>
+    <div class="emoji-picker-grid"></div>
+  </div>
+
+  <!-- ── TOAST ─────────────────────────────────────────────── -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

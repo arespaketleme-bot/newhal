@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NewHal — Mersin Hal Kompleksi İşletme Rehberi</title>
+  <meta name="description" content="Mersin Hal Kompleksi'ndeki işletmeleri keşfet, iğne ekle, rehbere katkı sağla." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+
+  <!-- ── HEADER ─────────────────────────────────────────────────────────── -->
+  <header class="header" id="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="20" cy="20" r="20" fill="url(#grad1)"/>
+            <path d="M20 8C15.58 8 12 11.58 12 16C12 22.25 20 32 20 32C20 32 28 22.25 28 16C28 11.58 24.42 8 20 8ZM20 19C18.34 19 17 17.66 17 16C17 14.34 18.34 13 20 13C21.66 13 23 14.34 23 16C23 17.66 21.66 19 20 19Z" fill="white"/>
+            <defs>
+              <linearGradient id="grad1" x1="0" y1="0" x2="40" y2="40">
+                <stop offset="0%" stop-color="#22c55e"/>
+                <stop offset="100%" stop-color="#16a34a"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <span class="logo-main">NewHal</span>
+          <span class="logo-sub">Mersin Hal Kompleksi</span>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="btn-ghost" onclick="scrollToMap()">Harita</button>
+        <button class="btn-ghost" onclick="showPinList()">İşletmeler</button>
+        <a href="/admin" class="btn-outline">Admin Panel</a>
+        <button class="btn-primary" id="btnAddPin" onclick="openAddPinModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          İğne Ekle
+        </button>
+      </nav>
+      <button class="hamburger" id="hamburger" onclick="toggleMobileMenu()">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="mobile-menu" id="mobileMenu">
+      <button onclick="scrollToMap(); toggleMobileMenu()">Harita</button>
+      <button onclick="showPinList(); toggleMobileMenu()">İşletmeler</button>
+      <a href="/admin">Admin Panel</a>
+      <button class="btn-primary" onclick="openAddPinModal(); toggleMobileMenu()">İğne Ekle</button>
+    </div>
+  </header>
+
+  <!-- ── HERO ───────────────────────────────────────────────────────────── -->
+  <section class="hero" id="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        Mersin'in Dijital Hal Rehberi
+      </div>
+      <h1 class="hero-title">
+        Hal Kompleksi'ndeki<br/>
+        <span class="gradient-text">Her İşletmeyi</span><br/>
+        Keşfet
+      </h1>
+      <p class="hero-desc">
+        Mersin Hal Kompleksi'nde faaliyet gösteren işletmeleri haritada bul,<br/>
+        kendi işletmeni ekle, topluluğa katkı sağla.
+      </p>
+      <div class="hero-actions">
+        <button class="btn-primary btn-lg" onclick="scrollToMap()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          Haritayı Keşfet
+        </button>
+        <button class="btn-ghost btn-lg" onclick="openAddPinModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          İşletme Ekle
+        </button>
+      </div>
+      <div class="hero-stats" id="heroStats">
+        <div class="stat-item">
+          <span class="stat-num" id="statApproved">0</span>
+          <span class="stat-label">Onaylı İşletme</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-num" id="statPending">0</span>
+          <span class="stat-label">Onay Bekliyor</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-num">Mersin</span>
+          <span class="stat-label">Hal Kompleksi</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-scroll" onclick="scrollToMap()">
+      <div class="scroll-arrow"></div>
+    </div>
+  </section>
+
+  <!-- ── SPLIT WORKSPACE SECTION ───────────────────────────────────────── -->
+  <section class="workspace-section" id="mapSection">
+    <div class="workspace-container">
+      
+      <!-- Left Panel: Interactive Leaflet Map -->
+      <div class="map-panel">
+        <div id="map"></div>
+        
+        <!-- Map Layer Selector floating overlay -->
+        <div class="map-layer-selector">
+          <button class="layer-btn" id="layerBtnSatellite" onclick="setMapLayer('satellite')">🛰 Uydu</button>
+          <button class="layer-btn active" id="layerBtnLight" onclick="setMapLayer('light')">🗺 Açık Renk</button>
+        </div>
+
+        <div class="map-tip">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          İşletme eklemek için haritaya tıklayın
+        </div>
+      </div>
+      
+      <!-- Right Panel: Info, Filters & Listings -->
+      <div class="info-panel" id="listSection">
+        <div class="panel-header">
+          <h2>İşletmeler Rehberi</h2>
+          <p>Mersin Hal Kompleksi kayıtlı ve onaylanmış işletmeler</p>
+        </div>
+        
+        <div class="map-filters">
+          <button class="filter-btn active" data-cat="all" onclick="filterPins('all', this)">Tümü</button>
+          <button class="filter-btn" data-cat="Sebze &amp; Meyve" onclick="filterPins('Sebze &amp; Meyve', this)">🥦 Sebze</button>
+          <button class="filter-btn" data-cat="Bakliyat" onclick="filterPins('Bakliyat', this)">🌾 Bakliyat</button>
+          <button class="filter-btn" data-cat="Kuru Gıda" onclick="filterPins('Kuru Gıda', this)">🏪 Kuru Gıda</button>
+          <button class="filter-btn" data-cat="Balık" onclick="filterPins('Balık', this)">🐟 Balık</button>
+          <button class="filter-btn" data-cat="Et &amp; Tavuk" onclick="filterPins('Et &amp; Tavuk', this)">🥩 Et</button>
+          <button class="filter-btn" data-cat="Genel" onclick="filterPins('Genel', this)">📦 Genel</button>
+        </div>
+
+        <!-- Options Bar for hiding private/special details -->
+        <div class="options-bar">
+          <label class="option-toggle">
+            <input type="checkbox" id="toggleContactInfo" checked onchange="toggleOption('contact')" />
+            <span class="toggle-slider"></span>
+            <span class="toggle-label">İletişim Bilgileri</span>
+          </label>
+          <label class="option-toggle">
+            <input type="checkbox" id="toggleSpecialPlaces" checked onchange="toggleOption('special')" />
+            <span class="toggle-slider"></span>
+            <span class="toggle-label">Özel Konumlar</span>
+          </label>
+        </div>
+        
+        <div class="pins-grid" id="pinsGrid">
+          <div class="empty-state" id="emptyState">
+            <div class="empty-icon">📍</div>
+            <h3>Henüz işletme yok</h3>
+            <p>İlk işletmeyi sen ekle!</p>
+            <button class="btn-primary" onclick="openAddPinModal()">İşletme Ekle</button>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+  </section>
+
+  <!-- ── FOOTER ─────────────────────────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-logo">
+        <span class="logo-main">NewHal</span>
+        <span class="footer-tagline">Mersin Hal Kompleksi Dijital Rehberi</span>
+      </div>
+      <div class="footer-links">
+        <a href="/admin">Admin Girişi</a>
+      </div>
+      <div class="footer-copy">© 2024 NewHal. Tüm hakları saklıdır.</div>
+    </div>
+  </footer>
+
+  <!-- ── MODAL: İĞNE EKLE ───────────────────────────────────────────────── -->
+  <div class="modal-overlay" id="addPinModal" onclick="closeModalOnBg(event)">
+    <div class="modal" id="addPinModalBox">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon">📍</div>
+          <div>
+            <h3>İşletme Ekle</h3>
+            <p>Bilgiler admin onayından sonra yayınlanır</p>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeAddPinModal()">✕</button>
+      </div>
+      <form class="modal-form" id="addPinForm" onsubmit="submitPin(event)">
+        <div class="form-row">
+          <div class="form-group full">
+            <label for="pinTitle">İşletme Ünvanı <span class="required">*</span></label>
+            <input type="text" id="pinTitle" placeholder="Örn: Akdeniz Meyve Sebze" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group full">
+            <label for="pinCategory">Kategori <span class="required">*</span></label>
+            <div style="display: flex; gap: 8px;">
+              <select id="pinCategory" style="flex: 1;"></select>
+              <button type="button" class="btn-outline" id="btnAddNewCategory" onclick="toggleNewCategorySection()" style="padding: 10px; border-radius: var(--radius); flex-shrink: 0; min-width: 44px; justify-content: center; display: inline-flex; align-items: center;">➕</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-row" id="newCategorySection" style="display: none; background: rgba(255,255,255,0.02); border: 1px dashed var(--border-g); padding: 12px; border-radius: var(--radius); margin-bottom: 12px; flex-direction: column; gap: 10px; width: 100%;">
+          <div style="font-size: 12px; font-weight: 600; color: var(--green-400);">Yeni Kategori Ekle</div>
+          <div style="display: flex; gap: 8px; width: 100%;">
+            <input type="text" id="newCategoryName" placeholder="Kategori Adı (Örn: Çiçek)" style="flex: 1.5; font-size: 13px;" />
+            <input type="text" id="newCategoryIcon" placeholder="İkon (Örn: 🌸)" readonly style="flex: 0.5; font-size: 13px; text-align: center; cursor: pointer;" />
+            <button type="button" class="btn-primary" onclick="submitNewCategory()" style="padding: 10px 14px; border-radius: var(--radius); font-size: 12px; flex-shrink: 0;">Ekle</button>
+          </div>
+          <div id="newCategoryError" style="font-size: 11px; color: #f87171; display: none;"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group full">
+            <label for="pinAddress">Adres <span class="required">*</span></label>
+            <input type="text" id="pinAddress" placeholder="Hal içi stall/blok numarası veya adres" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="pinPhone">Telefon</label>
+            <input type="tel" id="pinPhone" placeholder="0 (xxx) xxx xx xx" />
+          </div>
+          <div class="form-group">
+            <label for="pinEmail">E-posta</label>
+            <input type="email" id="pinEmail" placeholder="ornek@mail.com" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group full">
+            <label for="pinWebsite">Website</label>
+            <input type="url" id="pinWebsite" placeholder="https://www.ornek.com" />
+          </div>
+        </div>
+        <div class="form-group full location-group">
+          <label>Konum <span class="required">*</span></label>
+          <div class="location-display" id="locationDisplay">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Haritaya tıklayarak konum seçin
+          </div>
+          <input type="hidden" id="pinLat" />
+          <input type="hidden" id="pinLng" />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" onclick="closeAddPinModal()">İptal</button>
+          <button type="submit" class="btn-primary" id="submitPinBtn">
+            <span class="btn-text">Gönder (Onay Bekliyor)</span>
+            <span class="btn-loader" style="display:none">⟳</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── MODAL: PİN DETAY ───────────────────────────────────────────────── -->
+  <div class="modal-overlay" id="pinDetailModal" onclick="closeModalOnBg(event)">
+    <div class="modal modal-sm" id="pinDetailBox">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon" id="detailIcon">📍</div>
+          <div>
+            <h3 id="detailTitle">—</h3>
+            <p id="detailCategory">—</p>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closePinDetail()">✕</button>
+      </div>
+      <div class="detail-body" style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="detail-item" id="detailAddressRow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span id="detailAddress">—</span>
+        </div>
+        <div class="detail-item" id="detailPhoneRow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.06 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/></svg>
+          <a id="detailPhone" href="#">—</a>
+        </div>
+        <div class="detail-item" id="detailEmailRow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <span id="detailEmail">—</span>
+        </div>
+        <div class="detail-item" id="detailWebsiteRow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span id="detailWebsite">—</span>
+        </div>
+
+        <hr style="border: 0; border-top: 1px dashed var(--border); margin: 8px 0;" />
+
+        <!-- Hata Bildirimi (Report) -->
+        <div id="detailReportSection" style="display: flex; flex-direction: column; gap: 8px;">
+          <button type="button" class="btn-outline" onclick="toggleReportForm()" style="font-size: 12px; padding: 6px 12px; border-radius: var(--radius); align-self: flex-start; gap: 6px; display: inline-flex; align-items: center; cursor: pointer;">⚠️ Hata Bildir / Düzeltme Öner</button>
+          <div id="reportFormContainer" style="display: none; flex-direction: column; gap: 8px; background: rgba(239,68,68,0.03); border: 1px dashed rgba(239,68,68,0.2); padding: 12px; border-radius: var(--radius); width: 100%;">
+            <textarea id="reportText" placeholder="Hatalı bilgiyi veya önerinizi buraya yazın..." rows="3" style="width: 100%; font-size: 13px; padding: 8px; border-radius: var(--radius); background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: #fff; outline: none; resize: vertical; font-family: var(--font-body);"></textarea>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+              <button type="button" class="btn-ghost" onclick="toggleReportForm()" style="font-size: 11px; padding: 6px 12px; cursor: pointer;">İptal</button>
+              <button type="button" class="btn-primary" onclick="submitReport()" style="font-size: 11px; padding: 6px 12px; background: #dc2626; cursor: pointer;">Gönder</button>
+            </div>
+          </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px dashed var(--border); margin: 8px 0;" />
+
+        <!-- Yorumlar Section -->
+        <div class="comments-section" style="display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 200px;">
+          <h4 style="font-size: 14px; color: var(--text-2); display: flex; align-items: center; gap: 6px;">💬 Yorumlar (<span id="detailCommentCount">0</span>)</h4>
+          <div id="detailCommentsList" style="flex: 1; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
+            <!-- Yorumlar buraya dinamik eklenecek -->
+          </div>
+          
+          <!-- Yeni Yorum Formu -->
+          <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(255,255,255,0.01); border: 1px solid var(--border); padding: 12px; border-radius: var(--radius);">
+            <div style="font-size: 12px; font-weight: 600; color: var(--text-3);">Yeni Yorum Yaz</div>
+            <input type="text" id="commentNickname" placeholder="Adınız / Rumuz (Anonim)" style="width: 100%; font-size: 12px; padding: 6px 10px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: #fff; outline: none; font-family: var(--font-body);" />
+            <div style="display: flex; gap: 8px; width: 100%;">
+              <input type="text" id="commentMessage" placeholder="Yorumunuzu buraya yazın..." style="flex: 1; font-size: 12px; padding: 6px 10px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: #fff; outline: none; font-family: var(--font-body);" onkeydown="if(event.key==='Enter') submitComment()" />
+              <button class="btn-primary" onclick="submitComment()" style="padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;">Gönder</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CANLI CHAT ALANI ────────────────────────────────────────────────── -->
+  <div class="chat-widget" id="chatWidget">
+    <div class="chat-header" onclick="toggleChatWidget(event)">
+      <div class="chat-header-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #25D366; flex-shrink:0;">
+          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.45L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.003-2.637-1.03-5.114-2.915-7c-1.886-1.887-4.39-2.928-7.03-2.93-5.45 0-9.88 4.421-9.885 9.867a9.79 9.79 0 0 0 1.502 5.179l-1.016 3.71 3.816-1.002zM17.56 14.86c-.308-.154-1.82-.9-2.1-.998-.28-.098-.483-.146-.686.154-.203.3-.787.996-.965 1.2-.177.202-.355.228-.662.074-1.436-.718-2.4-1.254-3.36-2.91-.253-.437.253-.406.723-1.347.077-.154.038-.288-.019-.395-.057-.108-.483-1.162-.662-1.597-.177-.436-.355-.376-.487-.382l-.418-.01c-.163 0-.427.06-.65.3-.223.24-.852.83-.852 2.022s.867 2.347.989 2.51c.122.163 1.706 2.605 4.133 3.654.577.25 1.028.399 1.38.51.58.185 1.107.16 1.522.097.463-.07 1.43-.585 1.632-1.15.203-.564.203-1.05.142-1.15-.06-.1-.223-.153-.53-.307z"/>
+        </svg>
+        Canlı Sohbet (Hal Geneli)
+      </div>
+      <span class="chat-toggle-icon">▲</span>
+    </div>
+    <div class="chat-body">
+      <div class="chat-messages" id="chatMessages">
+        <!-- Mesajlar dinamik yüklenecek -->
+      </div>
+      <div class="chat-footer">
+        <input type="text" id="chatNick" placeholder="Rumuz (Anonim)" maxlength="15" />
+        <div class="chat-input-wrap">
+          <input type="text" id="chatMsg" placeholder="Sohbete katılın..." maxlength="100" onkeydown="if(event.key==='Enter') sendChatMessage()" />
+          <button onclick="sendChatMessage()" title="Gönder">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FLOATING EMOJI PICKER (USER) ─────────────────────────────────── -->
+  <div class="emoji-picker-popup" id="userEmojiPicker" style="display: none; position: absolute; z-index: 10000;">
+    <div class="emoji-picker-header">Kategori Emojisi Seçin</div>
+    <div class="emoji-picker-grid"></div>
+  </div>
+
+  <!-- ── TOAST ──────────────────────────────────────────────────────────── -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

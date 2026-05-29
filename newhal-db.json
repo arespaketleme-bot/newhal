@@ -1,0 +1,309 @@
+{
+  "pins": [
+    {
+      "id": 1,
+      "title": "Mersin Büyükşehir Belediyesi Hal Müdürlüğü (İdari Bina)",
+      "address": "Mersin Hal Kompleksi Ana Girişi, İdari Bina",
+      "phone": "+90 324 234 10 00",
+      "website": "https://www.mersin.bel.tr",
+      "email": "halmudurlugu@mersin.bel.tr",
+      "lat": 36.8282,
+      "lng": 34.6565,
+      "category": "Genel",
+      "status": "approved",
+      "reject_reason": "",
+      "created_at": "2026-05-29T10:00:00.000Z",
+      "reviewed_at": "2026-05-29T10:00:05.000Z",
+      "comments": [
+        {
+          "id": 1,
+          "nickname": "Anonim",
+          "ip": "127.0.0.1",
+          "message": "hehe",
+          "created_at": "2026-05-29T11:44:27.426Z"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Mersin Toptancı Hal Camii",
+      "address": "Mersin Hal Kompleksi, İç Meydan",
+      "phone": "",
+      "website": "",
+      "email": "",
+      "lat": 36.8275,
+      "lng": 34.6558,
+      "category": "Genel",
+      "status": "approved",
+      "reject_reason": "",
+      "created_at": "2026-05-29T10:01:00.000Z",
+      "reviewed_at": "2026-05-29T10:01:05.000Z",
+      "comments": []
+    },
+    {
+      "id": 3,
+      "title": "Ana Giriş Kapısı, Güvenlik ve Zabıta Nizamiyesi",
+      "address": "Mersin Hal Kompleksi, Turgut Özal Bulvarı Girişi",
+      "phone": "+90 324 234 10 15",
+      "website": "",
+      "email": "",
+      "lat": 36.8295,
+      "lng": 34.6572,
+      "category": "Genel",
+      "status": "approved",
+      "reject_reason": "",
+      "created_at": "2026-05-29T10:02:00.000Z",
+      "reviewed_at": "2026-05-29T10:02:05.000Z",
+      "comments": [
+        {
+          "id": 1,
+          "nickname": "Anonim",
+          "ip": "127.0.0.1",
+          "message": "ULAAAA",
+          "created_at": "2026-05-29T11:47:27.661Z"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Hal Sosyal Tesisler Restoranı (Örnek Yemek Salonu)",
+      "address": "Mersin Hal İçi Sosyal Tesisler, No: 4",
+      "phone": "+90 324 234 50 60",
+      "website": "",
+      "email": "",
+      "lat": 36.8268,
+      "lng": 34.655,
+      "category": "ÜRETİCİ",
+      "status": "approved",
+      "reject_reason": "",
+      "created_at": "2026-05-29T10:03:00.000Z",
+      "reviewed_at": "2026-05-29T10:03:05.000Z",
+      "comments": []
+    },
+    {
+      "id": 5,
+      "title": "Bankalar ve ATM Ortak Bölgesi",
+      "address": "Mersin Hal Kompleksi, İdari Blok Yanı",
+      "phone": "",
+      "website": "",
+      "email": "",
+      "lat": 36.8272,
+      "lng": 34.657,
+      "category": "Genel",
+      "status": "approved",
+      "reject_reason": "",
+      "created_at": "2026-05-29T10:04:00.000Z",
+      "reviewed_at": "2026-05-29T10:04:05.000Z",
+      "comments": []
+    },
+    {
+      "id": 6,
+      "title": "Mersin Hal Komisyoncular Derneği & Kooperatifi",
+      "address": "Mersin Hal Kompleksi, Dernek Binası Kat 1",
+      "phone": "+90 324 234 20 30",
+      "website": "http://www.mersinhalder.org.tr",
+      "email": "iletisim@mersinhalder.org.tr",
+      "lat": 36.8285,
+      "lng": 34.6548,
+      "category": "Genel",
+      "status": "approved",
+      "reject_reason": "",
+      "created_at": "2026-05-29T10:05:00.000Z",
+      "reviewed_at": "2026-05-29T10:05:05.000Z",
+      "comments": []
+    },
+    {
+      "id": 8,
+      "title": "1",
+      "address": "1",
+      "phone": "",
+      "website": "",
+      "email": "",
+      "lat": 36.82912473963101,
+      "lng": 34.65978963768524,
+      "category": "Genel",
+      "status": "approved",
+      "reject_reason": "",
+      "created_at": "2026-05-29T11:07:52.063Z",
+      "reviewed_at": "2026-05-29T11:11:54.982Z",
+      "comments": []
+    },
+    {
+      "id": 9,
+      "title": "Test Işletme",
+      "address": "Hal Blok A-1",
+      "phone": "0324 111 22 33",
+      "website": "https://test.com",
+      "email": "test@hal.com",
+      "lat": 42.7944,
+      "lng": 34.6063,
+      "category": "KOMİSYONCU",
+      "status": "approved",
+      "reject_reason": "",
+      "created_at": "2026-05-29T11:08:31.794Z",
+      "reviewed_at": "2026-05-29T11:08:31.800Z",
+      "updated_at": "2026-05-29T11:14:51.758Z",
+      "comments": []
+    },
+    {
+      "id": 10,
+      "title": "FERMAN AYDIN",
+      "address": "112",
+      "phone": "",
+      "website": "",
+      "email": "",
+      "lat": 36.90481420286537,
+      "lng": 34.871713413267095,
+      "category": "Genel",
+      "status": "approved",
+      "reject_reason": "",
+      "created_at": "2026-05-29T11:11:47.182Z",
+      "reviewed_at": "2026-05-29T11:11:55.892Z",
+      "comments": []
+    },
+    {
+      "id": 11,
+      "title": "Güncellenmiş Test İşletmesi",
+      "address": "Hal Blok B-2",
+      "phone": "0324 222 33 44",
+      "website": "https://yeni.com",
+      "email": "yeni@hal.com",
+      "lat": 36.8,
+      "lng": 34.61,
+      "category": "HIRDAVATÇI",
+      "status": "approved",
+      "reject_reason": "",
+      "created_at": "2026-05-29T11:13:54.709Z",
+      "reviewed_at": "2026-05-29T11:13:54.714Z",
+      "updated_at": "2026-05-29T11:13:54.719Z",
+      "comments": []
+    },
+    {
+      "id": 12,
+      "title": "Güncellenmiş Test İşletmesi",
+      "address": "Hal Blok B-2",
+      "phone": "0324 222 33 44",
+      "website": "https://yeni.com",
+      "email": "yeni@hal.com",
+      "lat": 36.8,
+      "lng": 34.61,
+      "category": "HIRDAVATÇI",
+      "status": "approved",
+      "reject_reason": "",
+      "created_at": "2026-05-29T11:19:15.032Z",
+      "reviewed_at": "2026-05-29T11:19:15.039Z",
+      "updated_at": "2026-05-29T11:19:15.043Z",
+      "comments": []
+    },
+    {
+      "id": 13,
+      "title": "Güncellenmiş Test İşletmesi",
+      "address": "Hal Blok B-2",
+      "phone": "0324 222 33 44",
+      "website": "https://yeni.com",
+      "email": "yeni@hal.com",
+      "lat": 36.8,
+      "lng": 34.61,
+      "category": "Genel",
+      "status": "approved",
+      "reject_reason": "",
+      "created_at": "2026-05-29T11:20:38.432Z",
+      "reviewed_at": "2026-05-29T11:20:38.443Z",
+      "comments": [
+        {
+          "id": 1,
+          "nickname": "Aydın Gıda",
+          "ip": "127.0.0.1",
+          "message": "Çok güvenilir ve kaliteli hizmet.",
+          "created_at": "2026-05-29T11:20:38.452Z"
+        },
+        {
+          "id": 2,
+          "nickname": "Anonim",
+          "ip": "127.0.0.1",
+          "message": "Xx",
+          "created_at": "2026-05-29T12:09:43.073Z"
+        }
+      ],
+      "updated_at": "2026-05-29T11:20:38.450Z"
+    },
+    {
+      "id": 14,
+      "title": "5",
+      "address": "5",
+      "phone": "",
+      "website": "",
+      "email": "",
+      "lat": 36.82867,
+      "lng": 34.655471,
+      "category": "Genel",
+      "status": "approved",
+      "reject_reason": "",
+      "created_at": "2026-05-29T11:21:10.772Z",
+      "reviewed_at": "2026-05-29T11:21:16.576Z",
+      "comments": [
+        {
+          "id": 1,
+          "nickname": "Anonim",
+          "ip": "127.0.0.1",
+          "message": "yalancıııı",
+          "created_at": "2026-05-29T11:21:32.057Z"
+        },
+        {
+          "id": 2,
+          "nickname": "Anonim",
+          "ip": "127.0.0.1",
+          "message": "sahtekar",
+          "created_at": "2026-05-29T11:21:43.067Z"
+        }
+      ],
+      "updated_at": "2026-05-29T11:23:07.635Z"
+    }
+  ],
+  "nextId": 16,
+  "categories": [
+    {
+      "name": "Genel",
+      "icon": "📦"
+    },
+    {
+      "name": "KOMİSYONCU",
+      "icon": "🥦"
+    },
+    {
+      "name": "SEVKİYATÇI",
+      "icon": "🍊"
+    },
+    {
+      "name": "ÜRETİCİ",
+      "icon": "🌶️"
+    },
+    {
+      "name": "MİKACI",
+      "icon": "🥜"
+    },
+    {
+      "name": "ZİRAATÇI",
+      "icon": "🚚"
+    },
+    {
+      "name": "HIRDAVATÇI",
+      "icon": "🌸"
+    },
+    {
+      "name": "KASAP",
+      "icon": "🪬"
+    }
+  ],
+  "reports": [
+    {
+      "id": 3,
+      "pinId": 11,
+      "pinTitle": "Güncellenmiş Test İşletmesi",
+      "ip": "127.0.0.1",
+      "message": "HATALI",
+      "created_at": "2026-05-29T11:46:48.596Z"
+    }
+  ],
+  "reportsNextId": 4
+}

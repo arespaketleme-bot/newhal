@@ -1,0 +1,65 @@
+[
+  {
+    "id": 1,
+    "nickname": "Anonim",
+    "ip": "127.0.0.1",
+    "message": "sa",
+    "created_at": "2026-05-29T10:56:45.912Z"
+  },
+  {
+    "id": 2,
+    "nickname": "Anonim",
+    "ip": "127.0.0.1",
+    "message": "as",
+    "created_at": "2026-05-29T10:56:58.262Z"
+  },
+  {
+    "id": 3,
+    "nickname": "cengo",
+    "ip": "127.0.0.1",
+    "message": "laaaaan",
+    "created_at": "2026-05-29T10:59:09.034Z"
+  },
+  {
+    "id": 4,
+    "nickname": "Anonim",
+    "ip": "127.0.0.1",
+    "message": "yesssss",
+    "created_at": "2026-05-29T11:12:52.831Z"
+  },
+  {
+    "id": 5,
+    "nickname": "111",
+    "ip": "127.0.0.1",
+    "message": "qqq",
+    "created_at": "2026-05-29T11:17:22.754Z"
+  },
+  {
+    "id": 6,
+    "nickname": "Anonim",
+    "ip": "127.0.0.1",
+    "message": "oha bu ne",
+    "created_at": "2026-05-29T11:43:06.872Z"
+  },
+  {
+    "id": 7,
+    "nickname": "Anonim",
+    "ip": "127.0.0.1",
+    "message": "TEST",
+    "created_at": "2026-05-29T12:07:10.094Z"
+  },
+  {
+    "id": 8,
+    "nickname": "Anonim",
+    "ip": "127.0.0.1",
+    "message": "Sa",
+    "created_at": "2026-05-29T12:08:11.313Z"
+  },
+  {
+    "id": 9,
+    "nickname": "Anonim",
+    "ip": "127.0.0.1",
+    "message": "Bu nesir",
+    "created_at": "2026-05-29T12:08:21.836Z"
+  }
+]
