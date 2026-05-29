@@ -28,6 +28,21 @@
 </head>
 <body>
 
+  <!-- ── GİRİŞTE AÇILAN HOŞ GELDİNİZ BANNER POPUP ─────────────────────────── -->
+  <div class="welcome-popup-overlay" id="welcomePopup" onclick="closeWelcomePopupOnBg(event)">
+    <div class="welcome-popup-box">
+      <button class="welcome-popup-close" onclick="closeWelcomePopup()">✕</button>
+      <div class="welcome-popup-image-wrap">
+        <img src="img/banner.png" alt="Mersin Hal Kompleksi - NewHal" class="welcome-popup-image" />
+      </div>
+      <div class="welcome-popup-content">
+        <h3>NewHal Rehberine Hoş Geldiniz</h3>
+        <p>Mersin Hal Kompleksi'ndeki işletmeleri interaktif harita üzerinde keşfedin, yorum yapın ve kendi işletmenizi ekleyin.</p>
+        <button class="btn-primary" onclick="closeWelcomePopup()" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700; border-radius: var(--radius); cursor: pointer;">Rehberi Keşfetmeye Başla</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── HEADER ─────────────────────────────────────────────────────────── -->
   <header class="header" id="header">
     <div class="header-inner">

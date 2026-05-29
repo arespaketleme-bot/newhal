@@ -46,6 +46,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       showUserEmojiPicker(e.target);
     });
   }
+
+  // Açılış banner popup'ı tetikle
+  const welcomePopup = document.getElementById('welcomePopup');
+  if (welcomePopup) {
+    setTimeout(() => {
+      welcomePopup.classList.add('open');
+    }, 300);
+  }
 });
 
 // ── Harita ────────────────────────────────────────────────────
@@ -916,4 +924,19 @@ function hideUserEmojiPicker() {
   }
   activeUserIconInput = null;
 }
+
+// ── Welcome Popup Close Helpers ──────────────────────────────────
+function closeWelcomePopup() {
+  const popup = document.getElementById('welcomePopup');
+  if (popup) {
+    popup.classList.remove('open');
+  }
+}
+
+function closeWelcomePopupOnBg(e) {
+  if (e.target === e.currentTarget) {
+    closeWelcomePopup();
+  }
+}
+
 

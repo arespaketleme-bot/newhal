@@ -881,3 +881,94 @@ button, a { cursor: pointer; text-decoration: none; border: none; background: no
   transform: scale(1.15);
 }
 
+/* ── Welcome Popup Overlay & Box ────────────────────────────────────── */
+.welcome-popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.welcome-popup-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+.welcome-popup-box {
+  background: rgba(14, 22, 18, 0.95);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 520px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(34, 197, 94, 0.1);
+  transform: translateY(30px);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.welcome-popup-overlay.open .welcome-popup-box {
+  transform: translateY(0);
+}
+.welcome-popup-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s ease;
+}
+.welcome-popup-close:hover {
+  background: rgba(239, 68, 68, 0.9);
+  border-color: rgba(239, 68, 68, 0.9);
+  transform: scale(1.1);
+}
+.welcome-popup-image-wrap {
+  width: 100%;
+  height: 240px;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(34, 197, 94, 0.15);
+}
+.welcome-popup-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 12s linear;
+}
+.welcome-popup-overlay.open .welcome-popup-image {
+  transform: scale(1.15);
+}
+.welcome-popup-content {
+  padding: 28px;
+  text-align: center;
+}
+.welcome-popup-content h3 {
+  font-family: var(--font-head);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-1);
+  margin-bottom: 10px;
+}
+.welcome-popup-content p {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-3);
+  margin-bottom: 24px;
+}
+
+
