@@ -85,6 +85,10 @@
           Hata Bildirimleri
           <span class="nav-badge" id="reportsBadge" style="background:#dc2626;">0</span>
         </button>
+        <button class="nav-item" id="navLogs" onclick="showSection('logs')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Aktivite Logları
+        </button>
       </nav>
       <div class="sidebar-footer">
         <a href="/" class="sidebar-site-link">← Siteye Dön</a>
@@ -234,6 +238,26 @@
             <tbody id="reportsBody"></tbody>
           </table>
           <div class="empty-table" id="reportsEmpty">Hata bildirimi yok 🎉</div>
+        </div>
+      </section>
+
+      <!-- ── LOGS ── -->
+      <section class="section" id="sectionLogs">
+        <div class="section-head" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+          <div>
+            <h1>Aktivite Logları</h1>
+            <p>Gerçek ziyaretçilerin harita üzerindeki hareketleri ve işlemleri</p>
+          </div>
+          <button class="btn-sm btn-reject" onclick="clearLogs()" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); font-weight: 600; cursor: pointer; border: none; background: #dc2626; color: white;">🗑️ Logları Temizle</button>
+        </div>
+        <div class="pins-table-wrap" style="margin-top: 20px;">
+          <table class="pins-table">
+            <thead>
+              <tr><th>IP Adresi</th><th>Eylem / Aktivite</th><th>Tarih / Saat</th></tr>
+            </thead>
+            <tbody id="logsBody"></tbody>
+          </table>
+          <div class="empty-table" id="logsEmpty">Kayıtlı aktivite logu yok</div>
         </div>
       </section>
     </main>

@@ -20,7 +20,7 @@ const defaultCategories = [
 // ── İlk yükleme / oluşturma ───────────────────────────────────
 function loadDB() {
   if (!fs.existsSync(DB_FILE)) {
-    const init = { pins: [], nextId: 1, categories: defaultCategories, reports: [], reportsNextId: 1 };
+    const init = { pins: [], nextId: 1, categories: defaultCategories, reports: [], reportsNextId: 1, logs: [], logsNextId: 1 };
     fs.writeFileSync(DB_FILE, JSON.stringify(init, null, 2), 'utf8');
     return init;
   }
@@ -39,6 +39,14 @@ function loadDB() {
       data.reportsNextId = 1;
       changed = true;
     }
+    if (!data.logs) {
+      data.logs = [];
+      changed = true;
+    }
+    if (!data.logsNextId) {
+      data.logsNextId = 1;
+      changed = true;
+    }
     if (data.pins) {
       data.pins.forEach(pin => {
         if (!pin.comments) {
@@ -52,7 +60,7 @@ function loadDB() {
     }
     return data;
   } catch {
-    const init = { pins: [], nextId: 1, categories: defaultCategories, reports: [], reportsNextId: 1 };
+    const init = { pins: [], nextId: 1, categories: defaultCategories, reports: [], reportsNextId: 1, logs: [], logsNextId: 1 };
     fs.writeFileSync(DB_FILE, JSON.stringify(init, null, 2), 'utf8');
     return init;
   }
@@ -344,6 +352,44 @@ const db = {
     const idx = data.reports.findIndex(r => r.id === parseInt(id));
     if (idx === -1) return false;
     data.reports.splice(idx, 1);
+    saveDB(data);
+    return true;
+  },
+
+  /** Aktivite Logu ekle */
+  addLog({ ip, action }) {
+    const data = loadDB();
+    if (!data.logs) data.logs = [];
+    if (!data.logsNextId) data.logsNextId = 1;
+
+    const log = {
+      id: data.logsNextId++,
+      ip: ip || '127.0.0.1',
+      action: action.trim(),
+      created_at: new Date().toISOString()
+    };
+    data.logs.push(log);
+    
+    // En fazla 200 log sakla (FIFO)
+    if (data.logs.length > 200) {
+      data.logs.shift();
+    }
+    
+    saveDB(data);
+    return log;
+  },
+
+  /** Aktivite Loglarını getir */
+  getLogs() {
+    const data = loadDB();
+    return data.logs || [];
+  },
+
+  /** Aktivite Loglarını temizle */
+  clearLogs() {
+    const data = loadDB();
+    data.logs = [];
+    data.logsNextId = 1;
     saveDB(data);
     return true;
   }

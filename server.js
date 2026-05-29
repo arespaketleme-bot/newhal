@@ -208,6 +208,28 @@ app.delete('/api/admin/reports/:id', auth, (req, res) => {
   res.json({ message: 'Bildirim silindi' });
 });
 
+// ── PUBLIC: Aktivite Logu Ekle ─────────────────────────────────
+app.post('/api/logs', (req, res) => {
+  const { action } = req.body;
+  if (!action || !action.trim()) {
+    return res.status(400).json({ error: 'Aktivite açıklaması boş olamaz' });
+  }
+  const ip = getIp(req);
+  const log = db.addLog({ ip, action });
+  res.status(201).json(log);
+});
+
+// ── ADMIN: Aktivite Loglarını Listele ───────────────────────────
+app.get('/api/admin/logs', auth, (req, res) => {
+  res.json(db.getLogs());
+});
+
+// ── ADMIN: Aktivite Loglarını Temizle ───────────────────────────
+app.delete('/api/admin/logs', auth, (req, res) => {
+  db.clearLogs();
+  res.json({ message: 'Tüm loglar temizlendi' });
+});
+
 // ── Sayfa yönlendirme ─────────────────────────────────────────
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));

@@ -250,7 +250,7 @@ function filterPins(cat, btn) {
   btn.classList.add('active');
   renderPins(allPins);
 
-  logActivity(`Kategoriyi '${cat === 'all' ? 'Tümü' : cat}' olarak filtrelediniz`);
+  logActivity(`Kategoriyi '${cat === 'all' ? 'Tümü' : cat}' olarak filtrelediniz`, true);
 }
 
 async function updateHeroStats() {
@@ -322,7 +322,7 @@ function showPinDetail(id) {
   document.getElementById('pinDetailModal').classList.add('open');
 
   // Log activity
-  logActivity(`'${pin.title}' detaylarını inceliyorsunuz`);
+  logActivity(`'${pin.title}' detaylarını inceliyorsunuz`, true);
 }
 
 function setDetailItem(rowId, elId, val) {
@@ -395,6 +395,7 @@ async function submitPin(e) {
     if (!res.ok) throw new Error(data.error || 'Hata oluştu');
     closeAddPinModal();
     showToast('✅ İğne gönderildi! Admin onayı bekleniyor.', 'success');
+    logActivity(`'${payload.title}' için iğne ekleme talebi gönderdiniz`, true);
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
@@ -527,6 +528,7 @@ async function sendChatMessage() {
     
     msgInput.value = '';
     await loadChatMessages();
+    logActivity(`Canlı sohbete mesaj gönderdiniz`, true);
     
     // Alıcıyı en aşağı kaydır
     const container = document.getElementById('chatMessages');
@@ -823,6 +825,10 @@ async function submitComment() {
 
     msgInput.value = '';
     showToast('✅ Yorumunuz eklendi!', 'success');
+    const pin = allPins.find(p => p.id === currentDetailPinId);
+    if (pin) {
+      logActivity(`'${pin.title}' iğnesine yorum yaptınız`, true);
+    }
     
     // Reload pins to get updated comments
     await loadPins();
@@ -873,6 +879,10 @@ async function submitReport() {
     const container = document.getElementById('reportFormContainer');
     if (container) container.style.display = 'none';
     showToast('✅ Bildiriminiz iletildi, teşekkürler!', 'success');
+    const pin = allPins.find(p => p.id === currentDetailPinId);
+    if (pin) {
+      logActivity(`'${pin.title}' iğnesi için hata bildirdiniz`, true);
+    }
   } catch (err) {
     showToast(err.message, 'error');
   }
@@ -948,7 +958,7 @@ function closeWelcomePopupOnBg(e) {
 }
 
 // ── Canlı Aktivite Log Akışı (Activity Logger) ───────────────────────
-function logActivity(text) {
+function logActivity(text, isReal = false) {
   const container = document.getElementById('activityLogger');
   if (!container) return;
 
@@ -971,6 +981,30 @@ function logActivity(text) {
   if (items.length > 4) {
     items[0].remove();
   }
+
+  if (isReal) {
+    saveActivityToBackend(text);
+  }
+}
+
+async function saveActivityToBackend(text) {
+  try {
+    let actionText = text
+      .replace("Siz (Mersin, Türkiye) rehbere bağlandınız", "Ziyaretçi rehbere bağlandı")
+      .replace("filtrelediniz", "filtreledi")
+      .replace("inceliyorsunuz", "inceliyor")
+      .replace("yaptınız", "yaptı")
+      .replace("bildirdiniz", "bildirdi")
+      .replace("gönderdiniz", "gönderdi");
+
+    await fetch('/api/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: actionText })
+    });
+  } catch (err) {
+    console.error('Aktivite kaydedilemedi:', err);
+  }
 }
 
 // Sahte/Simüle edilmiş diğer kullanıcı hareketleri logları
@@ -991,7 +1025,7 @@ const SIMULATED_ACTIVITIES = [
 function initSimulatedActivityLogger() {
   // İlk giriş logu
   setTimeout(() => {
-    logActivity("Siz (Mersin, Türkiye) rehbere bağlandınız");
+    logActivity("Siz (Mersin, Türkiye) rehbere bağlandınız", true);
   }, 1000);
 
   // Her 12-25 saniyede bir rastgele bir log üret
@@ -999,7 +1033,7 @@ function initSimulatedActivityLogger() {
     const delay = Math.floor(Math.random() * 13000) + 12000; // 12-25 sn
     setTimeout(() => {
       const idx = Math.floor(Math.random() * SIMULATED_ACTIVITIES.length);
-      logActivity(SIMULATED_ACTIVITIES[idx]);
+      logActivity(SIMULATED_ACTIVITIES[idx], false);
       triggerNextSimulatedLog();
     }, delay);
   }

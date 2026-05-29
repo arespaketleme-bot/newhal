@@ -305,5 +305,7 @@
       "created_at": "2026-05-29T11:46:48.596Z"
     }
   ],
-  "reportsNextId": 4
+  "reportsNextId": 4,
+  "logs": [],
+  "logsNextId": 1
 }

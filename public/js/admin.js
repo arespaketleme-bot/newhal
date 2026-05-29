@@ -94,7 +94,7 @@ async function api(path, opts = {}) {
 
 // ── Load All Data ──────────────────────────────────────────────
 async function loadAll() {
-  await Promise.all([loadStats(), loadPending(), loadApproved(), loadRejected(), loadCategories(), loadReports()]);
+  await Promise.all([loadStats(), loadPending(), loadApproved(), loadRejected(), loadCategories(), loadReports(), loadLogs()]);
 }
 
 async function loadStats() {
@@ -321,7 +321,8 @@ const sectionTitles = {
   approved:  'Onaylananlar',
   rejected:  'Reddedilenler',
   categories:'Kategori Yönetimi',
-  reports:   'Hata Bildirimleri'
+  reports:   'Hata Bildirimleri',
+  logs:      'Aktivite Logları'
 };
 
 function showSection(name) {
@@ -330,6 +331,10 @@ function showSection(name) {
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   document.getElementById(`nav${cap(name)}`).classList.add('active');
   document.getElementById('topbarTitle').textContent = sectionTitles[name];
+  
+  if (name === 'logs') {
+    loadLogs();
+  }
 }
 
 function toggleSidebar() {
@@ -717,4 +722,58 @@ async function deleteReport(id) {
   }
   showToast('✅ Bildirim kapatıldı', 'success');
   await loadReports();
+}
+
+// ── Admin Aktivite Logları Modülü ──────────────────────────────
+async function loadLogs() {
+  const res = await api('/api/admin/logs');
+  if (!res) return;
+  const logs = await res.json();
+  renderLogsTable(logs);
+}
+
+function renderLogsTable(logs) {
+  const tbody = document.getElementById('logsBody');
+  const empty = document.getElementById('logsEmpty');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  
+  if (logs.length === 0) {
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  // En yeni loglar en üstte görünsün
+  const reversedLogs = [...logs].reverse();
+
+  reversedLogs.forEach(log => {
+    const tr = document.createElement('tr');
+    
+    let timeStr = '';
+    try {
+      const d = new Date(log.created_at);
+      timeStr = d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    } catch {
+      timeStr = log.created_at;
+    }
+
+    tr.innerHTML = `
+      <td style="font-family: monospace; font-size: 12px; color: var(--text-3); width: 140px;">🔌 ${esc(log.ip)}</td>
+      <td style="font-weight: 500; color: var(--text-1);">${esc(log.action)}</td>
+      <td style="font-size: 12px; color: var(--text-3); width: 180px;">${timeStr}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function clearLogs() {
+  if (!confirm('Tüm aktivite loglarını silmek istediğinize emin misiniz?')) return;
+  const res = await api('/api/admin/logs', { method: 'DELETE' });
+  if (!res || !res.ok) {
+    showToast('Loglar temizlenemedi', 'error');
+    return;
+  }
+  showToast('🗑️ Tüm loglar başarıyla temizlendi', 'success');
+  await loadLogs();
 }
