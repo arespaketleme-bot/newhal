@@ -142,10 +142,10 @@ button, a { cursor: pointer; text-decoration: none; border: none; background: no
 
 .hero-bg {
   position: absolute; inset: 0;
-  background:
-    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(34,197,94,0.12) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(16,163,74,0.08) 0%, transparent 60%),
-    linear-gradient(180deg, #0a0f0d 0%, #071009 100%);
+  background-image: linear-gradient(180deg, rgba(10, 15, 13, 0.7) 0%, rgba(7, 16, 9, 0.95) 100%), url("../img/banner.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .hero-overlay {
