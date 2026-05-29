@@ -230,6 +230,23 @@ app.delete('/api/admin/logs', auth, (req, res) => {
   res.json({ message: 'Tüm loglar temizlendi' });
 });
 
+// ── PUBLIC: Ziyaret Sayısını Artır ──────────────────────────────
+app.post('/api/visits', (req, res) => {
+  const currentVisits = db.incrementVisits();
+  res.json({ visits: currentVisits });
+});
+
+// ── PUBLIC: Ziyaret Sayısını Getir ──────────────────────────────
+app.get('/api/visits', (req, res) => {
+  res.json({ visits: db.getVisits() });
+});
+
+// ── ADMIN: Sohbet Geçmişini Temizle ──────────────────────────────
+app.delete('/api/admin/chat', auth, (req, res) => {
+  db.clearChat();
+  res.json({ message: 'Sohbet geçmişi temizlendi' });
+});
+
 // ── Sayfa yönlendirme ─────────────────────────────────────────
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));

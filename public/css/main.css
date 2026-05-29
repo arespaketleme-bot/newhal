@@ -378,6 +378,26 @@ button, a { cursor: pointer; text-decoration: none; border: none; background: no
 }
 .footer-logo { display: flex; flex-direction: column; gap: 4px; }
 .footer-tagline { font-size: 12px; color: var(--text-3); }
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.visit-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 12px;
+  color: var(--text-2);
+  font-weight: 500;
+  backdrop-filter: blur(4px);
+  user-select: none;
+}
 .footer-links a { font-size: 14px; color: var(--text-3); transition: var(--trans); }
 .footer-links a:hover { color: var(--green-400); }
 .footer-copy { font-size: 12px; color: var(--text-3); }

@@ -20,7 +20,7 @@ const defaultCategories = [
 // ── İlk yükleme / oluşturma ───────────────────────────────────
 function loadDB() {
   if (!fs.existsSync(DB_FILE)) {
-    const init = { pins: [], nextId: 1, categories: defaultCategories, reports: [], reportsNextId: 1, logs: [], logsNextId: 1 };
+    const init = { pins: [], nextId: 1, categories: defaultCategories, reports: [], reportsNextId: 1, logs: [], logsNextId: 1, visits: 0 };
     fs.writeFileSync(DB_FILE, JSON.stringify(init, null, 2), 'utf8');
     return init;
   }
@@ -47,6 +47,10 @@ function loadDB() {
       data.logsNextId = 1;
       changed = true;
     }
+    if (typeof data.visits !== 'number') {
+      data.visits = 0;
+      changed = true;
+    }
     if (data.pins) {
       data.pins.forEach(pin => {
         if (!pin.comments) {
@@ -60,7 +64,7 @@ function loadDB() {
     }
     return data;
   } catch {
-    const init = { pins: [], nextId: 1, categories: defaultCategories, reports: [], reportsNextId: 1, logs: [], logsNextId: 1 };
+    const init = { pins: [], nextId: 1, categories: defaultCategories, reports: [], reportsNextId: 1, logs: [], logsNextId: 1, visits: 0 };
     fs.writeFileSync(DB_FILE, JSON.stringify(init, null, 2), 'utf8');
     return init;
   }
@@ -166,6 +170,7 @@ const db = {
       pending:  data.pins.filter(p => p.status === 'pending').length,
       approved: data.pins.filter(p => p.status === 'approved').length,
       rejected: data.pins.filter(p => p.status === 'rejected').length,
+      visits:   data.visits || 0
     };
   },
 
@@ -392,6 +397,27 @@ const db = {
     data.logsNextId = 1;
     saveDB(data);
     return true;
+  },
+
+  /** Sohbet Geçmişini Temizle */
+  clearChat() {
+    saveChat([]);
+    return true;
+  },
+
+  /** Ziyaret Sayısını Artır */
+  incrementVisits() {
+    const data = loadDB();
+    if (typeof data.visits !== 'number') data.visits = 0;
+    data.visits++;
+    saveDB(data);
+    return data.visits;
+  },
+
+  /** Ziyaret Sayısını Getir */
+  getVisits() {
+    const data = loadDB();
+    return data.visits || 0;
   }
 };
 

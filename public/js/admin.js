@@ -101,6 +101,7 @@ async function loadStats() {
   const res = await api('/api/admin/stats');
   if (!res) return;
   const d = await res.json();
+  document.getElementById('dashVisits').textContent   = Number(d.visits || 0).toLocaleString('tr-TR');
   document.getElementById('dashTotal').textContent    = d.total;
   document.getElementById('dashPending').textContent  = d.pending;
   document.getElementById('dashApproved').textContent = d.approved;
@@ -776,4 +777,14 @@ async function clearLogs() {
   }
   showToast('🗑️ Tüm loglar başarıyla temizlendi', 'success');
   await loadLogs();
+}
+
+async function clearChat() {
+  if (!confirm('Tüm sohbet geçmişini silmek istediğinize emin misiniz?')) return;
+  const res = await api('/api/admin/chat', { method: 'DELETE' });
+  if (!res || !res.ok) {
+    showToast('Sohbet geçmişi temizlenemedi', 'error');
+    return;
+  }
+  showToast('🗑️ Sohbet geçmişi başarıyla temizlendi', 'success');
 }

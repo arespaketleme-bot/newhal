@@ -117,6 +117,11 @@
           <p>Tüm iğne istatistikleri</p>
         </div>
         <div class="stats-grid">
+          <div class="stat-card stat-total" style="border-left-color: var(--accent);">
+            <div class="stat-card-icon">👁️</div>
+            <div class="stat-card-val" id="dashVisits">0</div>
+            <div class="stat-card-label">Toplam Ziyaret</div>
+          </div>
           <div class="stat-card stat-total">
             <div class="stat-card-icon">📍</div>
             <div class="stat-card-val" id="dashTotal">0</div>
@@ -150,6 +155,19 @@
               </thead>
               <tbody id="dashRecentBody"></tbody>
             </table>
+          </div>
+        </div>
+
+        <div class="recent-section" style="margin-top: 24px;">
+          <div class="recent-header">
+            <h3>Sistem & Sohbet Yönetimi</h3>
+          </div>
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 250px;">
+              <h4 style="margin: 0 0 4px 0; color: var(--text-1);">Genel Canlı Sohbet</h4>
+              <p style="margin: 0; font-size: 13px; color: var(--text-3);">Ana sayfada bulunan genel sohbet kutusundaki tüm mesaj geçmişini tamamen temizleyin.</p>
+            </div>
+            <button class="btn-reject" onclick="clearChat()" style="padding: 10px 20px; border-radius: var(--radius); font-weight: 600; cursor: pointer; border: none; background: #dc2626; color: white; display: flex; align-items: center; gap: 6px;">🗑️ Sohbet Geçmişini Sil</button>
           </div>
         </div>
       </section>

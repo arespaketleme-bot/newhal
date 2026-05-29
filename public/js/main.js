@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadCategories();
   loadPins();
   initScrollEffect();
+  incrementAndGetVisits();
 
   // Chat initialization & polling
   loadChatMessages();
@@ -1039,6 +1040,21 @@ function initSimulatedActivityLogger() {
   }
 
   triggerNextSimulatedLog();
+}
+
+async function incrementAndGetVisits() {
+  try {
+    const res = await fetch('/api/visits', { method: 'POST' });
+    if (res.ok) {
+      const data = await res.json();
+      const el = document.getElementById('visitCounter');
+      if (el) {
+        el.textContent = `👁️ Ziyaret: ${Number(data.visits).toLocaleString('tr-TR')}`;
+      }
+    }
+  } catch (err) {
+    console.error('Sayaç yüklenemedi:', err);
+  }
 }
 
 
