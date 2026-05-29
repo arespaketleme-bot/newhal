@@ -825,9 +825,9 @@ async function submitComment() {
 
     msgInput.value = '';
     showToast('✅ Yorumunuz eklendi!', 'success');
-    const pin = allPins.find(p => p.id === currentDetailPinId);
-    if (pin) {
-      logActivity(`'${pin.title}' iğnesine yorum yaptınız`, true);
+    const existingPin = allPins.find(p => p.id === currentDetailPinId);
+    if (existingPin) {
+      logActivity(`'${existingPin.title}' iğnesine yorum yaptınız`, true);
     }
     
     // Reload pins to get updated comments
