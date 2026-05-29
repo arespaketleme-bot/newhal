@@ -54,6 +54,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       welcomePopup.classList.add('open');
     }, 300);
   }
+
+  // Canlı log akışını başlat
+  initSimulatedActivityLogger();
 });
 
 // ── Harita ────────────────────────────────────────────────────
@@ -246,6 +249,8 @@ function filterPins(cat, btn) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderPins(allPins);
+
+  logActivity(`Kategoriyi '${cat === 'all' ? 'Tümü' : cat}' olarak filtrelediniz`);
 }
 
 async function updateHeroStats() {
@@ -315,6 +320,9 @@ function showPinDetail(id) {
   renderPinComments(pin.comments || []);
 
   document.getElementById('pinDetailModal').classList.add('open');
+
+  // Log activity
+  logActivity(`'${pin.title}' detaylarını inceliyorsunuz`);
 }
 
 function setDetailItem(rowId, elId, val) {
@@ -938,5 +946,66 @@ function closeWelcomePopupOnBg(e) {
     closeWelcomePopup();
   }
 }
+
+// ── Canlı Aktivite Log Akışı (Activity Logger) ───────────────────────
+function logActivity(text) {
+  const container = document.getElementById('activityLogger');
+  if (!container) return;
+
+  const item = document.createElement('div');
+  item.className = 'activity-log-item';
+
+  const d = new Date();
+  const timeStr = d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  item.innerHTML = `
+    <div class="activity-pulse-dot"></div>
+    <div class="activity-log-text">${escHtml(text)}</div>
+    <div class="activity-log-time">${timeStr}</div>
+  `;
+
+  container.appendChild(item);
+
+  // En fazla 4 log göster, eskileri sil
+  const items = container.querySelectorAll('.activity-log-item');
+  if (items.length > 4) {
+    items[0].remove();
+  }
+}
+
+// Sahte/Simüle edilmiş diğer kullanıcı hareketleri logları
+const SIMULATED_ACTIVITIES = [
+  "Misafir_8432 Mersin Hal Kompleksi haritasını incelemeye başladı",
+  "Tüccar_33 Sebze & Meyve kategorisini filtreledi",
+  "Anonim kullanıcı genel sohbete mesaj gönderdi",
+  "Yeni bir kullanıcı Adana'dan sisteme bağlandı",
+  "Bir kullanıcı Akdeniz Meyve Sebze detaylarını inceliyor",
+  "Anonim kullanıcı bir iğne ekleme talebi gönderdi",
+  "Yeni bir kullanıcı Mersin/Mezitli'den sisteme giriş yaptı",
+  "Bir kullanıcı Balık kategorisini filtreledi",
+  "Misafir_1029 'Özlem Gıda' için yorumları inceliyor",
+  "Anonim kullanıcı yeni bir yorum paylaştı",
+  "Mersin_Tüccar Kuru Gıda kategorisini filtreledi"
+];
+
+function initSimulatedActivityLogger() {
+  // İlk giriş logu
+  setTimeout(() => {
+    logActivity("Siz (Mersin, Türkiye) rehbere bağlandınız");
+  }, 1000);
+
+  // Her 12-25 saniyede bir rastgele bir log üret
+  function triggerNextSimulatedLog() {
+    const delay = Math.floor(Math.random() * 13000) + 12000; // 12-25 sn
+    setTimeout(() => {
+      const idx = Math.floor(Math.random() * SIMULATED_ACTIVITIES.length);
+      logActivity(SIMULATED_ACTIVITIES[idx]);
+      triggerNextSimulatedLog();
+    }, delay);
+  }
+
+  triggerNextSimulatedLog();
+}
+
 
 
