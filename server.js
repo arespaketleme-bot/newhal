@@ -28,14 +28,18 @@ passport.use(new GoogleStrategy({
     callbackURL: '/auth/google/callback',
     proxy: true // In case it runs behind a proxy (e.g. Render)
   },
-  function(accessToken, refreshToken, profile, cb) {
-    const user = db.findOrCreateGoogleUser({
-      googleId: profile.id,
-      name: profile.displayName,
-      email: profile.emails && profile.emails.length > 0 ? profile.emails[0].value : '',
-      avatar: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : ''
-    });
-    return cb(null, user);
+  async function(accessToken, refreshToken, profile, cb) {
+    try {
+      const user = await db.findOrCreateGoogleUser({
+        googleId: profile.id,
+        name: profile.displayName,
+        email: profile.emails && profile.emails.length > 0 ? profile.emails[0].value : '',
+        avatar: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : ''
+      });
+      return cb(null, user);
+    } catch (err) {
+      return cb(err);
+    }
   }
 ));
 
@@ -75,9 +79,10 @@ app.post('/api/admin/login', (req, res) => {
   const token = jwt.sign({ username, role: 'admin' }, JWT_SECRET, { expiresIn: '8h' });
   res.json({ token, username });
 });
+
 // ── ADMIN: Tüm kullanıcıları getir ───────────────────────────
-app.get('/api/admin/users', requireAdmin, (req, res) => {
-  res.json(db.getAllUsers());
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+  res.json(await db.getAllUsers());
 });
 
 // ── PUBLIC: Google Auth Routes ────────────────────────────────
@@ -98,73 +103,74 @@ app.get('/auth/google/callback',
 );
 
 // ── PUBLIC: Onaylı iğneleri getir ────────────────────────────
-app.get('/api/pins', (req, res) => {
-  res.json(db.getApprovedPins());
+app.get('/api/pins', async (req, res) => {
+  await db.incrementVisits(); // Sayacı artır
+  res.json(await db.getApprovedPins());
 });
 
 // ── PUBLIC: Yeni iğne ekle (onay bekliyor) ───────────────────
-app.post('/api/pins', requireAuth, (req, res) => {
+app.post('/api/pins', requireAuth, async (req, res) => {
   const { title, address, phone, website, email, lat, lng, category } = req.body;
   if (!title || !address || !lat || !lng) {
     return res.status(400).json({ error: 'Ünvan, adres ve konum zorunlu' });
   }
-  const pin = db.addPin({ title, address, phone, website, email, lat, lng, category });
+  const pin = await db.addPin({ title, address, phone, website, email, lat, lng, category });
   res.status(201).json({ id: pin.id, message: 'İğne başarıyla gönderildi, onay bekleniyor.' });
 });
 
 // ── ADMIN: Tüm iğneleri getir ─────────────────────────────────
-app.get('/api/admin/pins', requireAdmin, (req, res) => {
-  res.json(db.getPins(req.query.status || null));
+app.get('/api/admin/pins', requireAdmin, async (req, res) => {
+  res.json(await db.getPins(req.query.status || null));
 });
 
 // ── ADMIN: İğne onayla ───────────────────────────────────────
-app.patch('/api/admin/pins/:id/approve', requireAdmin, (req, res) => {
-  const pin = db.approvePin(req.params.id);
+app.patch('/api/admin/pins/:id/approve', requireAdmin, async (req, res) => {
+  const pin = await db.approvePin(req.params.id);
   if (!pin) return res.status(404).json({ error: 'İğne bulunamadı' });
   res.json({ message: 'İğne onaylandı' });
 });
 
 // ── ADMIN: İğne reddet ───────────────────────────────────────
-app.patch('/api/admin/pins/:id/reject', requireAdmin, (req, res) => {
-  const pin = db.rejectPin(req.params.id, req.body.reason || '');
+app.patch('/api/admin/pins/:id/reject', requireAdmin, async (req, res) => {
+  const pin = await db.rejectPin(req.params.id, req.body.reason || '');
   if (!pin) return res.status(404).json({ error: 'İğne bulunamadı' });
   res.json({ message: 'İğne reddedildi' });
 });
 
 // ── ADMIN: İğne sil ──────────────────────────────────────────
-app.delete('/api/admin/pins/:id', requireAdmin, (req, res) => {
-  const ok = db.deletePin(req.params.id);
+app.delete('/api/admin/pins/:id', requireAdmin, async (req, res) => {
+  const ok = await db.deletePin(req.params.id);
   if (!ok) return res.status(404).json({ error: 'İğne bulunamadı' });
   res.json({ message: 'İğne silindi' });
 });
 
 // ── ADMIN: İğne güncelle ─────────────────────────────────────
-app.put('/api/admin/pins/:id', requireAdmin, (req, res) => {
+app.put('/api/admin/pins/:id', requireAdmin, async (req, res) => {
   const { title, address, phone, website, email, category, lat, lng } = req.body;
   if (!title || !address || !lat || !lng) {
     return res.status(400).json({ error: 'Ünvan, adres ve konum zorunlu' });
   }
-  const pin = db.updatePin(req.params.id, { title, address, phone, website, email, category, lat, lng });
+  const pin = await db.updatePin(req.params.id, { title, address, phone, website, email, category, lat, lng });
   if (!pin) return res.status(404).json({ error: 'İğne bulunamadı' });
   res.json({ message: 'İğne güncellendi', pin });
 });
 
 // ── ADMIN: İstatistik ─────────────────────────────────────────
-app.get('/api/admin/stats', requireAdmin, (req, res) => {
-  res.json(db.getStats());
+app.get('/api/admin/stats', requireAdmin, async (req, res) => {
+  res.json(await db.getStats());
 });
 
 // ── PUBLIC: Dinamik Kategoriler ──────────────────────────────
-app.get('/api/categories', (req, res) => {
-  res.json(db.getCategories());
+app.get('/api/categories', async (req, res) => {
+  res.json(await db.getCategories());
 });
 
-app.post('/api/categories', (req, res) => {
+app.post('/api/categories', async (req, res) => {
   const { name, icon } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Kategori adı zorunlu' });
   }
-  const result = db.addCategory({ name, icon });
+  const result = await db.addCategory({ name, icon });
   if (result.error) {
     return res.status(400).json({ error: result.error });
   }
@@ -172,8 +178,8 @@ app.post('/api/categories', (req, res) => {
 });
 
 // ── ADMIN: Kategori Sil ───────────────────────────────────────
-app.delete('/api/admin/categories/:name', requireAdmin, (req, res) => {
-  const result = db.deleteCategory(req.params.name);
+app.delete('/api/admin/categories/:name', requireAdmin, async (req, res) => {
+  const result = await db.deleteCategory(req.params.name);
   if (result.error) {
     return res.status(400).json({ error: result.error });
   }
@@ -181,12 +187,12 @@ app.delete('/api/admin/categories/:name', requireAdmin, (req, res) => {
 });
 
 // ── ADMIN: Kategori Güncelle ──────────────────────────────────
-app.put('/api/admin/categories/:name', requireAdmin, (req, res) => {
+app.put('/api/admin/categories/:name', requireAdmin, async (req, res) => {
   const { name, icon } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Kategori adı zorunlu' });
   }
-  const result = db.updateCategory(req.params.name, { name, icon });
+  const result = await db.updateCategory(req.params.name, { name, icon });
   if (result.error) {
     return res.status(400).json({ error: result.error });
   }
@@ -195,8 +201,8 @@ app.put('/api/admin/categories/:name', requireAdmin, (req, res) => {
 
 
 // ── PUBLIC: Chat Endpoints ────────────────────────────────────
-app.get('/api/chat', (req, res) => {
-  res.json(db.getChatMessages());
+app.get('/api/chat', async (req, res) => {
+  res.json(await db.getChatMessages());
 });
 
 function getIp(req) {
@@ -210,13 +216,13 @@ function getIp(req) {
   return ip;
 }
 
-app.post('/api/chat', requireAuth, (req, res) => {
+app.post('/api/chat', requireAuth, async (req, res) => {
   const { message } = req.body;
   if (!message || !message.trim()) {
     return res.status(400).json({ error: 'Mesaj boş olamaz' });
   }
   const ip = getIp(req);
-  const newMsg = db.addChatMessage({
+  const newMsg = await db.addChatMessage({
     nickname: req.user.name || 'Kullanıcı',
     ip,
     message: message.trim(),
@@ -225,13 +231,13 @@ app.post('/api/chat', requireAuth, (req, res) => {
 });
 
 // ── PUBLIC: Yorum Ekleme ──────────────────────────────────────
-app.post('/api/pins/:id/comments', requireAuth, (req, res) => {
+app.post('/api/pins/:id/comments', requireAuth, async (req, res) => {
   const { message } = req.body;
   if (!message || !message.trim()) {
     return res.status(400).json({ error: 'Yorum boş olamaz' });
   }
   const ip = getIp(req);
-  const comment = db.addPinComment(req.params.id, {
+  const comment = await db.addPinComment(req.params.id, {
     nickname: req.user.name || 'Kullanıcı',
     ip,
     message: message.trim()
@@ -241,13 +247,13 @@ app.post('/api/pins/:id/comments', requireAuth, (req, res) => {
 });
 
 // ── PUBLIC: Hata Bildirme ──────────────────────────────────────
-app.post('/api/pins/:id/reports', requireAuth, (req, res) => {
+app.post('/api/pins/:id/reports', requireAuth, async (req, res) => {
   const { message } = req.body;
   if (!message || !message.trim()) {
     return res.status(400).json({ error: 'Bildirim içeriği boş olamaz' });
   }
   const ip = getIp(req);
-  const report = db.addReport({
+  const report = await db.addReport({
     pinId: req.params.id,
     ip,
     message: message.trim()
@@ -256,21 +262,20 @@ app.post('/api/pins/:id/reports', requireAuth, (req, res) => {
 });
 
 // ── ADMIN: Hata Bildirimlerini Listele ──────────────────────────
-app.get('/api/admin/reports', requireAdmin, (req, res) => {
-  res.json(db.getReports());
+app.get('/api/admin/reports', requireAdmin, async (req, res) => {
+  res.json(await db.getReports());
 });
 
 // ── ADMIN: Hata Bildirimini Sil ────────────────────────────────
-app.delete('/api/admin/reports/:id', requireAdmin, (req, res) => {
-  const ok = db.deleteReport(req.params.id);
+app.delete('/api/admin/reports/:id', requireAdmin, async (req, res) => {
+  const ok = await db.deleteReport(req.params.id);
   if (!ok) return res.status(404).json({ error: 'Bildirim bulunamadı' });
   res.json({ message: 'Bildirim silindi' });
 });
 
-
 // ── ADMIN: Sohbet Geçmişini Temizle ──────────────────────────────
-app.delete('/api/admin/chat', requireAdmin, (req, res) => {
-  db.clearChat();
+app.delete('/api/admin/chat', requireAdmin, async (req, res) => {
+  await db.clearChat();
   res.json({ message: 'Sohbet geçmişi temizlendi' });
 });
 
