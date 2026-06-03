@@ -361,63 +361,11 @@ const db = {
     return true;
   },
 
-  /** Aktivite Logu ekle */
-  addLog({ ip, action }) {
-    const data = loadDB();
-    if (!data.logs) data.logs = [];
-    if (!data.logsNextId) data.logsNextId = 1;
-
-    const log = {
-      id: data.logsNextId++,
-      ip: ip || '127.0.0.1',
-      action: action.trim(),
-      created_at: new Date().toISOString()
-    };
-    data.logs.push(log);
-    
-    // En fazla 200 log sakla (FIFO)
-    if (data.logs.length > 200) {
-      data.logs.shift();
-    }
-    
-    saveDB(data);
-    return log;
-  },
-
-  /** Aktivite Loglarını getir */
-  getLogs() {
-    const data = loadDB();
-    return data.logs || [];
-  },
-
-  /** Aktivite Loglarını temizle */
-  clearLogs() {
-    const data = loadDB();
-    data.logs = [];
-    data.logsNextId = 1;
-    saveDB(data);
-    return true;
-  },
 
   /** Sohbet Geçmişini Temizle */
   clearChat() {
     saveChat([]);
     return true;
-  },
-
-  /** Ziyaret Sayısını Artır */
-  incrementVisits() {
-    const data = loadDB();
-    if (typeof data.visits !== 'number') data.visits = 0;
-    data.visits++;
-    saveDB(data);
-    return data.visits;
-  },
-
-  /** Ziyaret Sayısını Getir */
-  getVisits() {
-    const data = loadDB();
-    return data.visits || 0;
   }
 };
 

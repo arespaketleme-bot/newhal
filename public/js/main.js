@@ -32,7 +32,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadCategories();
   loadPins();
   initScrollEffect();
-  incrementAndGetVisits();
 
   // Chat initialization & polling
   loadChatMessages();
@@ -56,8 +55,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 300);
   }
 
-  // Canlı log akışını başlat
-  initSimulatedActivityLogger();
 });
 
 // ── Harita ────────────────────────────────────────────────────
@@ -1005,55 +1002,6 @@ async function saveActivityToBackend(text) {
     });
   } catch (err) {
     console.error('Aktivite kaydedilemedi:', err);
-  }
-}
-
-// Sahte/Simüle edilmiş diğer kullanıcı hareketleri logları
-const SIMULATED_ACTIVITIES = [
-  "Misafir_8432 Mersin Hal Kompleksi haritasını incelemeye başladı",
-  "Tüccar_33 Sebze & Meyve kategorisini filtreledi",
-  "Anonim kullanıcı genel sohbete mesaj gönderdi",
-  "Yeni bir kullanıcı Adana'dan sisteme bağlandı",
-  "Bir kullanıcı Akdeniz Meyve Sebze detaylarını inceliyor",
-  "Anonim kullanıcı bir iğne ekleme talebi gönderdi",
-  "Yeni bir kullanıcı Mersin/Mezitli'den sisteme giriş yaptı",
-  "Bir kullanıcı Balık kategorisini filtreledi",
-  "Misafir_1029 'Özlem Gıda' için yorumları inceliyor",
-  "Anonim kullanıcı yeni bir yorum paylaştı",
-  "Mersin_Tüccar Kuru Gıda kategorisini filtreledi"
-];
-
-function initSimulatedActivityLogger() {
-  // İlk giriş logu
-  setTimeout(() => {
-    logActivity("Siz (Mersin, Türkiye) rehbere bağlandınız", true);
-  }, 1000);
-
-  // Her 12-25 saniyede bir rastgele bir log üret
-  function triggerNextSimulatedLog() {
-    const delay = Math.floor(Math.random() * 13000) + 12000; // 12-25 sn
-    setTimeout(() => {
-      const idx = Math.floor(Math.random() * SIMULATED_ACTIVITIES.length);
-      logActivity(SIMULATED_ACTIVITIES[idx], false);
-      triggerNextSimulatedLog();
-    }, delay);
-  }
-
-  triggerNextSimulatedLog();
-}
-
-async function incrementAndGetVisits() {
-  try {
-    const res = await fetch('/api/visits', { method: 'POST' });
-    if (res.ok) {
-      const data = await res.json();
-      const el = document.getElementById('visitCounter');
-      if (el) {
-        el.textContent = `👁️ Ziyaret: ${Number(data.visits).toLocaleString('tr-TR')}`;
-      }
-    }
-  } catch (err) {
-    console.error('Sayaç yüklenemedi:', err);
   }
 }
 

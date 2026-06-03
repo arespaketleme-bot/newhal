@@ -208,38 +208,6 @@ app.delete('/api/admin/reports/:id', auth, (req, res) => {
   res.json({ message: 'Bildirim silindi' });
 });
 
-// ── PUBLIC: Aktivite Logu Ekle ─────────────────────────────────
-app.post('/api/logs', (req, res) => {
-  const { action } = req.body;
-  if (!action || !action.trim()) {
-    return res.status(400).json({ error: 'Aktivite açıklaması boş olamaz' });
-  }
-  const ip = getIp(req);
-  const log = db.addLog({ ip, action });
-  res.status(201).json(log);
-});
-
-// ── ADMIN: Aktivite Loglarını Listele ───────────────────────────
-app.get('/api/admin/logs', auth, (req, res) => {
-  res.json(db.getLogs());
-});
-
-// ── ADMIN: Aktivite Loglarını Temizle ───────────────────────────
-app.delete('/api/admin/logs', auth, (req, res) => {
-  db.clearLogs();
-  res.json({ message: 'Tüm loglar temizlendi' });
-});
-
-// ── PUBLIC: Ziyaret Sayısını Artır ──────────────────────────────
-app.post('/api/visits', (req, res) => {
-  const currentVisits = db.incrementVisits();
-  res.json({ visits: currentVisits });
-});
-
-// ── PUBLIC: Ziyaret Sayısını Getir ──────────────────────────────
-app.get('/api/visits', (req, res) => {
-  res.json({ visits: db.getVisits() });
-});
 
 // ── ADMIN: Sohbet Geçmişini Temizle ──────────────────────────────
 app.delete('/api/admin/chat', auth, (req, res) => {
