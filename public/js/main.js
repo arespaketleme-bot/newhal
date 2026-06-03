@@ -10,74 +10,7 @@ function openAuthModal() {
 function closeAuthModal() {
   document.getElementById('authModal').classList.remove('open');
 }
-function switchAuthTab(tab) {
-  if (tab === 'login') {
-    document.getElementById('loginForm').style.display = 'block';
-    document.getElementById('registerForm').style.display = 'none';
-    document.getElementById('tabLogin').style.borderBottom = '2px solid var(--green-400)';
-    document.getElementById('tabLogin').style.color = '#fff';
-    document.getElementById('tabRegister').style.borderBottom = '2px solid transparent';
-    document.getElementById('tabRegister').style.color = 'var(--text-2)';
-  } else {
-    document.getElementById('loginForm').style.display = 'none';
-    document.getElementById('registerForm').style.display = 'block';
-    document.getElementById('tabRegister').style.borderBottom = '2px solid var(--green-400)';
-    document.getElementById('tabRegister').style.color = '#fff';
-    document.getElementById('tabLogin').style.borderBottom = '2px solid transparent';
-    document.getElementById('tabLogin').style.color = 'var(--text-2)';
-  }
-}
 
-async function submitLogin(e) {
-  e.preventDefault();
-  const email = document.getElementById('loginEmail').value;
-  const password = document.getElementById('loginPassword').value;
-  try {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      localStorage.setItem('userToken', data.token);
-      localStorage.setItem('userName', data.name);
-      closeAuthModal();
-      showToast('Başarıyla giriş yapıldı', 'success');
-      updateAuthUI(data.name);
-    } else {
-      showToast(data.error || 'Giriş başarısız', 'error');
-    }
-  } catch (err) {
-    showToast('Bağlantı hatası', 'error');
-  }
-}
-
-async function submitRegister(e) {
-  e.preventDefault();
-  const name = document.getElementById('regName').value;
-  const email = document.getElementById('regEmail').value;
-  const password = document.getElementById('regPassword').value;
-  try {
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      localStorage.setItem('userToken', data.token);
-      localStorage.setItem('userName', data.name);
-      closeAuthModal();
-      showToast('Kayıt başarılı, giriş yapıldı', 'success');
-      updateAuthUI(data.name);
-    } else {
-      showToast(data.error || 'Kayıt başarısız', 'error');
-    }
-  } catch (err) {
-    showToast('Bağlantı hatası', 'error');
-  }
-}
 
 function updateAuthUI(name) {
   const btn1 = document.getElementById('authBtn');

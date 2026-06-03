@@ -323,6 +323,7 @@ const sectionTitles = {
   rejected:  'Reddedilenler',
   categories:'Kategori Yönetimi',
   reports:   'Hata Bildirimleri',
+  users:     'Kullanıcılar',
   logs:      'Aktivite Logları'
 };
 
@@ -335,6 +336,8 @@ function showSection(name) {
   
   if (name === 'logs') {
     loadLogs();
+  } else if (name === 'users') {
+    loadUsers();
   }
 }
 
@@ -360,13 +363,53 @@ function formatDate(dateStr) {
   } catch { return dateStr; }
 }
 
-function showToast(msg, type = 'success') {
-  const c = document.getElementById('toastContainer');
+function showToast(msg, type='info') {
+  const container = document.getElementById('toastContainer');
   const t = document.createElement('div');
-  t.className = `toast ${type}`;
-  t.innerHTML = `<span>${msg}</span>`;
-  c.appendChild(t);
-  setTimeout(() => t.remove(), 4000);
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  container.appendChild(t);
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => {
+    t.classList.remove('show');
+    setTimeout(() => t.remove(), 300);
+  }, 3000);
+}
+
+// ── USERS ─────────────────────────────────────────────────────────────
+async function loadUsers() {
+  try {
+    const res = await fetch('/api/admin/users', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) throw new Error('Auth hatası');
+    const users = await res.json();
+    
+    const tbody = document.getElementById('usersBody');
+    const empty = document.getElementById('usersEmpty');
+    tbody.innerHTML = '';
+    
+    if (users.length === 0) {
+      empty.style.display = 'block';
+    } else {
+      empty.style.display = 'none';
+      users.forEach(u => {
+        const tr = document.createElement('tr');
+        const d = new Date(u.created_at).toLocaleString('tr-TR');
+        const avatar = u.avatar ? `<img src="${u.avatar}" style="width:32px;height:32px;border-radius:50%;" />` : '👤';
+        tr.innerHTML = `
+          <td>${avatar}</td>
+          <td><strong>${u.name}</strong></td>
+          <td>${u.email}</td>
+          <td style="color:var(--text-3); font-family:monospace; font-size:12px;">${u.googleId || '-'}</td>
+          <td>${d}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  } catch (err) {
+    showToast('Kullanıcılar yüklenemedi', 'error');
+  }
 }
 
 // ── Admin Kategori Yönetimi ──────────────────────────────────────

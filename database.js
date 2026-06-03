@@ -350,11 +350,10 @@ const db = {
     return data.visits || 0;
   },
 
-  /** Kullanıcı İşlemleri (Local Auth) */
-  findUserByEmail(email) {
+  /** Kullanıcı İşlemleri */
+  getAllUsers() {
     const data = loadDB();
-    if (!data.users) return null;
-    return data.users.find(u => u.email === email);
+    return data.users || [];
   },
 
   findOrCreateGoogleUser({ googleId, name, email, avatar }) {
@@ -386,24 +385,6 @@ const db = {
       data.users.push(user);
       saveDB(data);
     }
-    return user;
-  },
-
-  createUser({ name, email, passwordHash }) {
-    const data = loadDB();
-    if (!data.users) {
-      data.users = [];
-      data.usersNextId = 1;
-    }
-    const user = {
-      id: data.usersNextId++,
-      name,
-      email,
-      passwordHash,
-      created_at: new Date().toISOString()
-    };
-    data.users.push(user);
-    saveDB(data);
     return user;
   },
 

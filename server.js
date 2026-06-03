@@ -63,61 +63,9 @@ app.post('/api/admin/login', (req, res) => {
   const token = jwt.sign({ username, role: 'admin' }, JWT_SECRET, { expiresIn: '8h' });
   res.json({ token, username });
 });
-
-// ── PUBLIC: Local Auth Routes (Register & Login) ──────────────
-app.post('/api/auth/register', async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Ad, E-posta ve Şifre zorunludur' });
-    }
-    const existingUser = db.findUserByEmail(email);
-    if (existingUser) {
-      return res.status(400).json({ error: 'Bu e-posta adresi zaten kullanımda' });
-    }
-    
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
-    
-    const user = db.createUser({ name, email, passwordHash });
-    
-    const token = jwt.sign(
-      { id: user.id, name: user.name, email: user.email, role: 'user' },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-    res.json({ token, name: user.name });
-  } catch (error) {
-    res.status(500).json({ error: 'Kayıt işlemi sırasında bir hata oluştu' });
-  }
-});
-
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: 'E-posta ve Şifre zorunludur' });
-    }
-    
-    const user = db.findUserByEmail(email);
-    if (!user) {
-      return res.status(401).json({ error: 'E-posta veya şifre hatalı' });
-    }
-    
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'E-posta veya şifre hatalı' });
-    }
-    
-    const token = jwt.sign(
-      { id: user.id, name: user.name, email: user.email, role: 'user' },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-    res.json({ token, name: user.name });
-  } catch (error) {
-    res.status(500).json({ error: 'Giriş işlemi sırasında bir hata oluştu' });
-  }
+// ── ADMIN: Tüm kullanıcıları getir ───────────────────────────
+app.get('/api/admin/users', auth, (req, res) => {
+  res.json(db.getAllUsers());
 });
 
 // ── PUBLIC: Google Auth Routes ────────────────────────────────
