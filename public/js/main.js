@@ -28,6 +28,25 @@ const HAL_ZOOM   = 16;
 
 // ── Init ───────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  // Google Auth Mock Handler
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('googleAuth') === 'success') {
+    const name = urlParams.get('name') || 'Kullanıcı';
+    
+    // Update UI elements
+    document.querySelectorAll('a[href="/auth/google"]').forEach(el => {
+      el.innerHTML = `👤 ${name}`;
+      el.href = '#';
+      el.onclick = (e) => { e.preventDefault(); showToast('Google hesabınızla giriş yaptınız.', 'success'); };
+      el.style.color = '#4ade80';
+      el.style.borderColor = '#4ade80';
+    });
+    
+    // Remove query params from URL
+    window.history.replaceState({}, document.title, "/");
+    setTimeout(() => showToast(`✅ Başarıyla giriş yapıldı. Hoş geldin, ${name}!`, 'success'), 500);
+  }
+
   initMap();
   await loadCategories();
   loadPins();

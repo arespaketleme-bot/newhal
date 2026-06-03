@@ -38,6 +38,13 @@ app.post('/api/admin/login', (req, res) => {
   res.json({ token, username });
 });
 
+// ── PUBLIC: Google Auth Mock ──────────────────────────────────
+app.get('/auth/google', (req, res) => {
+  // TODO: Gerçek Google OAuth entegrasyonu (Passport.js) eklenebilir.
+  // Şimdilik test amaçlı mock başarılı giriş:
+  res.redirect('/?googleAuth=success&name=Ziyaretçi');
+});
+
 // ── PUBLIC: Onaylı iğneleri getir ────────────────────────────
 app.get('/api/pins', (req, res) => {
   res.json(db.getApprovedPins());
