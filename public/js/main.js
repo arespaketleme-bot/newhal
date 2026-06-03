@@ -586,7 +586,7 @@ async function sendChatMessage() {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('userToken') },
-      body: JSON.stringify({ nickname, message }),
+      body: JSON.stringify({ message }),
     });
     if (!res.ok) throw new Error('Mesaj gönderilemedi');
     
@@ -883,7 +883,7 @@ async function submitComment() {
     const res = await fetch(`/api/pins/${currentDetailPinId}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('userToken') },
-      body: JSON.stringify({ nickname, message })
+      body: JSON.stringify({ message })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Yorum gönderilemedi');

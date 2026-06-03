@@ -211,13 +211,13 @@ function getIp(req) {
 }
 
 app.post('/api/chat', requireAuth, (req, res) => {
-  const { nickname, message } = req.body;
+  const { message } = req.body;
   if (!message || !message.trim()) {
     return res.status(400).json({ error: 'Mesaj boş olamaz' });
   }
   const ip = getIp(req);
   const newMsg = db.addChatMessage({
-    nickname: nickname ? nickname.trim() : 'Anonim',
+    nickname: req.user.name || 'Kullanıcı',
     ip,
     message: message.trim(),
   });
@@ -226,13 +226,13 @@ app.post('/api/chat', requireAuth, (req, res) => {
 
 // ── PUBLIC: Yorum Ekleme ──────────────────────────────────────
 app.post('/api/pins/:id/comments', requireAuth, (req, res) => {
-  const { nickname, message } = req.body;
+  const { message } = req.body;
   if (!message || !message.trim()) {
     return res.status(400).json({ error: 'Yorum boş olamaz' });
   }
   const ip = getIp(req);
   const comment = db.addPinComment(req.params.id, {
-    nickname: nickname ? nickname.trim() : 'Anonim',
+    nickname: req.user.name || 'Kullanıcı',
     ip,
     message: message.trim()
   });

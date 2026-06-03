@@ -68,7 +68,7 @@
         <button class="btn-ghost" onclick="scrollToMap()">Harita</button>
         <button class="btn-ghost" onclick="showPinList()">İşletmeler</button>
         <a href="#" class="btn-outline" id="authBtn" onclick="openAuthModal()" style="display:flex;align-items:center;gap:6px;">
-          👤 Giriş Yap / Kayıt Ol
+          👤 Google ile Devam Et
         </a>
         <a href="/admin" class="btn-outline">Admin Panel</a>
         <button class="btn-primary" id="btnAddPin" onclick="openAddPinModal()">
@@ -83,7 +83,7 @@
     <div class="mobile-menu" id="mobileMenu">
       <button onclick="scrollToMap(); toggleMobileMenu()">Harita</button>
       <button onclick="showPinList(); toggleMobileMenu()">İşletmeler</button>
-      <a href="#" id="mobileAuthBtn" onclick="openAuthModal(); toggleMobileMenu()">Giriş Yap / Kayıt Ol</a>
+      <a href="#" id="mobileAuthBtn" onclick="openAuthModal(); toggleMobileMenu()">Google ile Devam Et</a>
       <a href="/admin">Admin Panel</a>
       <button class="btn-primary" onclick="openAddPinModal(); toggleMobileMenu()">İğne Ekle</button>
     </div>
@@ -354,8 +354,7 @@
           <!-- Yeni Yorum Formu -->
           <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(255,255,255,0.01); border: 1px solid var(--border); padding: 12px; border-radius: var(--radius);">
             <div style="font-size: 12px; font-weight: 600; color: var(--text-3);">Yeni Yorum Yaz</div>
-            <input type="text" id="commentNickname" placeholder="Adınız / Rumuz (Anonim)" style="width: 100%; font-size: 12px; padding: 6px 10px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: #fff; outline: none; font-family: var(--font-body);" />
-            <div style="display: flex; gap: 8px; width: 100%;">
+            <div style="display: flex; gap: 8px; width: 100%; margin-top: 6px;">
               <input type="text" id="commentMessage" placeholder="Yorum yazmak için giriş yapmalısınız..." style="flex: 1; font-size: 12px; padding: 6px 10px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: #fff; outline: none; font-family: var(--font-body);" onkeydown="if(event.key==='Enter') submitComment()" />
               <button class="btn-primary" onclick="submitComment()" style="padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;">Gönder</button>
             </div>
@@ -381,7 +380,6 @@
         <!-- Mesajlar dinamik yüklenecek -->
       </div>
       <div class="chat-footer">
-        <input type="text" id="chatNick" placeholder="Rumuz (Anonim)" maxlength="15" />
         <div class="chat-input-wrap">
           <input type="text" id="chatMsg" placeholder="Sohbete katılın (Giriş zorunlu)..." maxlength="100" onkeydown="if(event.key==='Enter') sendChatMessage()" />
           <button onclick="sendChatMessage()" title="Gönder">
