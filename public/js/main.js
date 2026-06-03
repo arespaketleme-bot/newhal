@@ -2,6 +2,104 @@
    NewHal — main.js
    ═══════════════════════════════════════════════════════════════ */
 
+// ── LOCAL AUTH (Kayıt / Giriş) ──────────────────────────────
+function openAuthModal() {
+  document.getElementById('authModal').classList.add('active');
+  switchAuthTab('login');
+}
+function closeAuthModal() {
+  document.getElementById('authModal').classList.remove('active');
+}
+function switchAuthTab(tab) {
+  if (tab === 'login') {
+    document.getElementById('loginForm').style.display = 'block';
+    document.getElementById('registerForm').style.display = 'none';
+    document.getElementById('tabLogin').style.borderBottom = '2px solid var(--green-400)';
+    document.getElementById('tabLogin').style.color = '#fff';
+    document.getElementById('tabRegister').style.borderBottom = '2px solid transparent';
+    document.getElementById('tabRegister').style.color = 'var(--text-2)';
+  } else {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('registerForm').style.display = 'block';
+    document.getElementById('tabRegister').style.borderBottom = '2px solid var(--green-400)';
+    document.getElementById('tabRegister').style.color = '#fff';
+    document.getElementById('tabLogin').style.borderBottom = '2px solid transparent';
+    document.getElementById('tabLogin').style.color = 'var(--text-2)';
+  }
+}
+
+async function submitLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      localStorage.setItem('userToken', data.token);
+      localStorage.setItem('userName', data.name);
+      closeAuthModal();
+      showToast('Başarıyla giriş yapıldı', 'success');
+      updateAuthUI(data.name);
+    } else {
+      showToast(data.error || 'Giriş başarısız', 'error');
+    }
+  } catch (err) {
+    showToast('Bağlantı hatası', 'error');
+  }
+}
+
+async function submitRegister(e) {
+  e.preventDefault();
+  const name = document.getElementById('regName').value;
+  const email = document.getElementById('regEmail').value;
+  const password = document.getElementById('regPassword').value;
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      localStorage.setItem('userToken', data.token);
+      localStorage.setItem('userName', data.name);
+      closeAuthModal();
+      showToast('Kayıt başarılı, giriş yapıldı', 'success');
+      updateAuthUI(data.name);
+    } else {
+      showToast(data.error || 'Kayıt başarısız', 'error');
+    }
+  } catch (err) {
+    showToast('Bağlantı hatası', 'error');
+  }
+}
+
+function updateAuthUI(name) {
+  const btn1 = document.getElementById('authBtn');
+  const btn2 = document.getElementById('mobileAuthBtn');
+  const setupBtn = (btn) => {
+    if (!btn) return;
+    btn.innerHTML = `👤 ${name}`;
+    btn.onclick = (e) => {
+      e.preventDefault();
+      if(confirm('Çıkış yapmak istiyor musunuz?')) {
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('userName');
+        location.reload();
+      }
+    };
+    btn.style.color = '#4ade80';
+    btn.style.borderColor = '#4ade80';
+  };
+  setupBtn(btn1);
+  setupBtn(btn2);
+}
+
 // ── State ──────────────────────────────────────────────────────
 let map, allPins = [], tempMarker = null, pendingLat = null, pendingLng = null;
 let activeFilter = 'all';
@@ -28,42 +126,10 @@ const HAL_ZOOM   = 16;
 
 // ── Init ───────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  // Google Auth Handler
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('googleAuth') === 'success') {
-    const name = urlParams.get('name') || 'Kullanıcı';
-    const token = urlParams.get('token');
-    
-    if (token) {
-      localStorage.setItem('userToken', token);
-      localStorage.setItem('userName', name);
-    }
-    
-    // Remove query params from URL
-    window.history.replaceState({}, document.title, window.location.pathname);
-    setTimeout(() => showToast(`✅ Başarıyla giriş yapıldı. Hoş geldin, ${name}!`, 'success'), 500);
-  } else if (urlParams.get('error') === 'google_auth_failed') {
-    showToast('❌ Google ile giriş yapılamadı. Geliştirici ayarlarını (Client ID) kontrol edin.', 'error');
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
-
   // Restore UI for logged in user
   const savedName = localStorage.getItem('userName');
   if (savedName) {
-    document.querySelectorAll('a[href="/auth/google"]').forEach(el => {
-      el.innerHTML = `👤 ${savedName}`;
-      el.href = '#';
-      el.onclick = (e) => { 
-        e.preventDefault(); 
-        if(confirm('Çıkış yapmak istiyor musunuz?')) {
-          localStorage.removeItem('userToken');
-          localStorage.removeItem('userName');
-          location.reload();
-        }
-      };
-      el.style.color = '#4ade80';
-      el.style.borderColor = '#4ade80';
-    });
+    updateAuthUI(savedName);
   }
 
   initMap();

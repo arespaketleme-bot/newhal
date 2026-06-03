@@ -4,8 +4,7 @@ const cors    = require('cors');
 const jwt     = require('jsonwebtoken');
 const path    = require('path');
 const db      = require('./database');
-const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const bcrypt  = require('bcryptjs');
 
 const app        = express();
 const PORT       = process.env.PORT       || 3000;
@@ -40,43 +39,61 @@ app.post('/api/admin/login', (req, res) => {
   res.json({ token, username });
 });
 
-// ── PASSPORT GOOGLE STRATEGY ──────────────────────────────────
-app.use(passport.initialize());
-
-passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID || 'dummy-client-id',
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'dummy-client-secret',
-    callbackURL: '/auth/google/callback',
-    proxy: true // In case it runs behind a proxy (e.g. Render)
-  },
-  function(accessToken, refreshToken, profile, cb) {
-    const user = db.findOrCreateUser({
-      googleId: profile.id,
-      name: profile.displayName,
-      email: profile.emails && profile.emails.length > 0 ? profile.emails[0].value : '',
-      avatar: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : ''
-    });
-    return cb(null, user);
-  }
-));
-
-// ── PUBLIC: Google Auth Routes ────────────────────────────────
-app.get('/auth/google',
-  passport.authenticate('google', { scope: ['profile', 'email'], session: false })
-);
-
-app.get('/auth/google/callback', 
-  passport.authenticate('google', { session: false, failureRedirect: '/?error=google_auth_failed' }),
-  function(req, res) {
-    // Generate JWT token for regular user
+// ── PUBLIC: Local Auth Routes (Register & Login) ──────────────
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Ad, E-posta ve Şifre zorunludur' });
+    }
+    const existingUser = db.findUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({ error: 'Bu e-posta adresi zaten kullanımda' });
+    }
+    
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+    
+    const user = db.createUser({ name, email, passwordHash });
+    
     const token = jwt.sign(
-      { id: req.user.id, name: req.user.name, email: req.user.email, role: 'user' },
+      { id: user.id, name: user.name, email: user.email, role: 'user' },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
-    res.redirect(`/?googleAuth=success&token=${token}&name=${encodeURIComponent(req.user.name)}`);
+    res.json({ token, name: user.name });
+  } catch (error) {
+    res.status(500).json({ error: 'Kayıt işlemi sırasında bir hata oluştu' });
   }
-);
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'E-posta ve Şifre zorunludur' });
+    }
+    
+    const user = db.findUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({ error: 'E-posta veya şifre hatalı' });
+    }
+    
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'E-posta veya şifre hatalı' });
+    }
+    
+    const token = jwt.sign(
+      { id: user.id, name: user.name, email: user.email, role: 'user' },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    res.json({ token, name: user.name });
+  } catch (error) {
+    res.status(500).json({ error: 'Giriş işlemi sırasında bir hata oluştu' });
+  }
+});
 
 // ── PUBLIC: Onaylı iğneleri getir ────────────────────────────
 app.get('/api/pins', (req, res) => {

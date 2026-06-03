@@ -350,26 +350,28 @@ const db = {
     return data.visits || 0;
   },
 
-  /** Google User Bul veya Yarat */
-  findOrCreateUser({ googleId, name, email, avatar }) {
+  /** Kullanıcı İşlemleri (Local Auth) */
+  findUserByEmail(email) {
+    const data = loadDB();
+    if (!data.users) return null;
+    return data.users.find(u => u.email === email);
+  },
+
+  createUser({ name, email, passwordHash }) {
     const data = loadDB();
     if (!data.users) {
       data.users = [];
       data.usersNextId = 1;
     }
-    let user = data.users.find(u => u.googleId === googleId);
-    if (!user) {
-      user = {
-        id: data.usersNextId++,
-        googleId,
-        name: name || 'İsimsiz Kullanıcı',
-        email: email || '',
-        avatar: avatar || '',
-        created_at: new Date().toISOString()
-      };
-      data.users.push(user);
-      saveDB(data);
-    }
+    const user = {
+      id: data.usersNextId++,
+      name,
+      email,
+      passwordHash,
+      created_at: new Date().toISOString()
+    };
+    data.users.push(user);
+    saveDB(data);
     return user;
   },
 
