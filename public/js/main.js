@@ -574,11 +574,9 @@ function renderChatMessages(messages) {
 async function sendChatMessage() {
   if (!checkAuthAndRun()) return;
   const msgInput = document.getElementById('chatMsg');
-  const nickInput = document.getElementById('chatNick');
   if (!msgInput) return;
 
   const message = msgInput.value.trim();
-  const nickname = nickInput.value.trim() || 'Anonim';
 
   if (!message) return;
 
@@ -869,9 +867,7 @@ async function submitComment() {
   if (!checkAuthAndRun()) return;
   if (!currentDetailPinId) return;
 
-  const nickInput = document.getElementById('commentNickname');
   const msgInput = document.getElementById('commentMessage');
-  const nickname = nickInput.value.trim() || 'Anonim';
   const message = msgInput.value.trim();
 
   if (!message) {
