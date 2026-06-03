@@ -356,7 +356,7 @@
             <div style="font-size: 12px; font-weight: 600; color: var(--text-3);">Yeni Yorum Yaz</div>
             <input type="text" id="commentNickname" placeholder="Adınız / Rumuz (Anonim)" style="width: 100%; font-size: 12px; padding: 6px 10px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: #fff; outline: none; font-family: var(--font-body);" />
             <div style="display: flex; gap: 8px; width: 100%;">
-              <input type="text" id="commentMessage" placeholder="Yorumunuzu buraya yazın..." style="flex: 1; font-size: 12px; padding: 6px 10px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: #fff; outline: none; font-family: var(--font-body);" onkeydown="if(event.key==='Enter') submitComment()" />
+              <input type="text" id="commentMessage" placeholder="Yorum yazmak için giriş yapmalısınız..." style="flex: 1; font-size: 12px; padding: 6px 10px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: #fff; outline: none; font-family: var(--font-body);" onkeydown="if(event.key==='Enter') submitComment()" />
               <button class="btn-primary" onclick="submitComment()" style="padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;">Gönder</button>
             </div>
           </div>
@@ -383,7 +383,7 @@
       <div class="chat-footer">
         <input type="text" id="chatNick" placeholder="Rumuz (Anonim)" maxlength="15" />
         <div class="chat-input-wrap">
-          <input type="text" id="chatMsg" placeholder="Sohbete katılın..." maxlength="100" onkeydown="if(event.key==='Enter') sendChatMessage()" />
+          <input type="text" id="chatMsg" placeholder="Sohbete katılın (Giriş zorunlu)..." maxlength="100" onkeydown="if(event.key==='Enter') sendChatMessage()" />
           <button onclick="sendChatMessage()" title="Gönder">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>

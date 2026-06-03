@@ -2,10 +2,18 @@
    NewHal — main.js
    ═══════════════════════════════════════════════════════════════ */
 
-// ── LOCAL AUTH (Kayıt / Giriş) ──────────────────────────────
+// ── AUTH YARDIMCISI ──────────────────────────────
 function openAuthModal() {
   document.getElementById('authModal').classList.add('open');
-  switchAuthTab('login');
+}
+
+function checkAuthAndRun(callback) {
+  if (!localStorage.getItem('userToken')) {
+    openAuthModal();
+    return false;
+  }
+  if (callback) callback();
+  return true;
 }
 function closeAuthModal() {
   document.getElementById('authModal').classList.remove('open');
@@ -391,6 +399,7 @@ function closePinDetail() {
 
 // ── Pin Ekle Modal ────────────────────────────────────────────
 function openAddPinModal() {
+  if (!checkAuthAndRun()) return;
   document.getElementById('addPinModal').classList.add('open');
   document.getElementById('addPinForm').reset();
   document.getElementById('locationDisplay').innerHTML = `
@@ -442,7 +451,7 @@ async function submitPin(e) {
   try {
     const res = await fetch('/api/pins', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('userToken') },
       body: JSON.stringify(payload),
     });
     const data = await res.json();
@@ -563,6 +572,7 @@ function renderChatMessages(messages) {
 }
 
 async function sendChatMessage() {
+  if (!checkAuthAndRun()) return;
   const msgInput = document.getElementById('chatMsg');
   const nickInput = document.getElementById('chatNick');
   if (!msgInput) return;
@@ -575,7 +585,7 @@ async function sendChatMessage() {
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('userToken') },
       body: JSON.stringify({ nickname, message }),
     });
     if (!res.ok) throw new Error('Mesaj gönderilemedi');
@@ -856,6 +866,7 @@ function renderPinComments(comments) {
 }
 
 async function submitComment() {
+  if (!checkAuthAndRun()) return;
   if (!currentDetailPinId) return;
 
   const nickInput = document.getElementById('commentNickname');
@@ -871,7 +882,7 @@ async function submitComment() {
   try {
     const res = await fetch(`/api/pins/${currentDetailPinId}/comments`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('userToken') },
       body: JSON.stringify({ nickname, message })
     });
     const data = await res.json();
@@ -898,6 +909,7 @@ async function submitComment() {
 }
 
 function toggleReportForm() {
+  if (!checkAuthAndRun()) return;
   const container = document.getElementById('reportFormContainer');
   if (!container) return;
   if (container.style.display === 'none') {
@@ -923,7 +935,7 @@ async function submitReport() {
   try {
     const res = await fetch(`/api/pins/${currentDetailPinId}/reports`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('userToken') },
       body: JSON.stringify({ message })
     });
     const data = await res.json();

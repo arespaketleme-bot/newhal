@@ -40,11 +40,23 @@ passport.use(new GoogleStrategy({
 ));
 
 // ── Auth Middleware ───────────────────────────────────────────
-function auth(req, res, next) {
+function requireAuth(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header) return res.status(401).json({ error: 'Bu işlemi yapmak için giriş yapmalısınız' });
+  try {
+    req.user = jwt.verify(header.split(' ')[1], JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Oturum süresi dolmuş, lütfen tekrar giriş yapın' });
+  }
+}
+
+function requireAdmin(req, res, next) {
   const header = req.headers.authorization;
   if (!header) return res.status(401).json({ error: 'Token gerekli' });
   try {
     req.admin = jwt.verify(header.split(' ')[1], JWT_SECRET);
+    if (req.admin.role !== 'admin') return res.status(403).json({ error: 'Yetkisiz erişim' });
     next();
   } catch {
     return res.status(401).json({ error: 'Geçersiz token' });
@@ -64,7 +76,7 @@ app.post('/api/admin/login', (req, res) => {
   res.json({ token, username });
 });
 // ── ADMIN: Tüm kullanıcıları getir ───────────────────────────
-app.get('/api/admin/users', auth, (req, res) => {
+app.get('/api/admin/users', requireAdmin, (req, res) => {
   res.json(db.getAllUsers());
 });
 
@@ -91,7 +103,7 @@ app.get('/api/pins', (req, res) => {
 });
 
 // ── PUBLIC: Yeni iğne ekle (onay bekliyor) ───────────────────
-app.post('/api/pins', (req, res) => {
+app.post('/api/pins', requireAuth, (req, res) => {
   const { title, address, phone, website, email, lat, lng, category } = req.body;
   if (!title || !address || !lat || !lng) {
     return res.status(400).json({ error: 'Ünvan, adres ve konum zorunlu' });
@@ -101,33 +113,33 @@ app.post('/api/pins', (req, res) => {
 });
 
 // ── ADMIN: Tüm iğneleri getir ─────────────────────────────────
-app.get('/api/admin/pins', auth, (req, res) => {
+app.get('/api/admin/pins', requireAdmin, (req, res) => {
   res.json(db.getPins(req.query.status || null));
 });
 
 // ── ADMIN: İğne onayla ───────────────────────────────────────
-app.patch('/api/admin/pins/:id/approve', auth, (req, res) => {
+app.patch('/api/admin/pins/:id/approve', requireAdmin, (req, res) => {
   const pin = db.approvePin(req.params.id);
   if (!pin) return res.status(404).json({ error: 'İğne bulunamadı' });
   res.json({ message: 'İğne onaylandı' });
 });
 
 // ── ADMIN: İğne reddet ───────────────────────────────────────
-app.patch('/api/admin/pins/:id/reject', auth, (req, res) => {
+app.patch('/api/admin/pins/:id/reject', requireAdmin, (req, res) => {
   const pin = db.rejectPin(req.params.id, req.body.reason || '');
   if (!pin) return res.status(404).json({ error: 'İğne bulunamadı' });
   res.json({ message: 'İğne reddedildi' });
 });
 
 // ── ADMIN: İğne sil ──────────────────────────────────────────
-app.delete('/api/admin/pins/:id', auth, (req, res) => {
+app.delete('/api/admin/pins/:id', requireAdmin, (req, res) => {
   const ok = db.deletePin(req.params.id);
   if (!ok) return res.status(404).json({ error: 'İğne bulunamadı' });
   res.json({ message: 'İğne silindi' });
 });
 
 // ── ADMIN: İğne güncelle ─────────────────────────────────────
-app.put('/api/admin/pins/:id', auth, (req, res) => {
+app.put('/api/admin/pins/:id', requireAdmin, (req, res) => {
   const { title, address, phone, website, email, category, lat, lng } = req.body;
   if (!title || !address || !lat || !lng) {
     return res.status(400).json({ error: 'Ünvan, adres ve konum zorunlu' });
@@ -138,7 +150,7 @@ app.put('/api/admin/pins/:id', auth, (req, res) => {
 });
 
 // ── ADMIN: İstatistik ─────────────────────────────────────────
-app.get('/api/admin/stats', auth, (req, res) => {
+app.get('/api/admin/stats', requireAdmin, (req, res) => {
   res.json(db.getStats());
 });
 
@@ -160,7 +172,7 @@ app.post('/api/categories', (req, res) => {
 });
 
 // ── ADMIN: Kategori Sil ───────────────────────────────────────
-app.delete('/api/admin/categories/:name', auth, (req, res) => {
+app.delete('/api/admin/categories/:name', requireAdmin, (req, res) => {
   const result = db.deleteCategory(req.params.name);
   if (result.error) {
     return res.status(400).json({ error: result.error });
@@ -169,7 +181,7 @@ app.delete('/api/admin/categories/:name', auth, (req, res) => {
 });
 
 // ── ADMIN: Kategori Güncelle ──────────────────────────────────
-app.put('/api/admin/categories/:name', auth, (req, res) => {
+app.put('/api/admin/categories/:name', requireAdmin, (req, res) => {
   const { name, icon } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Kategori adı zorunlu' });
@@ -198,7 +210,7 @@ function getIp(req) {
   return ip;
 }
 
-app.post('/api/chat', (req, res) => {
+app.post('/api/chat', requireAuth, (req, res) => {
   const { nickname, message } = req.body;
   if (!message || !message.trim()) {
     return res.status(400).json({ error: 'Mesaj boş olamaz' });
@@ -213,7 +225,7 @@ app.post('/api/chat', (req, res) => {
 });
 
 // ── PUBLIC: Yorum Ekleme ──────────────────────────────────────
-app.post('/api/pins/:id/comments', (req, res) => {
+app.post('/api/pins/:id/comments', requireAuth, (req, res) => {
   const { nickname, message } = req.body;
   if (!message || !message.trim()) {
     return res.status(400).json({ error: 'Yorum boş olamaz' });
@@ -229,7 +241,7 @@ app.post('/api/pins/:id/comments', (req, res) => {
 });
 
 // ── PUBLIC: Hata Bildirme ──────────────────────────────────────
-app.post('/api/pins/:id/reports', (req, res) => {
+app.post('/api/pins/:id/reports', requireAuth, (req, res) => {
   const { message } = req.body;
   if (!message || !message.trim()) {
     return res.status(400).json({ error: 'Bildirim içeriği boş olamaz' });
@@ -244,12 +256,12 @@ app.post('/api/pins/:id/reports', (req, res) => {
 });
 
 // ── ADMIN: Hata Bildirimlerini Listele ──────────────────────────
-app.get('/api/admin/reports', auth, (req, res) => {
+app.get('/api/admin/reports', requireAdmin, (req, res) => {
   res.json(db.getReports());
 });
 
 // ── ADMIN: Hata Bildirimini Sil ────────────────────────────────
-app.delete('/api/admin/reports/:id', auth, (req, res) => {
+app.delete('/api/admin/reports/:id', requireAdmin, (req, res) => {
   const ok = db.deleteReport(req.params.id);
   if (!ok) return res.status(404).json({ error: 'Bildirim bulunamadı' });
   res.json({ message: 'Bildirim silindi' });
@@ -257,7 +269,7 @@ app.delete('/api/admin/reports/:id', auth, (req, res) => {
 
 
 // ── ADMIN: Sohbet Geçmişini Temizle ──────────────────────────────
-app.delete('/api/admin/chat', auth, (req, res) => {
+app.delete('/api/admin/chat', requireAdmin, (req, res) => {
   db.clearChat();
   res.json({ message: 'Sohbet geçmişi temizlendi' });
 });
