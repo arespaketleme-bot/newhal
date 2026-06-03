@@ -4,11 +4,11 @@
 
 // ── LOCAL AUTH (Kayıt / Giriş) ──────────────────────────────
 function openAuthModal() {
-  document.getElementById('authModal').classList.add('active');
+  document.getElementById('authModal').classList.add('open');
   switchAuthTab('login');
 }
 function closeAuthModal() {
-  document.getElementById('authModal').classList.remove('active');
+  document.getElementById('authModal').classList.remove('open');
 }
 function switchAuthTab(tab) {
   if (tab === 'login') {
@@ -456,12 +456,13 @@ function closeAddPinModal() {
   pendingLat = null; pendingLng = null;
 }
 
-function closeModalOnBg(e) {
-  if (e.target === e.currentTarget) {
-    closeAddPinModal();
-    closePinDetail();
+  function closeModalOnBg(e) {
+    if (e.target === e.currentTarget) {
+      closeAddPinModal();
+      closePinDetail();
+      if (typeof closeAuthModal === 'function') closeAuthModal();
+    }
   }
-}
 
 // ── Submit Pin ────────────────────────────────────────────────
 async function submitPin(e) {

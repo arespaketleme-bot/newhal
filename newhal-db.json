@@ -308,5 +308,15 @@
   "reportsNextId": 4,
   "logs": [],
   "logsNextId": 1,
-  "visits": 0
+  "visits": 0,
+  "users": [
+    {
+      "id": 1,
+      "name": "Test",
+      "email": "test@test.com",
+      "passwordHash": "$2a$10$arwzNg9y1oEm.utOWdKL.e4YED/tgtQcoZlhH9bZQ7lLyxhlsJUjy",
+      "created_at": "2026-06-03T15:11:40.306Z"
+    }
+  ],
+  "usersNextId": 2
 }
