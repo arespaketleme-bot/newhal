@@ -4,6 +4,8 @@ const cors    = require('cors');
 const jwt     = require('jsonwebtoken');
 const path    = require('path');
 const db      = require('./database');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const app        = express();
 const PORT       = process.env.PORT       || 3000;
@@ -38,12 +40,43 @@ app.post('/api/admin/login', (req, res) => {
   res.json({ token, username });
 });
 
-// ── PUBLIC: Google Auth Mock ──────────────────────────────────
-app.get('/auth/google', (req, res) => {
-  // TODO: Gerçek Google OAuth entegrasyonu (Passport.js) eklenebilir.
-  // Şimdilik test amaçlı mock başarılı giriş:
-  res.redirect('/?googleAuth=success&name=Ziyaretçi');
-});
+// ── PASSPORT GOOGLE STRATEGY ──────────────────────────────────
+app.use(passport.initialize());
+
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID || 'dummy-client-id',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'dummy-client-secret',
+    callbackURL: '/auth/google/callback',
+    proxy: true // In case it runs behind a proxy (e.g. Render)
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    const user = db.findOrCreateUser({
+      googleId: profile.id,
+      name: profile.displayName,
+      email: profile.emails && profile.emails.length > 0 ? profile.emails[0].value : '',
+      avatar: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : ''
+    });
+    return cb(null, user);
+  }
+));
+
+// ── PUBLIC: Google Auth Routes ────────────────────────────────
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'], session: false })
+);
+
+app.get('/auth/google/callback', 
+  passport.authenticate('google', { session: false, failureRedirect: '/?error=google_auth_failed' }),
+  function(req, res) {
+    // Generate JWT token for regular user
+    const token = jwt.sign(
+      { id: req.user.id, name: req.user.name, email: req.user.email, role: 'user' },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    res.redirect(`/?googleAuth=success&token=${token}&name=${encodeURIComponent(req.user.name)}`);
+  }
+);
 
 // ── PUBLIC: Onaylı iğneleri getir ────────────────────────────
 app.get('/api/pins', (req, res) => {

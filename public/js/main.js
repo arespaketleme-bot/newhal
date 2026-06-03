@@ -28,23 +28,42 @@ const HAL_ZOOM   = 16;
 
 // ── Init ───────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  // Google Auth Mock Handler
+  // Google Auth Handler
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('googleAuth') === 'success') {
     const name = urlParams.get('name') || 'Kullanıcı';
+    const token = urlParams.get('token');
     
-    // Update UI elements
+    if (token) {
+      localStorage.setItem('userToken', token);
+      localStorage.setItem('userName', name);
+    }
+    
+    // Remove query params from URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+    setTimeout(() => showToast(`✅ Başarıyla giriş yapıldı. Hoş geldin, ${name}!`, 'success'), 500);
+  } else if (urlParams.get('error') === 'google_auth_failed') {
+    showToast('❌ Google ile giriş yapılamadı. Geliştirici ayarlarını (Client ID) kontrol edin.', 'error');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  // Restore UI for logged in user
+  const savedName = localStorage.getItem('userName');
+  if (savedName) {
     document.querySelectorAll('a[href="/auth/google"]').forEach(el => {
-      el.innerHTML = `👤 ${name}`;
+      el.innerHTML = `👤 ${savedName}`;
       el.href = '#';
-      el.onclick = (e) => { e.preventDefault(); showToast('Google hesabınızla giriş yaptınız.', 'success'); };
+      el.onclick = (e) => { 
+        e.preventDefault(); 
+        if(confirm('Çıkış yapmak istiyor musunuz?')) {
+          localStorage.removeItem('userToken');
+          localStorage.removeItem('userName');
+          location.reload();
+        }
+      };
       el.style.color = '#4ade80';
       el.style.borderColor = '#4ade80';
     });
-    
-    // Remove query params from URL
-    window.history.replaceState({}, document.title, "/");
-    setTimeout(() => showToast(`✅ Başarıyla giriş yapıldı. Hoş geldin, ${name}!`, 'success'), 500);
   }
 
   initMap();
