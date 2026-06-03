@@ -126,6 +126,24 @@ const HAL_ZOOM   = 16;
 
 // ── Init ───────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  // Google Auth Handler
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('googleAuth') === 'success') {
+    const name = urlParams.get('name') || 'Kullanıcı';
+    const token = urlParams.get('token');
+    
+    if (token) {
+      localStorage.setItem('userToken', token);
+      localStorage.setItem('userName', name);
+    }
+    
+    window.history.replaceState({}, document.title, window.location.pathname);
+    setTimeout(() => showToast(`✅ Başarıyla giriş yapıldı. Hoş geldin, ${name}!`, 'success'), 500);
+  } else if (urlParams.get('error') === 'google_auth_failed') {
+    showToast('❌ Google ile giriş yapılamadı.', 'error');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
   // Restore UI for logged in user
   const savedName = localStorage.getItem('userName');
   if (savedName) {

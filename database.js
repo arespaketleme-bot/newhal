@@ -357,6 +357,38 @@ const db = {
     return data.users.find(u => u.email === email);
   },
 
+  findOrCreateGoogleUser({ googleId, name, email, avatar }) {
+    const data = loadDB();
+    if (!data.users) {
+      data.users = [];
+      data.usersNextId = 1;
+    }
+    let user = data.users.find(u => u.googleId === googleId);
+    if (!user && email) {
+      // Check if user exists by email (if they registered locally before Google)
+      user = data.users.find(u => u.email === email);
+      if (user) {
+        user.googleId = googleId;
+        user.avatar = avatar;
+        saveDB(data);
+        return user;
+      }
+    }
+    if (!user) {
+      user = {
+        id: data.usersNextId++,
+        googleId,
+        name: name || 'İsimsiz Kullanıcı',
+        email: email || '',
+        avatar: avatar || '',
+        created_at: new Date().toISOString()
+      };
+      data.users.push(user);
+      saveDB(data);
+    }
+    return user;
+  },
+
   createUser({ name, email, passwordHash }) {
     const data = loadDB();
     if (!data.users) {

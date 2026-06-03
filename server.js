@@ -5,6 +5,8 @@ const jwt     = require('jsonwebtoken');
 const path    = require('path');
 const db      = require('./database');
 const bcrypt  = require('bcryptjs');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const app        = express();
 const PORT       = process.env.PORT       || 3000;
@@ -13,6 +15,24 @@ const JWT_SECRET = process.env.JWT_SECRET || 'newhal_secret';
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(passport.initialize());
+
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID || 'dummy-client-id',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'dummy-client-secret',
+    callbackURL: '/auth/google/callback',
+    proxy: true // In case it runs behind a proxy (e.g. Render)
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    const user = db.findOrCreateGoogleUser({
+      googleId: profile.id,
+      name: profile.displayName,
+      email: profile.emails && profile.emails.length > 0 ? profile.emails[0].value : '',
+      avatar: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : ''
+    });
+    return cb(null, user);
+  }
+));
 
 // ── Auth Middleware ───────────────────────────────────────────
 function auth(req, res, next) {
@@ -94,6 +114,23 @@ app.post('/api/auth/login', async (req, res) => {
     res.status(500).json({ error: 'Giriş işlemi sırasında bir hata oluştu' });
   }
 });
+
+// ── PUBLIC: Google Auth Routes ────────────────────────────────
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'], session: false })
+);
+
+app.get('/auth/google/callback', 
+  passport.authenticate('google', { session: false, failureRedirect: '/?error=google_auth_failed' }),
+  function(req, res) {
+    const token = jwt.sign(
+      { id: req.user.id, name: req.user.name, email: req.user.email, role: 'user' },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    res.redirect(`/?googleAuth=success&token=${token}&name=${encodeURIComponent(req.user.name)}`);
+  }
+);
 
 // ── PUBLIC: Onaylı iğneleri getir ────────────────────────────
 app.get('/api/pins', (req, res) => {
