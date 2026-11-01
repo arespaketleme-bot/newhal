@@ -213,7 +213,7 @@ function createIcon(emoji, isTemp = false) {
       font-size:20px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
       backdrop-filter:blur(4px); cursor:pointer;
       transition:all 0.2s ease;
-    ">${emoji}</div>`,
+    ">${escHtml(emoji)}</div>`,
     iconSize: [isTemp ? 38 : 42, isTemp ? 38 : 42],
     iconAnchor: [isTemp ? 19 : 21, isTemp ? 19 : 21],
     popupAnchor: [0, -24],
@@ -259,7 +259,7 @@ function renderPins(pins) {
     // Popup shows contact info optionally
     marker.bindPopup(`
       <div style="font-family:'Inter',sans-serif; min-width:200px;">
-        <div style="font-size:18px;margin-bottom:6px;">${emoji} <strong style="color:#f0fdf4;font-size:14px;">${escHtml(pin.title)}</strong></div>
+        <div style="font-size:18px;margin-bottom:6px;">${escHtml(emoji)} <strong style="color:#f0fdf4;font-size:14px;">${escHtml(pin.title)}</strong></div>
         <div style="font-size:12px;color:#6b7280;margin-bottom:4px;">📍 ${escHtml(pin.address)}</div>
         ${showContactInfo && pin.phone ? `<div style="font-size:12px;color:#86efac;">📞 <a href="tel:${escHtml(pin.phone)}" style="color:#4ade80;">${escHtml(pin.phone)}</a></div>` : ''}
         <div style="margin-top:8px;">
@@ -288,7 +288,7 @@ function renderPins(pins) {
       card.onclick = () => showPinDetail(pin.id);
       card.innerHTML = `
         <div class="pin-card-header">
-          <div class="pin-card-icon">${emoji}</div>
+          <div class="pin-card-icon">${escHtml(emoji)}</div>
           <div class="pin-card-cat">${escHtml(pin.category)}</div>
         </div>
         <div class="pin-card-title">${escHtml(pin.title)}</div>
