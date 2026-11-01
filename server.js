@@ -3,6 +3,7 @@ const express = require('express');
 const cors    = require('cors');
 const jwt     = require('jsonwebtoken');
 const path    = require('path');
+const crypto  = require('crypto');
 const db      = require('./database');
 const bcrypt  = require('bcryptjs');
 const passport = require('passport');
@@ -13,7 +14,9 @@ const PORT       = process.env.PORT       || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'newhal_secret';
 
 app.use(cors());
-app.use(express.json());
+// Fotoğraf yükleme kendi (daha büyük) sınırıyla ayrıca okunur
+const jsonSmall = express.json();
+app.use((req, res, next) => (req.path === '/api/uploads' ? next() : jsonSmall(req, res, next)));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(passport.initialize());
 
@@ -147,8 +150,97 @@ app.post('/api/pins', requireAuth, async (req, res) => {
   if (!title || !address || !lat || !lng) {
     return res.status(400).json({ error: 'Ünvan, adres ve konum zorunlu' });
   }
-  const pin = await db.addPin({ title, address, phone, website, email, lat, lng, category });
+  const pin = await db.addPin({
+    title, address, phone, website, email, lat, lng, category,
+    sells: cleanProducts(req.body.sells),
+    seeks: cleanProducts(req.body.seeks),
+    images: cleanImages(req.body.images),
+    ownerId: req.user.role === 'user' ? req.user.id : null,
+  });
   res.status(201).json({ id: pin.id, message: 'İğne başarıyla gönderildi, onay bekleniyor.' });
+});
+
+// ── Ürünler & Fotoğraflar ─────────────────────────────────────
+const MAX_PRODUCTS     = 30;
+const MAX_PRODUCT_LEN  = 40;
+const MAX_IMAGES       = 5;
+const MAX_IMAGE_BYTES  = 2 * 1024 * 1024;
+const UPLOADS_PER_HOUR = 30;
+
+// Dizi ya da virgülle ayrılmış metin kabul eder; boşları ve tekrarları atar
+function cleanProducts(input) {
+  const list = Array.isArray(input) ? input : String(input || '').split(',');
+  const seen = new Set();
+  const out = [];
+  for (const raw of list) {
+    const item = String(raw).trim().slice(0, MAX_PRODUCT_LEN);
+    const key = item.toLocaleLowerCase('tr-TR');
+    if (!item || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+    if (out.length >= MAX_PRODUCTS) break;
+  }
+  return out;
+}
+
+// Sadece kendi fotoğraf depomuzdaki adresler kabul edilir
+function cleanImages(input) {
+  if (!Array.isArray(input)) return [];
+  const prefix = db.pinImageUrlPrefix();
+  return [...new Set(input.filter(u => typeof u === 'string' && u.startsWith(prefix) && !u.includes('..')))]
+    .slice(0, MAX_IMAGES);
+}
+
+function detectImageType(buf) {
+  if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return { ext: 'jpg', type: 'image/jpeg' };
+  if (buf.length > 8 && buf.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return { ext: 'png', type: 'image/png' };
+  if (buf.length > 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') return { ext: 'webp', type: 'image/webp' };
+  return null;
+}
+
+const uploadLog = new Map(); // kullanıcı → son bir saatteki yükleme zamanları
+
+app.post('/api/uploads', express.json({ limit: '3mb' }), requireAuth, async (req, res) => {
+  const who = String(req.user.id || req.user.username || 'anon');
+  const hourAgo = Date.now() - 60 * 60 * 1000;
+  const recent = (uploadLog.get(who) || []).filter(t => t > hourAgo);
+  if (recent.length >= UPLOADS_PER_HOUR) {
+    return res.status(429).json({ error: 'Çok fazla fotoğraf yüklediniz, biraz sonra tekrar deneyin' });
+  }
+
+  const match = /^data:image\/[a-z]+;base64,(.+)$/.exec(String((req.body && req.body.data) || ''));
+  if (!match) return res.status(400).json({ error: 'Geçersiz fotoğraf' });
+  const buffer = Buffer.from(match[1], 'base64');
+  if (buffer.length > MAX_IMAGE_BYTES) return res.status(400).json({ error: 'Fotoğraf en fazla 2 MB olabilir' });
+  const kind = detectImageType(buffer);
+  if (!kind) return res.status(400).json({ error: 'Sadece JPG, PNG veya WEBP yüklenebilir' });
+
+  const filePath = `${who.replace(/[^a-zA-Z0-9_-]/g, '')}/${Date.now()}-${crypto.randomUUID()}.${kind.ext}`;
+  const url = await db.uploadPinImage(filePath, buffer, kind.type);
+  if (!url) return res.status(500).json({ error: 'Fotoğraf yüklenemedi' });
+
+  recent.push(Date.now());
+  uploadLog.set(who, recent);
+  res.status(201).json({ url });
+});
+
+// İşletme sahibi (ekleyen kişi) veya admin ürünleri ve fotoğrafları günceller
+app.put('/api/pins/:id/catalog', requireAuth, async (req, res) => {
+  const pin = await db.getPin(req.params.id);
+  if (!pin) return res.status(404).json({ error: 'İşletme bulunamadı' });
+  const isAdmin = req.user.role === 'admin';
+  const isOwner = req.user.role === 'user' && pin.owner_id && pin.owner_id === req.user.id;
+  if (!isAdmin && !isOwner) return res.status(403).json({ error: 'Bu işletmeyi sadece ekleyen kişi düzenleyebilir' });
+
+  const images = cleanImages(req.body.images);
+  const updated = await db.updatePinCatalog(pin.id, {
+    sells: cleanProducts(req.body.sells),
+    seeks: cleanProducts(req.body.seeks),
+    images,
+  });
+  if (!updated) return res.status(500).json({ error: 'Güncellenemedi' });
+  await db.deletePinImages((pin.images || []).filter(u => !images.includes(u)));
+  res.json({ message: 'Ürünler ve fotoğraflar güncellendi', pin: updated });
 });
 
 // ── ADMIN: Tüm iğneleri getir ─────────────────────────────────

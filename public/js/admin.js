@@ -177,9 +177,15 @@ function renderPendingTable(pins) {
   empty.classList.remove('visible');
   pins.forEach(p => {
     const tr = document.createElement('tr');
+    const photos = (p.images || []).map(u =>
+      `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" /></a>`
+    ).join('');
     tr.innerHTML = `
       <td>
         <div class="td-title">${esc(p.title)}</div>
+        ${(p.sells || []).length ? `<div class="td-sub">🛒 ${esc(p.sells.join(', '))}</div>` : ''}
+        ${(p.seeks || []).length ? `<div class="td-sub">🔎 ${esc(p.seeks.join(', '))}</div>` : ''}
+        ${photos ? `<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">${photos}</div>` : ''}
       </td>
       <td>${esc(p.category)}</td>
       <td style="max-width:180px;word-break:break-word">${esc(p.address)}</td>
@@ -219,9 +225,15 @@ function renderApprovedTable(pins) {
   empty.classList.remove('visible');
   pins.forEach(p => {
     const tr = document.createElement('tr');
+    const photos = (p.images || []).map(u =>
+      `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" /></a>`
+    ).join('');
     tr.innerHTML = `
       <td>
         <div class="td-title">${esc(p.title)}</div>
+        ${(p.sells || []).length ? `<div class="td-sub">🛒 ${esc(p.sells.join(', '))}</div>` : ''}
+        ${(p.seeks || []).length ? `<div class="td-sub">🔎 ${esc(p.seeks.join(', '))}</div>` : ''}
+        ${photos ? `<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">${photos}</div>` : ''}
       </td>
       <td>${esc(p.category)}</td>
       <td style="max-width:180px;word-break:break-word">${esc(p.address)}</td>

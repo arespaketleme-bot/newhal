@@ -282,6 +282,24 @@
             <input type="url" id="pinWebsite" placeholder="https://www.ornek.com" />
           </div>
         </div>
+        <div class="form-row">
+          <div class="form-group full">
+            <label for="pinSells">🛒 Sattığı Ürünler</label>
+            <input type="text" id="pinSells" placeholder="Örn: domates, biber, patlıcan (virgülle ayırın)" maxlength="800" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group full">
+            <label for="pinSeeks">🔎 Aradığı Ürünler</label>
+            <input type="text" id="pinSeeks" placeholder="Örn: kasa, limon, toptan patates (virgülle ayırın)" maxlength="800" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group full">
+            <label>📷 Fotoğraflar <span class="field-hint">(en fazla 5)</span></label>
+            <div class="photo-editor" id="pinPhotoEditor"></div>
+          </div>
+        </div>
         <div class="form-group full location-group">
           <label>Konum <span class="required">*</span></label>
           <div class="location-display" id="locationDisplay">
@@ -331,6 +349,30 @@
         <div class="detail-item" id="detailWebsiteRow">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
           <span id="detailWebsite">—</span>
+        </div>
+
+        <!-- Fotoğraflar & Ürünler -->
+        <div class="detail-gallery" id="detailGallery"></div>
+        <div class="detail-products" id="detailSellsRow">
+          <div class="detail-products-title">🛒 Sattığı Ürünler</div>
+          <div class="chip-list" id="detailSells"></div>
+        </div>
+        <div class="detail-products" id="detailSeeksRow">
+          <div class="detail-products-title">🔎 Aradığı Ürünler</div>
+          <div class="chip-list" id="detailSeeks"></div>
+        </div>
+        <button type="button" class="btn-outline catalog-edit-btn" id="catalogEditBtn" onclick="toggleCatalogEditor()">✏️ Ürün ve Fotoğrafları Düzenle</button>
+        <div class="catalog-editor" id="catalogEditor" style="display: none;">
+          <label for="catalogSells">🛒 Sattığı Ürünler</label>
+          <input type="text" id="catalogSells" placeholder="Virgülle ayırın" maxlength="800" />
+          <label for="catalogSeeks">🔎 Aradığı Ürünler</label>
+          <input type="text" id="catalogSeeks" placeholder="Virgülle ayırın" maxlength="800" />
+          <label>📷 Fotoğraflar <span class="field-hint">(en fazla 5)</span></label>
+          <div class="photo-editor" id="catalogPhotoEditor"></div>
+          <div class="catalog-editor-actions">
+            <button type="button" class="btn-ghost" onclick="toggleCatalogEditor()">İptal</button>
+            <button type="button" class="btn-primary" id="catalogSaveBtn" onclick="saveCatalog()">Kaydet</button>
+          </div>
         </div>
 
         <hr style="border: 0; border-top: 1px dashed var(--border); margin: 8px 0;" />

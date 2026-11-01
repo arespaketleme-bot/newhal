@@ -266,6 +266,9 @@ function renderPins(pins) {
         <div style="font-size:18px;margin-bottom:6px;">${escHtml(emoji)} <strong style="color:#f0fdf4;font-size:14px;">${escHtml(pin.title)}</strong></div>
         <div style="font-size:12px;color:#6b7280;margin-bottom:4px;">📍 ${escHtml(pin.address)}</div>
         ${showContactInfo && pin.phone ? `<div style="font-size:12px;color:#86efac;">📞 <a href="tel:${escHtml(pin.phone)}" style="color:#4ade80;">${escHtml(pin.phone)}</a></div>` : ''}
+        ${(pin.images || []).length ? `<img class="popup-photo" src="${escHtml(pin.images[0])}" alt="" loading="lazy" />` : ''}
+        ${popupProducts('🛒 Satıyor', pin.sells)}
+        ${popupProducts('🔎 Arıyor', pin.seeks)}
         <div style="margin-top:8px;">
           <button onclick="showPinDetail(${pin.id})" style="
             background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;
@@ -421,6 +424,8 @@ function showPinDetail(id) {
     document.getElementById('detailWebsiteRow').style.display = 'none';
   }
 
+  renderPinCatalog(pin);
+
   // Render comments for this pin
   renderPinComments(pin.comments || []);
 
@@ -429,6 +434,235 @@ function showPinDetail(id) {
   // Log activity
   logActivity(`'${pin.title}' detaylarını inceliyorsunuz`, true);
 }
+
+// ── Ürünler & Fotoğraflar ─────────────────────────────────────
+const MAX_PIN_PHOTOS = 5;
+
+function splitProducts(text) {
+  return String(text || '').split(',').map(s => s.trim()).filter(Boolean);
+}
+
+function popupProducts(label, list) {
+  if (!list || !list.length) return '';
+  const shown = list.slice(0, 6).map(p => `<span class="popup-chip">${escHtml(p)}</span>`).join('');
+  const more = list.length > 6 ? `<span class="popup-chip">+${list.length - 6}</span>` : '';
+  return `<div class="popup-products"><span class="popup-products-label">${label}:</span>${shown}${more}</div>`;
+}
+
+function fillChips(rowId, listId, items) {
+  const row = document.getElementById(rowId);
+  const list = document.getElementById(listId);
+  list.innerHTML = '';
+  (items || []).forEach(item => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = item;
+    list.appendChild(chip);
+  });
+  row.style.display = (items && items.length) ? 'flex' : 'none';
+}
+
+// Oturum anahtarının içini okur (süresi dolmuşsa null)
+function readToken(key) {
+  try {
+    const token = localStorage.getItem(key);
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (payload.exp && payload.exp * 1000 < Date.now()) return null;
+    return { token, payload };
+  } catch {
+    return null;
+  }
+}
+
+// Bu işletmeyi düzenleyebilecek oturum: ekleyen kullanıcı ya da admin paneline girmiş yönetici
+function getCatalogToken(pin) {
+  const user = readToken('userToken');
+  if (user && pin.owner_id && pin.owner_id === user.payload.id) return user.token;
+  const admin = readToken('newhal_admin_token');
+  if (admin && admin.payload.role === 'admin') return admin.token;
+  return null;
+}
+
+function canEditCatalog(pin) {
+  return !!getCatalogToken(pin);
+}
+
+function renderPinCatalog(pin) {
+  const gallery = document.getElementById('detailGallery');
+  gallery.innerHTML = '';
+  (pin.images || []).forEach(url => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = pin.title;
+    img.loading = 'lazy';
+    a.appendChild(img);
+    gallery.appendChild(a);
+  });
+  gallery.style.display = (pin.images && pin.images.length) ? 'flex' : 'none';
+
+  fillChips('detailSellsRow', 'detailSells', pin.sells);
+  fillChips('detailSeeksRow', 'detailSeeks', pin.seeks);
+
+  document.getElementById('catalogEditor').style.display = 'none';
+  document.getElementById('catalogEditBtn').style.display = canEditCatalog(pin) ? 'inline-flex' : 'none';
+}
+
+function toggleCatalogEditor() {
+  const editor = document.getElementById('catalogEditor');
+  const pin = allPins.find(p => p.id === currentDetailPinId);
+  if (!pin) return;
+  if (editor.style.display === 'none') {
+    document.getElementById('catalogSells').value = (pin.sells || []).join(', ');
+    document.getElementById('catalogSeeks').value = (pin.seeks || []).join(', ');
+    catalogPhotos.setUrls(pin.images || []);
+    editor.style.display = 'flex';
+  } else {
+    editor.style.display = 'none';
+  }
+}
+
+async function saveCatalog() {
+  const pin = allPins.find(p => p.id === currentDetailPinId);
+  if (!pin) return;
+  if (catalogPhotos.isBusy()) return showToast('Fotoğraflar yükleniyor, lütfen bekleyin', 'error');
+
+  const btn = document.getElementById('catalogSaveBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/pins/${pin.id}/catalog`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getCatalogToken(pin) },
+      body: JSON.stringify({
+        sells: splitProducts(document.getElementById('catalogSells').value),
+        seeks: splitProducts(document.getElementById('catalogSeeks').value),
+        images: catalogPhotos.getUrls(),
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Kaydedilemedi');
+    Object.assign(pin, { sells: data.pin.sells, seeks: data.pin.seeks, images: data.pin.images });
+    renderPinCatalog(pin);
+    renderPins(allPins);
+    showToast('✅ Ürünler ve fotoğraflar güncellendi', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// Fotoğrafı tarayıcıda küçültüp (en fazla 1280 px) JPEG'e çevirir
+function resizeImage(file, maxSize = 1280, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Dosya okunamadı'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Bu dosya bir fotoğraf değil'));
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadPhoto(file) {
+  const data = await resizeImage(file);
+  const auth = (readToken('userToken') || readToken('newhal_admin_token') || {}).token;
+  const res = await fetch('/api/uploads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + auth },
+    body: JSON.stringify({ data }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Fotoğraf yüklenemedi');
+  return json.url;
+}
+
+// Küçük resimler + "fotoğraf ekle" kutusu; seçilen fotoğraf hemen yüklenir
+function createPhotoEditor(containerId) {
+  let urls = [];
+  let busy = 0;
+  const container = document.getElementById(containerId);
+
+  function render() {
+    container.innerHTML = '';
+    urls.forEach((url, i) => {
+      const item = document.createElement('div');
+      item.className = 'photo-thumb';
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'photo-remove';
+      del.title = 'Fotoğrafı kaldır';
+      del.textContent = '✕';
+      del.onclick = () => { urls.splice(i, 1); render(); };
+      item.append(img, del);
+      container.appendChild(item);
+    });
+    for (let i = 0; i < busy; i++) {
+      const loading = document.createElement('div');
+      loading.className = 'photo-thumb loading';
+      loading.textContent = '⟳';
+      container.appendChild(loading);
+    }
+    if (urls.length + busy < MAX_PIN_PHOTOS) {
+      const add = document.createElement('label');
+      add.className = 'photo-add';
+      add.innerHTML = '<span>＋</span><small>Fotoğraf</small>';
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/jpeg,image/png,image/webp';
+      input.multiple = true;
+      input.hidden = true;
+      input.onchange = () => addFiles([...input.files]);
+      add.appendChild(input);
+      container.appendChild(add);
+    }
+  }
+
+  async function addFiles(files) {
+    const room = MAX_PIN_PHOTOS - urls.length - busy;
+    if (files.length > room) showToast(`En fazla ${MAX_PIN_PHOTOS} fotoğraf ekleyebilirsiniz`, 'error');
+    const batch = files.slice(0, Math.max(0, room));
+    busy += batch.length;
+    render();
+    await Promise.all(batch.map(async file => {
+      try {
+        urls.push(await uploadPhoto(file));
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        busy--;
+        render();
+      }
+    }));
+  }
+
+  render();
+  return {
+    getUrls: () => urls.slice(),
+    setUrls: (list) => { urls = list.slice(0, MAX_PIN_PHOTOS); render(); },
+    isBusy: () => busy > 0,
+  };
+}
+
+const addPinPhotos  = createPhotoEditor('pinPhotoEditor');
+const catalogPhotos = createPhotoEditor('catalogPhotoEditor');
 
 function setDetailItem(rowId, elId, val) {
   const el = document.getElementById(elId);
@@ -452,6 +686,7 @@ function openAddPinModal() {
   document.getElementById('locationDisplay').classList.remove('selected');
   pendingLat = null; pendingLng = null;
   if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
+  addPinPhotos.setUrls([]);
 }
 
 function closeAddPinModal() {
@@ -488,9 +723,20 @@ async function submitPin(e) {
     website:  document.getElementById('pinWebsite').value.trim(),
     email:    document.getElementById('pinEmail').value.trim(),
     category: document.getElementById('pinCategory').value,
+    sells:    splitProducts(document.getElementById('pinSells').value),
+    seeks:    splitProducts(document.getElementById('pinSeeks').value),
+    images:   addPinPhotos.getUrls(),
     lat: pendingLat,
     lng: pendingLng,
   };
+
+  if (addPinPhotos.isBusy()) {
+    showToast('Fotoğraflar yükleniyor, lütfen bekleyin', 'error');
+    btn.querySelector('.btn-text').style.display = 'inline';
+    btn.querySelector('.btn-loader').style.display = 'none';
+    btn.disabled = false;
+    return;
+  }
 
   try {
     const res = await fetch('/api/pins', {

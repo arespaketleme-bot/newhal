@@ -99,3 +99,15 @@ ALTER TABLE reports        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_messages  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE logs           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE site_stats     ENABLE ROW LEVEL SECURITY;
+
+-- 10. Ürünler ve fotoğraflar
+ALTER TABLE pins
+  ADD COLUMN IF NOT EXISTS sells    JSONB DEFAULT '[]'::jsonb,   -- sattığı ürünler
+  ADD COLUMN IF NOT EXISTS seeks    JSONB DEFAULT '[]'::jsonb,   -- aradığı ürünler
+  ADD COLUMN IF NOT EXISTS images   JSONB DEFAULT '[]'::jsonb,   -- fotoğraf adresleri
+  ADD COLUMN IF NOT EXISTS owner_id BIGINT REFERENCES users(id) ON DELETE SET NULL;
+
+-- Fotoğraf deposu: herkes okuyabilir, yükleme sadece sunucu üzerinden
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('pin-images', 'pin-images', true, 2097152, ARRAY['image/jpeg', 'image/png', 'image/webp'])
+ON CONFLICT (id) DO NOTHING;

@@ -10,6 +10,7 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
+const PIN_IMAGE_BUCKET = 'pin-images';
 
 const db = {
   /** Kullanıcı İşlemleri */
@@ -105,7 +106,7 @@ const db = {
     return this.getPins('approved');
   },
 
-  async addPin({ title, address, phone, website, email, lat, lng, category }) {
+  async addPin({ title, address, phone, website, email, lat, lng, category, sells, seeks, images, ownerId }) {
     const { data } = await supabase.from('pins').insert({
       title,
       address,
@@ -115,9 +116,45 @@ const db = {
       lat: parseFloat(lat),
       lng: parseFloat(lng),
       category: category || 'Genel',
+      sells: sells || [],
+      seeks: seeks || [],
+      images: images || [],
+      owner_id: ownerId || null,
       status: 'pending'
     }).select().single();
     return data;
+  },
+
+  async getPin(id) {
+    const { data } = await supabase.from('pins').select('*').eq('id', parseInt(id)).single();
+    return data;
+  },
+
+  /** Ürünler & fotoğraflar (işletme sahibi veya admin günceller) */
+  async updatePinCatalog(id, { sells, seeks, images }) {
+    const { data } = await supabase.from('pins').update({ sells, seeks, images })
+      .eq('id', parseInt(id)).select().single();
+    return data;
+  },
+
+  /** Fotoğraf yükleme (Supabase Storage, herkese açık okuma) */
+  async uploadPinImage(path, buffer, contentType) {
+    const { error } = await supabase.storage.from(PIN_IMAGE_BUCKET).upload(path, buffer, { contentType, upsert: false });
+    if (error) {
+      console.error('Fotoğraf yüklenemedi:', error.message);
+      return null;
+    }
+    return supabase.storage.from(PIN_IMAGE_BUCKET).getPublicUrl(path).data.publicUrl;
+  },
+
+  async deletePinImages(urls) {
+    const prefix = this.pinImageUrlPrefix();
+    const paths = (urls || []).filter(u => u.startsWith(prefix)).map(u => u.slice(prefix.length));
+    if (paths.length) await supabase.storage.from(PIN_IMAGE_BUCKET).remove(paths);
+  },
+
+  pinImageUrlPrefix() {
+    return supabase.storage.from(PIN_IMAGE_BUCKET).getPublicUrl('').data.publicUrl;
   },
 
   async updatePin(id, { title, address, phone, website, email, category, lat, lng }) {
@@ -152,7 +189,9 @@ const db = {
   },
 
   async deletePin(id) {
+    const pin = await this.getPin(id);
     const { error } = await supabase.from('pins').delete().eq('id', parseInt(id));
+    if (!error && pin) await this.deletePinImages(pin.images);
     return !error;
   },
 
