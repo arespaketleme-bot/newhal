@@ -129,15 +129,16 @@ function initMap() {
   });
 
   // Define layers
-  layers.satellite = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-    attribution: '&copy; Google Maps',
-    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+  // Anahtar gerektirmeyen altlıklar (CARTO artık API anahtarı istiyor)
+  layers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri, Maxar, Earthstar Geographics',
+    maxNativeZoom: 19,
     maxZoom: 20,
   });
 
-  layers.light = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap &copy; CARTO',
-    subdomains: 'abcd',
+  layers.light = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxNativeZoom: 19,
     maxZoom: 20,
   });
 

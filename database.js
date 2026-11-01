@@ -28,12 +28,13 @@ const db = {
       }
     }
     if (!user) {
-      const { data: newUser } = await supabase.from('users').insert({
+      const { data: newUser, error } = await supabase.from('users').insert({
         google_id: googleId,
         name: name || 'İsimsiz Kullanıcı',
         email: email || '',
         avatar: avatar || ''
       }).select().single();
+      if (error) console.error('Google kullanıcısı kaydedilemedi:', error.message);
       user = newUser;
     }
     return user;
