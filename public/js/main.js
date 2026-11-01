@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Online & ziyaretçi sayacı
   initPresence();
+  initBottomNav();
 
   // Telefonda sohbet kapalı başlar, ekranı kaplamasın
   if (window.matchMedia('(max-width: 768px)').matches) {
@@ -185,7 +186,20 @@ function toggleOption(type) {
   renderPins(allPins);
 }
 
+// Telefonda form tam ekran: haritadan konum seçmek için formu geçici gizle
+function startLocationPick() {
+  document.getElementById('addPinModal').classList.add('picking');
+  document.body.classList.add('location-picking');
+  document.getElementById('mapSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+function finishLocationPick() {
+  document.getElementById('addPinModal').classList.remove('picking');
+  document.body.classList.remove('location-picking');
+}
+
 function selectLocation(lat, lng) {
+  finishLocationPick();
   pendingLat = lat;
   pendingLng = lng;
   document.getElementById('pinLat').value = lat;
@@ -303,8 +317,11 @@ function renderPins(pins) {
           <div class="pin-card-icon">${escHtml(emoji)}</div>
           <div class="pin-card-cat">${escHtml(pin.category)}</div>
         </div>
+        ${(pin.images || []).length ? `<img class="pin-card-photo" src="${escHtml(pin.images[0])}" alt="" loading="lazy" />` : ''}
         <div class="pin-card-title">${escHtml(pin.title)}</div>
         <div class="pin-card-addr">📍 ${escHtml(pin.address)}</div>
+        ${(pin.sells || []).length ? `<div class="pin-card-products">🛒 ${escHtml(pin.sells.slice(0, 4).join(', '))}${pin.sells.length > 4 ? ` +${pin.sells.length - 4}` : ''}</div>` : ''}
+        ${(pin.seeks || []).length ? `<div class="pin-card-products seeks">🔎 ${escHtml(pin.seeks.slice(0, 4).join(', '))}${pin.seeks.length > 4 ? ` +${pin.seeks.length - 4}` : ''}</div>` : ''}
         ${showContactInfo && (pin.phone || pin.website) ? `
           <div class="pin-card-footer">
             ${pin.phone ? `<div class="pin-contact"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.06 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/></svg><a href="tel:${escHtml(pin.phone)}" onclick="event.stopPropagation()">${escHtml(pin.phone)}</a></div>` : ''}
@@ -695,6 +712,7 @@ function openAddPinModal() {
 }
 
 function closeAddPinModal() {
+  finishLocationPick();
   document.getElementById('addPinModal').classList.remove('open');
   if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
   pendingLat = null; pendingLng = null;
@@ -812,6 +830,64 @@ function toggleChatWidget(e) {
     const msgsEl = document.getElementById('chatMessages');
     setTimeout(() => { msgsEl.scrollTop = msgsEl.scrollHeight; }, 100);
   }
+  updateBottomNav();
+}
+
+// ── Telefon Alt Menüsü ────────────────────────────────────────
+const BOTTOM_NAV_SECTIONS = { home: 'hero', map: 'mapSection', list: 'listSection' };
+let bottomNavSection = 'home';
+
+function isChatOpen() {
+  return !document.getElementById('chatWidget').classList.contains('collapsed');
+}
+
+function setChatOpen(open) {
+  const widget = document.getElementById('chatWidget');
+  if (open === isChatOpen()) return;
+  widget.classList.toggle('collapsed', !open);
+  if (open) {
+    const msgsEl = document.getElementById('chatMessages');
+    setTimeout(() => { msgsEl.scrollTop = msgsEl.scrollHeight; }, 100);
+  }
+  updateBottomNav();
+}
+
+function bottomNavGo(tab) {
+  if (tab === 'chat') {
+    setChatOpen(!isChatOpen());
+    return;
+  }
+  setChatOpen(false);
+  if (tab === 'home') window.scrollTo({ top: 0, behavior: 'smooth' });
+  else document.getElementById(BOTTOM_NAV_SECTIONS[tab]).scrollIntoView({ behavior: 'smooth' });
+  bottomNavSection = tab;
+  updateBottomNav();
+}
+
+function updateBottomNav() {
+  const active = isChatOpen() && window.matchMedia('(max-width: 768px)').matches ? 'chat' : bottomNavSection;
+  document.querySelectorAll('.bottom-nav-item').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === active);
+  });
+}
+
+// Kaydırdıkça hangi bölümde olunduğunu alt menüde işaretle
+function initBottomNav() {
+  if (!('IntersectionObserver' in window)) return updateBottomNav();
+  const visible = {};
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { visible[e.target.id] = e.intersectionRatio; });
+    let best = bottomNavSection, bestRatio = 0;
+    for (const [tab, id] of Object.entries(BOTTOM_NAV_SECTIONS)) {
+      if ((visible[id] || 0) > bestRatio) { best = tab; bestRatio = visible[id]; }
+    }
+    bottomNavSection = best;
+    updateBottomNav();
+  }, { threshold: [0, 0.25, 0.5, 0.75, 1] });
+  Object.values(BOTTOM_NAV_SECTIONS).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el);
+  });
 }
 
 async function loadChatMessages() {
@@ -898,7 +974,10 @@ async function sendChatMessage() {
 function initDraggableChat() {
   const widget = document.getElementById('chatWidget');
   const header = widget.querySelector('.chat-header');
-  
+
+  // Telefonda sohbet alt menüye bağlı bir sayfa gibi açılır, sürüklenmez
+  if (window.matchMedia('(max-width: 768px)').matches) return;
+
   let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
   
   header.onmousedown = dragMouseDown;
