@@ -17,14 +17,14 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(passport.initialize());
 
-// Keys split to bypass git secret scanning and ignore wrong env vars
-const gClientId = '398698614441-6a9ei6mcjv2r39or2dsc3crvfniddbd3.apps.googleusercontent.com';
-const gSecPart1 = 'GOCSPX-l7k1_SswcN';
-const gSecPart2 = '4Na3rYEV5gV2yd6j8e';
+if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+  console.error('HATA: GOOGLE_CLIENT_ID veya GOOGLE_CLIENT_SECRET ortam değişkenleri tanımlı değil.');
+  process.exit(1);
+}
 
 passport.use(new GoogleStrategy({
-    clientID: gClientId,
-    clientSecret: gSecPart1 + gSecPart2,
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: '/auth/google/callback',
     proxy: true // In case it runs behind a proxy (e.g. Render)
   },
@@ -103,9 +103,13 @@ app.get('/auth/google/callback',
 );
 
 // ── PUBLIC: Onaylı iğneleri getir ────────────────────────────
+// IP adresleri kişisel veri: herkese açık yanıtlardan çıkarılır, sadece admin görür
+const stripIp = ({ ip, ...rest }) => rest;
+
 app.get('/api/pins', async (req, res) => {
   await db.incrementVisits(); // Sayacı artır
-  res.json(await db.getApprovedPins());
+  const pins = await db.getApprovedPins();
+  res.json(pins.map(p => ({ ...p, comments: (p.comments || []).map(stripIp) })));
 });
 
 // ── PUBLIC: Yeni iğne ekle (onay bekliyor) ───────────────────
@@ -165,10 +169,13 @@ app.get('/api/categories', async (req, res) => {
   res.json(await db.getCategories());
 });
 
-app.post('/api/categories', async (req, res) => {
+app.post('/api/categories', requireAuth, async (req, res) => {
   const { name, icon } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Kategori adı zorunlu' });
+  }
+  if (name.trim().length > 40 || (icon && icon.trim().length > 8)) {
+    return res.status(400).json({ error: 'Kategori adı en fazla 40, ikon en fazla 8 karakter olabilir' });
   }
   const result = await db.addCategory({ name, icon });
   if (result.error) {
@@ -202,7 +209,7 @@ app.put('/api/admin/categories/:name', requireAdmin, async (req, res) => {
 
 // ── PUBLIC: Chat Endpoints ────────────────────────────────────
 app.get('/api/chat', async (req, res) => {
-  res.json(await db.getChatMessages());
+  res.json((await db.getChatMessages()).map(stripIp));
 });
 
 function getIp(req) {
@@ -227,7 +234,7 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     ip,
     message: message.trim(),
   });
-  res.status(201).json(newMsg);
+  res.status(201).json(stripIp(newMsg));
 });
 
 // ── PUBLIC: Yorum Ekleme ──────────────────────────────────────
@@ -243,7 +250,7 @@ app.post('/api/pins/:id/comments', requireAuth, async (req, res) => {
     message: message.trim()
   });
   if (!comment) return res.status(404).json({ error: 'İşletme bulunamadı' });
-  res.status(201).json(comment);
+  res.status(201).json(stripIp(comment));
 });
 
 // ── PUBLIC: Hata Bildirme ──────────────────────────────────────
@@ -258,7 +265,7 @@ app.post('/api/pins/:id/reports', requireAuth, async (req, res) => {
     ip,
     message: message.trim()
   });
-  res.status(201).json(report);
+  res.status(201).json(stripIp(report || {}));
 });
 
 // ── ADMIN: Hata Bildirimlerini Listele ──────────────────────────

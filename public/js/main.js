@@ -25,7 +25,7 @@ function updateAuthUI(name) {
   const btn2 = document.getElementById('mobileAuthBtn');
   const setupBtn = (btn) => {
     if (!btn) return;
-    btn.innerHTML = `👤 ${name}`;
+    btn.textContent = `👤 ${name}`;
     btn.onclick = (e) => {
       e.preventDefault();
       if(confirm('Çıkış yapmak istiyor musunuz?')) {
@@ -259,9 +259,9 @@ function renderPins(pins) {
     // Popup shows contact info optionally
     marker.bindPopup(`
       <div style="font-family:'Inter',sans-serif; min-width:200px;">
-        <div style="font-size:18px;margin-bottom:6px;">${emoji} <strong style="color:#f0fdf4;font-size:14px;">${pin.title}</strong></div>
-        <div style="font-size:12px;color:#6b7280;margin-bottom:4px;">📍 ${pin.address}</div>
-        ${showContactInfo && pin.phone ? `<div style="font-size:12px;color:#86efac;">📞 <a href="tel:${pin.phone}" style="color:#4ade80;">${pin.phone}</a></div>` : ''}
+        <div style="font-size:18px;margin-bottom:6px;">${emoji} <strong style="color:#f0fdf4;font-size:14px;">${escHtml(pin.title)}</strong></div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:4px;">📍 ${escHtml(pin.address)}</div>
+        ${showContactInfo && pin.phone ? `<div style="font-size:12px;color:#86efac;">📞 <a href="tel:${escHtml(pin.phone)}" style="color:#4ade80;">${escHtml(pin.phone)}</a></div>` : ''}
         <div style="margin-top:8px;">
           <button onclick="showPinDetail(${pin.id})" style="
             background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;
@@ -289,13 +289,13 @@ function renderPins(pins) {
       card.innerHTML = `
         <div class="pin-card-header">
           <div class="pin-card-icon">${emoji}</div>
-          <div class="pin-card-cat">${pin.category}</div>
+          <div class="pin-card-cat">${escHtml(pin.category)}</div>
         </div>
         <div class="pin-card-title">${escHtml(pin.title)}</div>
         <div class="pin-card-addr">📍 ${escHtml(pin.address)}</div>
         ${showContactInfo && (pin.phone || pin.website) ? `
           <div class="pin-card-footer">
-            ${pin.phone ? `<div class="pin-contact"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.06 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/></svg><a href="tel:${pin.phone}" onclick="event.stopPropagation()">${pin.phone}</a></div>` : ''}
+            ${pin.phone ? `<div class="pin-contact"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.06 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/></svg><a href="tel:${escHtml(pin.phone)}" onclick="event.stopPropagation()">${escHtml(pin.phone)}</a></div>` : ''}
             ${pin.website ? `<div class="pin-contact"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span style="user-select: text;">${escHtml(pin.website)}</span></div>` : ''}
           </div>
         ` : ''}
@@ -494,14 +494,14 @@ function showToast(msg, type = 'success') {
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   const icon = type === 'success' ? '✅' : '❌';
-  toast.innerHTML = `<span class="toast-icon">${icon}</span><span>${msg}</span>`;
+  toast.innerHTML = `<span class="toast-icon">${icon}</span><span>${escHtml(msg)}</span>`;
   container.appendChild(toast);
   setTimeout(() => toast.remove(), 4000);
 }
 
 function escHtml(str) {
   if (!str) return '';
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 // ── Canlı Sohbet İşlemleri ────────────────────────────────────
@@ -558,7 +558,6 @@ function renderChatMessages(messages) {
     row.innerHTML = `
       <div class="chat-msg-meta">
         <span class="chat-msg-nick">${escHtml(msg.nickname)}</span>
-        <span class="chat-msg-ip">🔌 ${escHtml(msg.ip)}</span>
         <span style="margin-left:auto;color:rgba(255,255,255,0.2)">${timeStr}</span>
       </div>
       <div class="chat-msg-text">${escHtml(msg.message)}</div>
@@ -735,7 +734,7 @@ function renderFilters(categories) {
     const btn = document.createElement('button');
     btn.className = `filter-btn ${prevActive === cat.name ? 'active' : ''}`;
     btn.setAttribute('data-cat', cat.name);
-    btn.innerHTML = `${cat.icon || '📦'} ${cat.name}`;
+    btn.textContent = `${cat.icon || '📦'} ${cat.name}`;
     btn.onclick = () => filterPins(cat.name, btn);
     filterContainer.appendChild(btn);
   });
@@ -788,7 +787,7 @@ async function submitNewCategory() {
   try {
     const res = await fetch('/api/categories', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('userToken') },
       body: JSON.stringify({ name, icon })
     });
     const data = await res.json();
@@ -854,7 +853,6 @@ function renderPinComments(comments) {
         <span>${timeStr}</span>
       </div>
       <div style="font-size: 13px; color: var(--text-1); word-break: break-word; padding: 2px 0;">${escHtml(c.message)}</div>
-      <div style="font-size: 10px; color: rgba(255,255,255,0.15); font-family: monospace;">🔌 IP: ${c.ip}</div>
     `;
     list.appendChild(card);
   });

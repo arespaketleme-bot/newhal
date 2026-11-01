@@ -16,14 +16,10 @@ npm run dev
 | Ana site | http://localhost:3000 |
 | Admin paneli | http://localhost:3000/admin |
 
-## 🔐 Admin Bilgileri
+## 🔐 Ayarlar
 
-| Alan | Değer |
-|---|---|
-| Kullanıcı adı | `admin` |
-| Şifre | `newhal2024` |
-
-> `.env` dosyasından değiştirilebilir.
+`.env.example` dosyasını `.env` olarak kopyalayıp doldurun. Admin kullanıcı adı/şifresi,
+Supabase ve Google giriş anahtarları buradan okunur. `.env` asla GitHub'a gönderilmez.
 
 ## ✨ Özellikler
 
@@ -40,9 +36,10 @@ npm run dev
 ```
 newhal/
 ├── server.js        ← Express API sunucusu
-├── database.js      ← SQLite veritabanı
-├── .env             ← Ortam değişkenleri (admin şifresi)
-├── newhal.db        ← SQLite DB (otomatik oluşturulur)
+├── database.js      ← Supabase bağlantısı
+├── .env             ← Gizli ayarlar (GitHub'a gitmez)
+├── .env.example     ← Ayar şablonu
+├── schema.sql       ← Supabase tablo yapısı
 └── public/
     ├── index.html   ← Ana site
     ├── admin.html   ← Admin paneli
@@ -57,7 +54,7 @@ newhal/
 ## 🛠 Tech Stack
 
 - **Backend:** Node.js + Express
-- **Database:** SQLite (better-sqlite3)
-- **Auth:** JWT (8 saatlik token)
+- **Database:** Supabase (PostgreSQL)
+- **Auth:** Google ile giriş + JWT (admin 8 saat, kullanıcı 7 gün)
 - **Harita:** Leaflet.js + CartoDB Dark tiles
 - **Frontend:** Vanilla HTML/CSS/JS

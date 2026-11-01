@@ -396,12 +396,12 @@ async function loadUsers() {
       users.forEach(u => {
         const tr = document.createElement('tr');
         const d = new Date(u.created_at).toLocaleString('tr-TR');
-        const avatar = u.avatar ? `<img src="${u.avatar}" style="width:32px;height:32px;border-radius:50%;" />` : '👤';
+        const avatar = u.avatar ? `<img src="${esc(u.avatar)}" style="width:32px;height:32px;border-radius:50%;" />` : '👤';
         tr.innerHTML = `
           <td>${avatar}</td>
-          <td><strong>${u.name}</strong></td>
-          <td>${u.email}</td>
-          <td style="color:var(--text-3); font-family:monospace; font-size:12px;">${u.googleId || '-'}</td>
+          <td><strong>${esc(u.name)}</strong></td>
+          <td>${esc(u.email)}</td>
+          <td style="color:var(--text-3); font-family:monospace; font-size:12px;">${esc(u.googleId) || '-'}</td>
           <td>${d}</td>
         `;
         tbody.appendChild(tr);
@@ -437,8 +437,8 @@ function renderCategoriesTable(categories) {
       <td style="font-weight: 600;">${esc(cat.name)}</td>
       <td>
         <div class="actions">
-          <button class="btn-edit" onclick="openEditCategoryModal('${esc(cat.name)}', '${esc(cat.icon || '')}')" style="background:var(--accent); color:#111; border:none; padding:4px 8px; border-radius:4px; font-weight:600; cursor:pointer;">✏️ Düzenle</button>
-          ${!isGenel ? `<button class="btn-delete" onclick="deleteCategory('${esc(cat.name)}')">🗑 Sil</button>` : `<span style="font-size: 11.5px; color: var(--text-3); font-style: italic; padding: 4px 6px;">Varsayılan (Kilitli)</span>`}
+          <button class="btn-edit" data-name="${esc(cat.name)}" data-icon="${esc(cat.icon || '')}" onclick="openEditCategoryModal(this.dataset.name, this.dataset.icon)" style="background:var(--accent); color:#111; border:none; padding:4px 8px; border-radius:4px; font-weight:600; cursor:pointer;">✏️ Düzenle</button>
+          ${!isGenel ? `<button class="btn-delete" data-name="${esc(cat.name)}" onclick="deleteCategory(this.dataset.name)">🗑 Sil</button>` : `<span style="font-size: 11.5px; color: var(--text-3); font-style: italic; padding: 4px 6px;">Varsayılan (Kilitli)</span>`}
         </div>
       </td>
     `;
