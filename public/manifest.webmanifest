@@ -1,0 +1,19 @@
+{
+  "name": "NewHal — Mersin Hal Kompleksi Rehberi",
+  "short_name": "NewHal",
+  "description": "Mersin Hal Kompleksi'ndeki işletmeleri haritada bul, ürünlerini gör, kendi işletmeni ekle.",
+  "lang": "tr",
+  "id": "/",
+  "start_url": "/?kaynak=uygulama",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080b10",
+  "theme_color": "#080c16",
+  "categories": ["business", "food", "navigation"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

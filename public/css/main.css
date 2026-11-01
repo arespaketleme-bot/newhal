@@ -1136,3 +1136,31 @@ button, a { cursor: pointer; text-decoration: none; border: none; background: no
 .popup-chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(0,255,135,0.1); color: #bbf7d0; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .photo-thumb.loading { animation: none; } }
+
+/* ── Uygulamayı yükle bandı ─────────────────────────────────── */
+.install-banner {
+  position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 3000; max-width: 480px; margin: 0 auto;
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+  background: rgba(10, 18, 14, 0.96); border: 1px solid var(--border-g); border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.5); backdrop-filter: blur(12px);
+  animation: slideUp 0.25s ease;
+}
+.install-banner[hidden] { display: none; }
+.install-banner-icon { width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0; }
+.install-banner-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.install-banner-text strong { font-size: 14px; color: var(--text-1); }
+.install-banner-text span { font-size: 12px; color: var(--text-3); line-height: 1.35; }
+.install-banner-btn { padding: 8px 16px; font-size: 13px; border-radius: 999px; flex-shrink: 0; }
+.install-banner-btn[hidden] { display: none; }
+.install-banner-close {
+  background: none; border: none; color: var(--text-3); font-size: 14px; cursor: pointer;
+  padding: 4px; flex-shrink: 0; line-height: 1;
+}
+
+/* Uygulama olarak açıldığında çentik/durum çubuğu boşluğu */
+@media (display-mode: standalone) {
+  body { padding-top: env(safe-area-inset-top); }
+}
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .install-banner { animation: none; } }

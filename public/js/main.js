@@ -99,6 +99,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Online & ziyaretçi sayacı
   initPresence();
 
+  // Telefonda sohbet kapalı başlar, ekranı kaplamasın
+  if (window.matchMedia('(max-width: 768px)').matches) {
+    document.getElementById('chatWidget')?.classList.add('collapsed');
+  }
+
   // Chat initialization & polling
   loadChatMessages();
   setInterval(loadChatMessages, 3000);
@@ -1365,3 +1370,73 @@ async function saveActivityToBackend(text) {
 
 
 
+
+// ── Telefona Eklenen Uygulama (PWA) ───────────────────────────
+let deferredInstallPrompt = null;
+const INSTALL_DISMISS_DAYS = 14;
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
+function isStandaloneApp() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function isIos() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function installBannerDismissed() {
+  try {
+    const until = parseInt(localStorage.getItem('installDismissedUntil') || '0', 10);
+    return Date.now() < until;
+  } catch {
+    return false;
+  }
+}
+
+function showInstallBanner(iosMode) {
+  if (isStandaloneApp() || installBannerDismissed()) return;
+  const banner = document.getElementById('installBanner');
+  if (iosMode) {
+    document.getElementById('installBannerHint').textContent = 'Alttaki Paylaş ⬆️ simgesine, sonra "Ana Ekrana Ekle"ye dokun';
+    document.getElementById('installBannerBtn').hidden = true;
+  }
+  banner.hidden = false;
+}
+
+function dismissInstallBanner() {
+  document.getElementById('installBanner').hidden = true;
+  try {
+    localStorage.setItem('installDismissedUntil', String(Date.now() + INSTALL_DISMISS_DAYS * 86400000));
+  } catch {}
+}
+
+async function installApp() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  document.getElementById('installBanner').hidden = true;
+  if (outcome === 'accepted') showToast('✅ NewHal telefonuna eklendi', 'success');
+}
+
+// Android ve bilgisayarda Chrome/Edge "yüklenebilir" dediğinde
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showInstallBanner(false);
+});
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBanner').hidden = true;
+});
+
+// iPhone'da otomatik yükleme penceresi yok: Safari'de nasıl ekleneceğini göster
+if (isIos() && !isStandaloneApp()) {
+  setTimeout(() => showInstallBanner(true), 4000);
+}

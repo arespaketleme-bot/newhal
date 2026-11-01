@@ -6,6 +6,16 @@
   <title>NewHal — Mersin Hal Kompleksi İşletme Rehberi</title>
   <meta name="description" content="Mersin Hal Kompleksi'ndeki işletmeleri keşfet, iğne ekle, rehbere katkı sağla." />
 
+  <!-- Telefona eklenen uygulama (PWA) -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#080c16" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="NewHal" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
   <!-- Open Graph / Facebook Link Preview Meta Tags -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://newhal.onrender.com/" />
@@ -464,6 +474,7 @@
             Google ile Devam Et
           </a>
         </div>
+      </div>
     </div>
   </div>
 
@@ -472,6 +483,17 @@
 
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Uygulamayı yükle bandı -->
+  <div class="install-banner" id="installBanner" hidden>
+    <img src="/icons/icon-192.png" alt="" class="install-banner-icon" />
+    <div class="install-banner-text">
+      <strong>NewHal'i telefonuna ekle</strong>
+      <span id="installBannerHint">Uygulama gibi tek dokunuşla aç</span>
+    </div>
+    <button type="button" class="btn-primary install-banner-btn" id="installBannerBtn" onclick="installApp()">Yükle</button>
+    <button type="button" class="install-banner-close" onclick="dismissInstallBanner()" aria-label="Kapat">✕</button>
+  </div>
+
   <script src="js/main.js"></script>
 </body>
 </html>
