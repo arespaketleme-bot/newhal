@@ -202,6 +202,17 @@ button, a { cursor: pointer; text-decoration: none; border: none; background: no
 .stat-num { font-family: var(--font-head); font-size: 26px; font-weight: 800; color: var(--green-400); }
 .stat-label { font-size: 12px; color: var(--text-3); font-weight: 500; }
 .stat-divider { width: 1px; height: 40px; background: var(--border); }
+.online-dot {
+  display: inline-block; width: 10px; height: 10px; margin-right: 8px; vertical-align: middle;
+  border-radius: 50%; background: var(--green-400);
+  box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6); animation: online-pulse 2s infinite;
+}
+@keyframes online-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6); }
+  70%  { box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .online-dot { animation: none; } }
 
 .hero-scroll {
   position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);

@@ -107,9 +107,38 @@ app.get('/auth/google/callback',
 const stripIp = ({ ip, ...rest }) => rest;
 
 app.get('/api/pins', async (req, res) => {
-  await db.incrementVisits(); // Sayacı artır
   const pins = await db.getApprovedPins();
   res.json(pins.map(p => ({ ...p, comments: (p.comments || []).map(stripIp) })));
+});
+
+// ── PUBLIC: Online & ziyaretçi sayacı ─────────────────────────
+// Online sayısı bellekte tutulur: her sekme 30 sn'de bir sinyal gönderir,
+// son 70 sn içinde sinyal göndermeyen sekme çevrimdışı sayılır.
+const ONLINE_WINDOW_MS = 70 * 1000;
+const MAX_PRESENCE     = 10000;
+const presence = new Map(); // sekme id → son görülme zamanı
+
+function countOnline() {
+  const cutoff = Date.now() - ONLINE_WINDOW_MS;
+  for (const [id, seen] of presence) {
+    if (seen < cutoff) presence.delete(id);
+  }
+  return presence.size;
+}
+
+app.post('/api/presence', async (req, res) => {
+  const { id } = req.body || {};
+  if (typeof id !== 'string' || !/^[a-zA-Z0-9-]{8,64}$/.test(id)) {
+    return res.status(400).json({ error: 'Geçersiz oturum' });
+  }
+  if (presence.has(id) || presence.size < MAX_PRESENCE) presence.set(id, Date.now());
+  res.json({ online: countOnline(), visits: await db.getVisits() });
+});
+
+// Tarayıcı oturumu başına bir kez çağrılır
+app.post('/api/visit', async (req, res) => {
+  await db.incrementVisits();
+  res.json({ visits: await db.getVisits() });
 });
 
 // ── PUBLIC: Yeni iğne ekle (onay bekliyor) ───────────────────

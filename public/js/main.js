@@ -96,6 +96,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadPins();
   initScrollEffect();
 
+  // Online & ziyaretçi sayacı
+  initPresence();
+
   // Chat initialization & polling
   loadChatMessages();
   setInterval(loadChatMessages, 3000);
@@ -322,8 +325,53 @@ async function updateHeroStats() {
 
 async function updateStats() {
   document.getElementById('statApproved').textContent = allPins.length;
-  // Pending için ayrı endpoint yok (public), sadece approved göster
-  document.getElementById('statPending').textContent = '—';
+}
+
+// ── Online & Ziyaretçi Sayacı ─────────────────────────────────
+function getPresenceId() {
+  try {
+    let id = sessionStorage.getItem('presenceId');
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
+      sessionStorage.setItem('presenceId', id);
+    }
+    return id;
+  } catch {
+    return window.__presenceId || (window.__presenceId = Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
+  }
+}
+
+function renderPresence({ online, visits }) {
+  if (typeof online === 'number') document.getElementById('statOnline').textContent = online.toLocaleString('tr-TR');
+  if (typeof visits === 'number') document.getElementById('statVisits').textContent = visits.toLocaleString('tr-TR');
+}
+
+async function sendPresence() {
+  try {
+    const res = await fetch('/api/presence', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: getPresenceId() })
+    });
+    if (res.ok) renderPresence(await res.json());
+  } catch {}
+}
+
+async function initPresence() {
+  // Ziyaret, tarayıcı oturumu başına bir kez sayılır
+  let counted = false;
+  try { counted = sessionStorage.getItem('visitCounted') === '1'; } catch {}
+  if (!counted) {
+    try {
+      const res = await fetch('/api/visit', { method: 'POST' });
+      if (res.ok) {
+        renderPresence(await res.json());
+        try { sessionStorage.setItem('visitCounted', '1'); } catch {}
+      }
+    } catch {}
+  }
+  sendPresence();
+  setInterval(sendPresence, 30000);
 }
 
 // ── Pin Detay ─────────────────────────────────────────────────
