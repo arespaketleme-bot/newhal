@@ -315,12 +315,7 @@ function filterPins(cat, btn) {
 }
 
 async function updateHeroStats() {
-  try {
-    const res = await fetch('/api/admin/stats');
-    if (!res.ok) return;
-    // Stats endpoint requires auth, skip if not admin
-  } catch {}
-  // Sadece onaylı pinlerden hesapla
+  // Sadece onaylı pinlerden hesapla (admin istatistikleri herkese açık değil)
   document.getElementById('statApproved').textContent = allPins.length;
 }
 

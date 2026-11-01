@@ -88,3 +88,14 @@ CREATE TABLE IF NOT EXISTS site_stats (
 
 -- Başlangıç sayacını ekle
 INSERT INTO site_stats (id, visits) VALUES (1, 0);
+
+-- 9. Güvenlik: tablolar sadece sunucunun gizli anahtarıyla erişilebilir.
+-- Kural (policy) eklenmediği için herkese açık anahtar hiçbir satırı göremez/değiştiremez.
+ALTER TABLE users          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE categories     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pins           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pin_comments   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reports        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_messages  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE logs           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE site_stats     ENABLE ROW LEVEL SECURITY;
