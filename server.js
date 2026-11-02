@@ -560,20 +560,34 @@ app.get('/api/admin/facebook', requireAdmin, async (req, res) => {
               : { connected: false, page_username: FB_PAGE_USERNAME });
 });
 
-// Kısa süreli kullanıcı anahtarını kalıcı sayfa anahtarına çevirip saklar (uygulama gizli anahtarı saklanmaz)
+// Sayfa anahtarını bulup saklar. İki yol:
+//  1) İşletme (Business) sistem kullanıcısı anahtarı: tek başına yeterli, süresi dolmaz.
+//  2) Kısa süreli kullanıcı anahtarı + uygulama kimliği + gizli anahtar: kalıcı anahtara çevrilir
+//     (uygulama gizli anahtarı saklanmaz).
 app.post('/api/admin/facebook/connect', requireAdmin, async (req, res) => {
   const appId = String(req.body.appId || '').trim();
   const appSecret = String(req.body.appSecret || '').trim();
   const userToken = String(req.body.userToken || '').trim();
-  if (!/^\d{5,20}$/.test(appId) || !appSecret || !userToken) {
-    return res.status(400).json({ error: 'Uygulama kimliği, gizli anahtar ve kullanıcı anahtarı gerekli' });
+  if (!userToken) return res.status(400).json({ error: 'Erişim anahtarı gerekli' });
+  if ((appId || appSecret) && (!/^\d{5,20}$/.test(appId) || !appSecret)) {
+    return res.status(400).json({ error: 'Uygulama kimliği ve gizli anahtar birlikte girilmeli' });
   }
   try {
-    const longLived = await fbRequest(`${FB_GRAPH}/oauth/access_token`, {
-      grant_type: 'fb_exchange_token', client_id: appId, client_secret: appSecret, fb_exchange_token: userToken,
-    }, 'GET');
+    let token = userToken;
+    if (appId && appSecret) {
+      const longLived = await fbRequest(`${FB_GRAPH}/oauth/access_token`, {
+        grant_type: 'fb_exchange_token', client_id: appId, client_secret: appSecret, fb_exchange_token: userToken,
+      }, 'GET');
+      token = longLived.access_token;
+    }
+    // Gönderi atma izni var mı? (yoksa sayfa bulunsa bile paylaşım reddedilir)
+    const perms = await fbRequest(`${FB_GRAPH}/me/permissions`, { access_token: token }, 'GET');
+    const granted = (perms.data || []).filter(p => p.status === 'granted').map(p => p.permission);
+    if (!granted.includes('pages_manage_posts')) {
+      return res.status(400).json({ error: 'Bu anahtarda "pages_manage_posts" (sayfada gönderi paylaşma) izni yok. Anahtarı bu izni işaretleyerek yeniden oluşturun.' });
+    }
     const pages = await fbRequest(`${FB_GRAPH}/me/accounts`, {
-      fields: 'id,name,username,access_token,tasks', limit: '100', access_token: longLived.access_token,
+      fields: 'id,name,username,access_token,tasks', limit: '100', access_token: token,
     }, 'GET');
     const list = pages.data || [];
     const page = list.find(p => (p.username || '').toLowerCase() === FB_PAGE_USERNAME.toLowerCase())

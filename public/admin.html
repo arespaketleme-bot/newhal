@@ -270,10 +270,13 @@
             <button type="button" class="btn-ghost-sm" id="fbToggleBtn" onclick="toggleFbConnectForm()">Bağla</button>
           </div>
           <form class="fb-connect" id="fbConnectForm" onsubmit="connectFacebook(event)" hidden>
-            <p class="ad-hint">Bu bilgiler bir kez girilir. Sunucu bunları kalıcı bir sayfa anahtarına çevirip gizli saklar; uygulama gizli anahtarı kaydedilmez.</p>
-            <label>Uygulama kimliği (App ID)<input type="text" id="fbAppId" inputmode="numeric" autocomplete="off" /></label>
-            <label>Uygulama gizli anahtarı (App Secret)<input type="password" id="fbAppSecret" autocomplete="off" /></label>
-            <label>Kullanıcı erişim anahtarı (Graph API Explorer'dan)<input type="password" id="fbUserToken" autocomplete="off" /></label>
+            <p class="ad-hint">Bir kez girilir. Sunucu sayfa anahtarını bulup gizli saklar; anahtar tarayıcıya geri gönderilmez.</p>
+            <label>Erişim anahtarı (İşletme ayarları → Sistem kullanıcıları → Yeni anahtar oluştur)<input type="password" id="fbUserToken" autocomplete="off" /></label>
+            <details class="fb-advanced">
+              <summary>Sistem kullanıcısı yerine kısa süreli kullanıcı anahtarı kullanıyorsanız</summary>
+              <label>Uygulama kimliği (App ID)<input type="text" id="fbAppId" inputmode="numeric" autocomplete="off" /></label>
+              <label>Uygulama gizli anahtarı (App Secret)<input type="password" id="fbAppSecret" autocomplete="off" /></label>
+            </details>
             <div class="ad-actions">
               <button type="submit" class="btn-publish fb-btn" id="fbConnectBtn">Sayfayı Bağla</button>
             </div>
