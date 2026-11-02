@@ -343,6 +343,7 @@ const sectionTitles = {
 };
 
 function showSection(name) {
+  if (isMobileLayout()) closeSidebar();
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById(`section${cap(name)}`).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -360,11 +361,33 @@ function showSection(name) {
   }
 }
 
+const isMobileLayout = () => window.matchMedia('(max-width: 900px)').matches;
+
 function toggleSidebar() {
   const sb = document.getElementById('sidebar');
-  sb.classList.toggle('collapsed');
-  sb.classList.toggle('open');
+  if (isMobileLayout()) {
+    sb.classList.remove('collapsed');
+    sb.classList.contains('open') ? closeSidebar() : openSidebar();
+  } else {
+    sb.classList.remove('open');
+    sb.classList.toggle('collapsed');
+  }
 }
+
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebarBackdrop').classList.add('open');
+  document.body.classList.add('sidebar-open');
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarBackdrop').classList.remove('open');
+  document.body.classList.remove('sidebar-open');
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
+window.addEventListener('resize', () => { if (!isMobileLayout()) closeSidebar(); });
 
 // ── Helpers ────────────────────────────────────────────────────
 function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }

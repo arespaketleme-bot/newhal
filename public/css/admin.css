@@ -314,8 +314,14 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 @media (max-width: 900px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .admin-main { margin-left: 0; }
-  .sidebar { transform: translateX(-100%); }
-  .sidebar.open { transform: translateX(0); }
+  .sidebar { transform: translateX(-100%); z-index: 60; }
+  .sidebar.open { transform: translateX(0); box-shadow: 8px 0 32px rgba(0,0,0,0.5); }
+  .sidebar-backdrop {
+    position: fixed; inset: 0; z-index: 55; background: rgba(0,0,0,0.55);
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+  }
+  .sidebar-backdrop.open { opacity: 1; pointer-events: auto; }
+  body.sidebar-open { overflow: hidden; }
   .pins-table th:nth-child(4), .pins-table td:nth-child(4),
   .pins-table th:nth-child(5), .pins-table td:nth-child(5) { display: none; }
 }
