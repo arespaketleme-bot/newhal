@@ -2252,10 +2252,11 @@ async function submitUserAd(e) {
     const data = await res.json();
     if (res.status === 401) { closeUserAdModal(); openAuthModal(); throw new Error('Oturum süresi doldu, tekrar giriş yapın'); }
     if (!res.ok) throw new Error(data.error || 'İlan gönderilemedi');
-    showToast('✅ İlanınız alındı, onaydan sonra yayınlanacak', 'success');
+    showToast('✅ İlanınız yayınlandı', 'success');
     document.getElementById('userAdForm').reset();
     userAdPhotos.setUrls([]);
     loadMyAds();
+    loadAds();
   } catch (err) {
     showToast(err.message, 'error');
   } finally {

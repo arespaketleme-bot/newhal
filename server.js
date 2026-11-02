@@ -451,8 +451,7 @@ app.get('/api/ads', async (req, res) => {
   res.json(ads.sort((a, b) => b.created_at.localeCompare(a.created_at)).map(publicAd));
 });
 
-// ── Kullanıcı ilanları: giriş yapan herkes verebilir, yönetici onayından sonra yayınlanır ──
-const USER_MAX_PENDING_ADS = 5;
+// ── Kullanıcı ilanları: giriş yapan herkes verebilir, hemen yayınlanır (yönetici gizleyip silebilir) ──
 const USER_MAX_ADS_PER_DAY = 10;
 
 app.post('/api/ads', requireAuth, async (req, res) => {
@@ -466,19 +465,16 @@ app.post('/api/ads', requireAuth, async (req, res) => {
   }
   const ads = await db.getAds();
   const mine = ads.filter(a => a.owner && a.owner.id === req.user.id);
-  if (mine.filter(a => a.pending).length >= USER_MAX_PENDING_ADS) {
-    return res.status(429).json({ error: `Onay bekleyen ${USER_MAX_PENDING_ADS} ilanınız var, onaylanmalarını bekleyin` });
-  }
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   if (mine.filter(a => a.created_at > dayAgo).length >= USER_MAX_ADS_PER_DAY) {
     return res.status(429).json({ error: `Günde en fazla ${USER_MAX_ADS_PER_DAY} ilan verebilirsiniz` });
   }
   const created = {
-    id: crypto.randomUUID(), ...ad, featured: false, active: false, pending: true,
+    id: crypto.randomUUID(), ...ad, featured: false, active: true,
     owner: { id: req.user.id, name: req.user.name || 'Kullanıcı' }, created_at: new Date().toISOString(),
   };
   if (!(await db.saveAds([created, ...ads]))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
-  res.status(201).json({ id: created.id, message: 'İlanınız alındı, yönetici onayından sonra yayınlanacak' });
+  res.status(201).json({ id: created.id, message: 'İlanınız yayınlandı' });
 });
 
 app.get('/api/my-ads', requireAuth, async (req, res) => {
