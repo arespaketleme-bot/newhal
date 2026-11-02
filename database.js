@@ -11,6 +11,11 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 const PIN_IMAGE_BUCKET = 'pin-images';
+const AD_MEDIA_BUCKET  = 'ad-media';   // ilan resim ve videoları (herkese açık okuma)
+const APP_DATA_BUCKET  = 'app-data';   // ilan listesi (özel)
+const ADS_FILE         = 'ads.json';
+const ADS_CACHE_MS     = 60 * 1000;
+let adsCache = null;
 
 const db = {
   /** Kullanıcı İşlemleri */
@@ -155,6 +160,49 @@ const db = {
 
   pinImageUrlPrefix() {
     return supabase.storage.from(PIN_IMAGE_BUCKET).getPublicUrl('').data.publicUrl;
+  },
+
+  /** İlanlar: liste özel depoda tek dosya olarak tutulur (sadece admin yazar) */
+  async getAds() {
+    if (adsCache && Date.now() - adsCache.at < ADS_CACHE_MS) return adsCache.list;
+    const { data, error } = await supabase.storage.from(APP_DATA_BUCKET).download(ADS_FILE);
+    let list = [];
+    if (!error && data) {
+      try { list = JSON.parse(await data.text()); } catch { list = []; }
+    }
+    adsCache = { at: Date.now(), list };
+    return list;
+  },
+
+  async saveAds(list) {
+    const body = new Blob([JSON.stringify(list)], { type: 'application/json' });
+    const { error } = await supabase.storage.from(APP_DATA_BUCKET).upload(ADS_FILE, body, { upsert: true, contentType: 'application/json' });
+    if (error) {
+      console.error('İlanlar kaydedilemedi:', error.message);
+      return false;
+    }
+    adsCache = { at: Date.now(), list };
+    return true;
+  },
+
+  adMediaUrlPrefix() {
+    return supabase.storage.from(AD_MEDIA_BUCKET).getPublicUrl('').data.publicUrl;
+  },
+
+  // Tarayıcının dosyayı doğrudan depoya yükleyeceği tek kullanımlık adres
+  async createAdUploadUrl(path) {
+    const { data, error } = await supabase.storage.from(AD_MEDIA_BUCKET).createSignedUploadUrl(path);
+    if (error) {
+      console.error('Yükleme adresi alınamadı:', error.message);
+      return null;
+    }
+    return { uploadUrl: data.signedUrl, publicUrl: supabase.storage.from(AD_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl };
+  },
+
+  async deleteAdMedia(urls) {
+    const prefix = this.adMediaUrlPrefix();
+    const paths = (urls || []).filter(u => u && u.startsWith(prefix)).map(u => u.slice(prefix.length));
+    if (paths.length) await supabase.storage.from(AD_MEDIA_BUCKET).remove(paths);
   },
 
   async updatePin(id, { title, address, phone, website, email, category, lat, lng }) {

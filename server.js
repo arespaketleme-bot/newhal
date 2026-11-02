@@ -401,6 +401,94 @@ app.delete('/api/admin/reports/:id', requireAdmin, async (req, res) => {
   res.json({ message: 'Bildirim silindi' });
 });
 
+// ── İlanlar (sadece admin ekler, herkes görür) ────────────────
+const AD_TITLE_MAX   = 120;
+const AD_BODY_MAX    = 2000;
+const AD_MAX_IMAGES  = 5;
+const AD_UPLOAD_RULES = {
+  image: { types: { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }, maxBytes: 5 * 1024 * 1024 },
+  video: { types: { 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov' }, maxBytes: 50 * 1024 * 1024 },
+};
+
+// YouTube bağlantısından video kimliğini çıkarır (watch, youtu.be, shorts, embed)
+function youtubeId(url) {
+  const m = String(url || '').match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function cleanAd(body) {
+  const title = String(body.title || '').trim().slice(0, AD_TITLE_MAX);
+  const text  = String(body.body || '').trim().slice(0, AD_BODY_MAX);
+  const prefix = db.adMediaUrlPrefix();
+  const images = (Array.isArray(body.images) ? body.images : [])
+    .filter(u => typeof u === 'string' && u.startsWith(prefix) && !u.includes('..'))
+    .slice(0, AD_MAX_IMAGES);
+  let video = null;
+  if (body.video && body.video.type === 'file' && typeof body.video.url === 'string' && body.video.url.startsWith(prefix)) {
+    video = { type: 'file', url: body.video.url };
+  } else if (body.video && body.video.type === 'youtube') {
+    const id = youtubeId(body.video.url);
+    if (id) video = { type: 'youtube', id };
+  }
+  return { title, body: text, images, video };
+}
+
+const adMedia = ad => [...(ad.images || []), ad.video && ad.video.type === 'file' ? ad.video.url : null];
+
+app.get('/api/ads', async (req, res) => {
+  const ads = (await db.getAds()).filter(a => a.active !== false);
+  res.json(ads.sort((a, b) => b.created_at.localeCompare(a.created_at)));
+});
+
+app.get('/api/admin/ads', requireAdmin, async (req, res) => {
+  const ads = await db.getAds();
+  res.json([...ads].sort((a, b) => b.created_at.localeCompare(a.created_at)));
+});
+
+// Resim/video tarayıcıdan doğrudan depoya yüklenir; sunucu sadece tek kullanımlık adres verir
+app.post('/api/admin/ads/upload-url', requireAdmin, async (req, res) => {
+  const rule = AD_UPLOAD_RULES[req.body.kind];
+  const ext = rule && rule.types[req.body.type];
+  if (!ext) return res.status(400).json({ error: 'Bu dosya türü yüklenemez' });
+  if (!(req.body.size > 0) || req.body.size > rule.maxBytes) {
+    return res.status(400).json({ error: `Dosya en fazla ${rule.maxBytes / 1024 / 1024} MB olabilir` });
+  }
+  const result = await db.createAdUploadUrl(`ads/${Date.now()}-${crypto.randomUUID()}.${ext}`);
+  if (!result) return res.status(500).json({ error: 'Yükleme başlatılamadı' });
+  res.json(result);
+});
+
+app.post('/api/admin/ads', requireAdmin, async (req, res) => {
+  const ad = cleanAd(req.body);
+  if (!ad.title) return res.status(400).json({ error: 'İlan başlığı zorunlu' });
+  if (req.body.video && req.body.video.type === 'youtube' && !ad.video) {
+    return res.status(400).json({ error: 'YouTube bağlantısı anlaşılamadı' });
+  }
+  const ads = await db.getAds();
+  const created = { id: crypto.randomUUID(), ...ad, active: true, created_at: new Date().toISOString() };
+  if (!(await db.saveAds([created, ...ads]))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
+  res.status(201).json(created);
+});
+
+// Yayından kaldır / yeniden yayınla
+app.patch('/api/admin/ads/:id', requireAdmin, async (req, res) => {
+  const ads = await db.getAds();
+  const ad = ads.find(a => a.id === req.params.id);
+  if (!ad) return res.status(404).json({ error: 'İlan bulunamadı' });
+  ad.active = !!req.body.active;
+  if (!(await db.saveAds(ads))) return res.status(500).json({ error: 'Kaydedilemedi' });
+  res.json(ad);
+});
+
+app.delete('/api/admin/ads/:id', requireAdmin, async (req, res) => {
+  const ads = await db.getAds();
+  const ad = ads.find(a => a.id === req.params.id);
+  if (!ad) return res.status(404).json({ error: 'İlan bulunamadı' });
+  if (!(await db.saveAds(ads.filter(a => a.id !== ad.id)))) return res.status(500).json({ error: 'Silinemedi' });
+  await db.deleteAdMedia(adMedia(ad));
+  res.json({ message: 'İlan silindi' });
+});
+
 // ── ADMIN: Etkinlik Kayıtları ─────────────────────────────────
 app.get('/api/admin/logs', requireAdmin, async (req, res) => {
   res.json(await db.getLogs());

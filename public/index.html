@@ -78,6 +78,7 @@
       <nav class="nav">
         <button class="btn-ghost" onclick="scrollToMap()">Harita</button>
         <button class="btn-ghost" onclick="showPinList()">İşletmeler</button>
+        <button class="btn-ghost ads-nav-link" onclick="showAds()" hidden>İlanlar</button>
         <a href="#" class="btn-outline" id="authBtn" onclick="openAuthModal()" style="display:flex;align-items:center;gap:6px;">
           👤 Google ile Devam Et
         </a>
@@ -93,6 +94,7 @@
     <div class="mobile-menu" id="mobileMenu">
       <button onclick="scrollToMap(); toggleMobileMenu()">Harita</button>
       <button onclick="showPinList(); toggleMobileMenu()">İşletmeler</button>
+      <button class="ads-nav-link" onclick="showAds(); toggleMobileMenu()" hidden>📢 İlanlar</button>
       <a href="#" id="mobileAuthBtn" onclick="openAuthModal(); toggleMobileMenu()">Google ile Devam Et</a>
       <button class="btn-primary" onclick="openAddPinModal(); toggleMobileMenu()">İğne Ekle</button>
     </div>
@@ -230,6 +232,15 @@
       </div>
       
     </div>
+  </section>
+
+  <!-- ── İLANLAR ────────────────────────────────────────────────────────── -->
+  <section class="ads-section" id="adsSection" hidden>
+    <div class="ads-head">
+      <h2>📢 İlanlar</h2>
+      <p>Hal Kompleksi'nden duyurular ve ilanlar</p>
+    </div>
+    <div class="ads-grid" id="adsGrid"></div>
   </section>
 
   <!-- ── FOOTER ─────────────────────────────────────────────────────────── -->

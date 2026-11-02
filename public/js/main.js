@@ -97,6 +97,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   toggleMapFullscreen(true);
   await loadCategories();
   loadPins();
+  loadAds();
   initScrollEffect();
 
   // Online & ziyaretçi sayacı
@@ -1733,4 +1734,114 @@ window.addEventListener('appinstalled', () => {
 // iPhone'da otomatik yükleme penceresi yok: Safari'de nasıl ekleneceğini göster
 if (isIos() && !isStandaloneApp()) {
   setTimeout(() => showInstallBanner(true), 4000);
+}
+
+
+// ── İlanlar (yönetici ekler, herkes görür) ────────────────────
+async function loadAds() {
+  try {
+    const res = await fetch('/api/ads');
+    if (!res.ok) return;
+    renderAds(await res.json());
+  } catch (err) {
+    console.error('İlanlar yüklenemedi:', err);
+  }
+}
+
+function showAds() {
+  if (isMapFullscreen()) toggleMapFullscreen(false);
+  document.getElementById('adsSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderAds(ads) {
+  const section = document.getElementById('adsSection');
+  const grid = document.getElementById('adsGrid');
+  grid.innerHTML = '';
+  const hasAds = ads.length > 0;
+  section.hidden = !hasAds;
+  document.querySelectorAll('.ads-nav-link').forEach(el => { el.hidden = !hasAds; });
+  ads.forEach(ad => grid.appendChild(buildAdCard(ad)));
+}
+
+function buildAdCard(ad) {
+  const card = document.createElement('article');
+  card.className = 'ad-card';
+  const images = ad.images || [];
+
+  if (ad.video && ad.video.type === 'file') {
+    const video = document.createElement('video');
+    video.className = 'ad-media';
+    video.src = ad.video.url;
+    video.controls = true;
+    video.preload = 'metadata';
+    video.playsInline = true;
+    if (images[0]) video.poster = images[0];
+    card.appendChild(video);
+  } else if (ad.video && ad.video.type === 'youtube') {
+    // Önce sadece kapak resmi; dokununca video yüklenir (sayfa hızlı açılsın)
+    const yt = document.createElement('button');
+    yt.type = 'button';
+    yt.className = 'ad-media ad-youtube';
+    yt.setAttribute('aria-label', 'Videoyu oynat');
+    yt.style.backgroundImage = `url("https://i.ytimg.com/vi/${encodeURIComponent(ad.video.id)}/hqdefault.jpg")`;
+    yt.innerHTML = '<span class="ad-play">▶</span>';
+    yt.onclick = () => {
+      const iframe = document.createElement('iframe');
+      iframe.className = 'ad-media';
+      iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(ad.video.id)}?autoplay=1&rel=0`;
+      iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+      iframe.allowFullscreen = true;
+      iframe.title = ad.title;
+      yt.replaceWith(iframe);
+    };
+    card.appendChild(yt);
+  } else if (images.length) {
+    const main = document.createElement('img');
+    main.className = 'ad-media';
+    main.src = images[0];
+    main.alt = ad.title;
+    main.loading = 'lazy';
+    card.appendChild(main);
+  }
+
+  // Küçük resimler: videolu ilanda tüm resimler, resimli ilanda birden fazla resim varsa
+  const thumbs = ad.video || images.length > 1 ? images : [];
+  if (thumbs.length) {
+    const strip = document.createElement('div');
+    strip.className = 'ad-thumbs';
+    thumbs.forEach(url => {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      img.loading = 'lazy';
+      if (!ad.video) {
+        a.onclick = (e) => { e.preventDefault(); card.querySelector('img.ad-media').src = url; };
+      }
+      a.appendChild(img);
+      strip.appendChild(a);
+    });
+    card.appendChild(strip);
+  }
+
+  const body = document.createElement('div');
+  body.className = 'ad-body';
+  const title = document.createElement('h3');
+  title.textContent = ad.title;
+  body.appendChild(title);
+  if (ad.body) {
+    const text = document.createElement('p');
+    text.textContent = ad.body;
+    body.appendChild(text);
+  }
+  const date = document.createElement('time');
+  date.dateTime = ad.created_at;
+  date.textContent = new Date(ad.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  body.appendChild(date);
+  card.appendChild(body);
+  if (!images.length && !ad.video) card.classList.add('text-only');
+  return card;
 }

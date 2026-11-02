@@ -80,6 +80,10 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
           Kategoriler
         </button>
+        <button class="nav-item" id="navAds" onclick="showSection('ads')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+          İlanlar
+        </button>
         <button class="nav-item" id="navReports" onclick="showSection('reports')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           Hata Bildirimleri
@@ -244,6 +248,55 @@
             <tbody id="categoriesBody"></tbody>
           </table>
         </div>
+      </section>
+
+      <!-- ── İLANLAR ── -->
+      <section class="section" id="sectionAds">
+        <div class="section-head">
+          <div>
+            <h1>İlanlar</h1>
+            <p>Ana sayfada haritanın altında herkese gösterilir. Yazı, resim ya da video eklenebilir.</p>
+          </div>
+        </div>
+
+        <form class="ad-form" id="adForm" onsubmit="submitAd(event)">
+          <div class="ad-field">
+            <label for="adTitle">Başlık <span class="ad-req">*</span></label>
+            <input type="text" id="adTitle" maxlength="120" placeholder="Örn: Hal girişinde kiralık dükkan" required />
+          </div>
+          <div class="ad-field">
+            <label for="adBody">İlan metni</label>
+            <textarea id="adBody" rows="4" maxlength="2000" placeholder="İlanın ayrıntıları, iletişim bilgisi..."></textarea>
+          </div>
+          <div class="ad-field">
+            <label>Resimler <span class="ad-hint">(isteğe bağlı, en fazla 5)</span></label>
+            <div class="ad-photos" id="adPhotos"></div>
+          </div>
+          <div class="ad-field">
+            <label>Video <span class="ad-hint">(isteğe bağlı)</span></label>
+            <div class="ad-video-choice">
+              <label><input type="radio" name="adVideoType" value="none" checked onchange="setAdVideoType(this.value)" /> Video yok</label>
+              <label><input type="radio" name="adVideoType" value="file" onchange="setAdVideoType(this.value)" /> Dosya yükle</label>
+              <label><input type="radio" name="adVideoType" value="youtube" onchange="setAdVideoType(this.value)" /> YouTube bağlantısı</label>
+            </div>
+            <div id="adVideoFileBox" class="ad-video-box" hidden>
+              <input type="file" id="adVideoFile" accept="video/mp4,video/webm,video/quicktime" onchange="uploadAdVideo(this.files[0])" />
+              <div class="ad-hint">MP4, WEBM ya da MOV, en fazla 50 MB.</div>
+              <div class="ad-progress" id="adVideoProgress" hidden><div id="adVideoBar"></div><span id="adVideoText"></span></div>
+              <video id="adVideoPreview" controls preload="metadata" hidden></video>
+            </div>
+            <div id="adVideoYoutubeBox" class="ad-video-box" hidden>
+              <input type="url" id="adYoutube" placeholder="https://www.youtube.com/watch?v=..." />
+            </div>
+          </div>
+          <div class="ad-actions">
+            <button type="button" class="btn-ghost-sm" onclick="resetAdForm()">Temizle</button>
+            <button type="submit" class="btn-publish" id="adSubmitBtn">📢 İlanı Yayınla</button>
+          </div>
+        </form>
+
+        <h2 class="ad-list-title">Yayındaki ve gizlenen ilanlar</h2>
+        <div class="ad-list" id="adList"></div>
       </section>
 
       <!-- ── REPORTS ── -->

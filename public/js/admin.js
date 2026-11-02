@@ -334,6 +334,7 @@ const sectionTitles = {
   approved:  'Onaylananlar',
   rejected:  'Reddedilenler',
   categories:'Kategori Yönetimi',
+  ads:       'İlanlar',
   reports:   'Hata Bildirimleri',
   users:     'Kullanıcılar',
   logs:      'Aktivite Logları'
@@ -346,7 +347,9 @@ function showSection(name) {
   document.getElementById(`nav${cap(name)}`).classList.add('active');
   document.getElementById('topbarTitle').textContent = sectionTitles[name];
   
-  if (name === 'logs') {
+  if (name === 'ads') {
+    loadAds();
+  } else if (name === 'logs') {
     loadLogs();
   } else if (name === 'users') {
     loadUsers();
@@ -849,4 +852,246 @@ async function clearChat() {
     return;
   }
   showToast('🗑️ Sohbet geçmişi başarıyla temizlendi', 'success');
+}
+
+
+// ── İlanlar ────────────────────────────────────────────────────
+const AD_MAX_PHOTOS = 5;
+let adPhotoUrls = [];
+let adPhotoBusy = 0;
+let adVideoUrl = null;
+let adVideoBusy = false;
+
+async function loadAds() {
+  const res = await api('/api/admin/ads');
+  if (!res) return;
+  renderAdList(await res.json());
+  renderAdPhotos();
+}
+
+// Tek kullanımlık adres al, dosyayı doğrudan depoya yükle (ilerleme göstererek)
+async function uploadAdFile(file, kind, onProgress) {
+  const res = await api('/api/admin/ads/upload-url', {
+    method: 'POST',
+    body: JSON.stringify({ kind, type: file.type, size: file.size }),
+  });
+  if (!res) throw new Error('Oturum süresi doldu');
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Yükleme başlatılamadı');
+  await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', data.uploadUrl);
+    xhr.setRequestHeader('Content-Type', file.type);
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total); };
+    xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error('Yükleme başarısız')));
+    xhr.onerror = () => reject(new Error('Bağlantı hatası'));
+    xhr.send(file);
+  });
+  return data.publicUrl;
+}
+
+// Resmi tarayıcıda küçültür (en fazla 1600 px) ve JPEG yapar
+function shrinkImage(file, maxSize = 1600, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(b => (b ? resolve(new File([b], 'ilan.jpg', { type: 'image/jpeg' })) : reject(new Error('Resim işlenemedi'))), 'image/jpeg', quality);
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = () => reject(new Error('Bu dosya bir resim değil'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+function renderAdPhotos() {
+  const box = document.getElementById('adPhotos');
+  box.innerHTML = '';
+  adPhotoUrls.forEach((url, i) => {
+    const item = document.createElement('div');
+    item.className = 'ad-photo';
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = '';
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.textContent = '✕';
+    del.title = 'Resmi kaldır';
+    del.onclick = () => { adPhotoUrls.splice(i, 1); renderAdPhotos(); };
+    item.append(img, del);
+    box.appendChild(item);
+  });
+  for (let i = 0; i < adPhotoBusy; i++) {
+    const loading = document.createElement('div');
+    loading.className = 'ad-photo loading';
+    loading.textContent = '⟳';
+    box.appendChild(loading);
+  }
+  if (adPhotoUrls.length + adPhotoBusy < AD_MAX_PHOTOS) {
+    const add = document.createElement('label');
+    add.className = 'ad-photo add';
+    add.innerHTML = '<span>＋</span><small>Resim</small>';
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp';
+    input.multiple = true;
+    input.hidden = true;
+    input.onchange = () => addAdPhotos([...input.files]);
+    add.appendChild(input);
+    box.appendChild(add);
+  }
+}
+
+async function addAdPhotos(files) {
+  const room = AD_MAX_PHOTOS - adPhotoUrls.length - adPhotoBusy;
+  if (files.length > room) showToast(`En fazla ${AD_MAX_PHOTOS} resim eklenebilir`, 'error');
+  const batch = files.slice(0, Math.max(0, room));
+  adPhotoBusy += batch.length;
+  renderAdPhotos();
+  await Promise.all(batch.map(async file => {
+    try {
+      adPhotoUrls.push(await uploadAdFile(await shrinkImage(file), 'image'));
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      adPhotoBusy--;
+      renderAdPhotos();
+    }
+  }));
+}
+
+function setAdVideoType(type) {
+  document.getElementById('adVideoFileBox').hidden = type !== 'file';
+  document.getElementById('adVideoYoutubeBox').hidden = type !== 'youtube';
+}
+
+async function uploadAdVideo(file) {
+  if (!file) return;
+  const progress = document.getElementById('adVideoProgress');
+  const bar = document.getElementById('adVideoBar');
+  const text = document.getElementById('adVideoText');
+  const preview = document.getElementById('adVideoPreview');
+  adVideoUrl = null;
+  adVideoBusy = true;
+  preview.hidden = true;
+  progress.hidden = false;
+  bar.style.width = '0%';
+  text.textContent = 'Yükleniyor... %0';
+  try {
+    adVideoUrl = await uploadAdFile(file, 'video', (ratio) => {
+      bar.style.width = `${Math.round(ratio * 100)}%`;
+      text.textContent = `Yükleniyor... %${Math.round(ratio * 100)}`;
+    });
+    text.textContent = '✅ Video yüklendi';
+    preview.src = adVideoUrl;
+    preview.hidden = false;
+  } catch (err) {
+    text.textContent = '❌ ' + err.message;
+    document.getElementById('adVideoFile').value = '';
+  } finally {
+    adVideoBusy = false;
+  }
+}
+
+function resetAdForm() {
+  document.getElementById('adForm').reset();
+  adPhotoUrls = [];
+  adVideoUrl = null;
+  setAdVideoType('none');
+  document.getElementById('adVideoProgress').hidden = true;
+  const preview = document.getElementById('adVideoPreview');
+  preview.hidden = true;
+  preview.removeAttribute('src');
+  renderAdPhotos();
+}
+
+async function submitAd(e) {
+  e.preventDefault();
+  if (adPhotoBusy || adVideoBusy) return showToast('Dosyalar yükleniyor, lütfen bekleyin', 'error');
+  const videoType = document.querySelector('input[name="adVideoType"]:checked').value;
+  let video = null;
+  if (videoType === 'file') {
+    if (!adVideoUrl) return showToast('Önce video dosyasını seçin', 'error');
+    video = { type: 'file', url: adVideoUrl };
+  } else if (videoType === 'youtube') {
+    const url = document.getElementById('adYoutube').value.trim();
+    if (!url) return showToast('YouTube bağlantısını yapıştırın', 'error');
+    video = { type: 'youtube', url };
+  }
+  const btn = document.getElementById('adSubmitBtn');
+  btn.disabled = true;
+  try {
+    const res = await api('/api/admin/ads', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: document.getElementById('adTitle').value,
+        body: document.getElementById('adBody').value,
+        images: adPhotoUrls,
+        video,
+      }),
+    });
+    if (!res) return;
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'İlan kaydedilemedi');
+    showToast('📢 İlan yayınlandı', 'success');
+    resetAdForm();
+    loadAds();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderAdList(ads) {
+  const list = document.getElementById('adList');
+  list.innerHTML = '';
+  if (!ads.length) {
+    list.innerHTML = '<div class="ad-empty">Henüz ilan yok. Yukarıdan ilk ilanı ekleyin.</div>';
+    return;
+  }
+  ads.forEach(ad => {
+    const card = document.createElement('div');
+    card.className = 'ad-item' + (ad.active === false ? ' hidden-ad' : '');
+    const media = (ad.images || []).length
+      ? `<img src="${esc(ad.images[0])}" alt="" />`
+      : ad.video ? `<div class="ad-thumb-icon">🎬</div>` : `<div class="ad-thumb-icon">📝</div>`;
+    const tags = [
+      (ad.images || []).length ? `🖼 ${ad.images.length} resim` : '',
+      ad.video ? (ad.video.type === 'youtube' ? '▶️ YouTube' : '🎬 Video') : '',
+    ].filter(Boolean).join(' · ');
+    card.innerHTML = `
+      <div class="ad-thumb">${media}</div>
+      <div class="ad-info">
+        <div class="ad-item-title">${esc(ad.title)}</div>
+        <div class="ad-item-meta">${ad.active === false ? '🙈 Gizli' : '🟢 Yayında'} · ${esc(new Date(ad.created_at).toLocaleDateString('tr-TR'))}${tags ? ' · ' + tags : ''}</div>
+        ${ad.body ? `<div class="ad-item-body">${esc(ad.body)}</div>` : ''}
+      </div>
+      <div class="ad-item-actions">
+        <button type="button" class="btn-sm" data-act="toggle">${ad.active === false ? '👁 Yayınla' : '🙈 Gizle'}</button>
+        <button type="button" class="btn-sm btn-delete" data-act="delete">🗑 Sil</button>
+      </div>`;
+    card.querySelector('[data-act="toggle"]').onclick = () => toggleAd(ad.id, ad.active === false);
+    card.querySelector('[data-act="delete"]').onclick = () => deleteAd(ad.id, ad.title);
+    list.appendChild(card);
+  });
+}
+
+async function toggleAd(id, active) {
+  const res = await api(`/api/admin/ads/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ active }) });
+  if (!res || !res.ok) return showToast('İlan güncellenemedi', 'error');
+  showToast(active ? 'İlan yeniden yayında' : 'İlan gizlendi', 'success');
+  loadAds();
+}
+
+async function deleteAd(id, title) {
+  if (!confirm(`"${title}" ilanı ve dosyaları kalıcı olarak silinsin mi?`)) return;
+  const res = await api(`/api/admin/ads/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  if (!res || !res.ok) return showToast('İlan silinemedi', 'error');
+  showToast('İlan silindi', 'success');
+  loadAds();
 }
