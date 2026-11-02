@@ -863,10 +863,88 @@ let adVideoUrl = null;
 let adVideoBusy = false;
 
 async function loadAds() {
+  loadFacebookStatus();
   const res = await api('/api/admin/ads');
   if (!res) return;
   renderAdList(await res.json());
   renderAdPhotos();
+}
+
+// ── Facebook sayfası ───────────────────────────────────────────
+let fbConnected = false;
+
+async function loadFacebookStatus() {
+  const res = await api('/api/admin/facebook');
+  if (!res) return;
+  const d = await res.json();
+  fbConnected = !!d.connected;
+  document.getElementById('fbStatus').textContent = d.connected
+    ? `✅ Bağlı: ${d.page_name} (facebook.com/${d.page_username})`
+    : `Bağlı değil. İlanları facebook.com/${d.page_username} sayfasına göndermek için bağlayın.`;
+  document.getElementById('fbToggleBtn').textContent = d.connected ? 'Bağlantıyı Kes' : 'Bağla';
+  document.getElementById('fbCard').classList.toggle('connected', fbConnected);
+  document.querySelectorAll('[data-act="facebook"]').forEach(b => { b.disabled = !fbConnected; });
+}
+
+async function toggleFbConnectForm() {
+  if (fbConnected) {
+    if (!confirm('Facebook sayfası bağlantısı kesilsin mi? İlanlar artık Facebook\'a gönderilemez.')) return;
+    await api('/api/admin/facebook', { method: 'DELETE' });
+    showToast('Facebook bağlantısı kesildi', 'success');
+    return loadFacebookStatus();
+  }
+  const form = document.getElementById('fbConnectForm');
+  form.hidden = !form.hidden;
+}
+
+async function connectFacebook(e) {
+  e.preventDefault();
+  const btn = document.getElementById('fbConnectBtn');
+  btn.disabled = true;
+  btn.textContent = 'Bağlanıyor...';
+  try {
+    const res = await api('/api/admin/facebook/connect', {
+      method: 'POST',
+      body: JSON.stringify({
+        appId: document.getElementById('fbAppId').value,
+        appSecret: document.getElementById('fbAppSecret').value,
+        userToken: document.getElementById('fbUserToken').value,
+      }),
+    });
+    if (!res) return;
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'Bağlanamadı');
+    document.getElementById('fbConnectForm').reset();
+    document.getElementById('fbConnectForm').hidden = true;
+    showToast(`📘 ${d.page_name} sayfası bağlandı`, 'success');
+    loadFacebookStatus();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sayfayı Bağla';
+  }
+}
+
+async function shareAdToFacebook(ad, btn) {
+  if (!fbConnected) return showToast('Önce yukarıdan Facebook sayfasını bağlayın', 'error');
+  const name = ad.title || 'Başlıksız ilan';
+  const again = ad.facebook ? '\n\nBu ilan daha önce paylaşıldı, tekrar paylaşılacak.' : '';
+  if (!confirm(`"${name}" Facebook sayfasında yayınlansın mı?${again}`)) return;
+  btn.disabled = true;
+  btn.textContent = 'Gönderiliyor...';
+  try {
+    const res = await api(`/api/admin/ads/${encodeURIComponent(ad.id)}/facebook`, { method: 'POST' });
+    if (!res) return;
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'Gönderilemedi');
+    showToast('📘 İlan Facebook sayfasında yayınlandı', 'success');
+    loadAds();
+  } catch (err) {
+    showToast(err.message, 'error');
+    btn.disabled = false;
+    btn.textContent = '📘 Facebook\'a Gönder';
+  }
 }
 
 // Tek kullanımlık adres al, dosyayı doğrudan depoya yükle (ilerleme göstererek)
@@ -1108,12 +1186,15 @@ function renderAdList(ads) {
       <div class="ad-info">
         <div class="ad-item-title">${ad.title ? esc(ad.title) : '<span class="ad-untitled">(Başlıksız ilan)</span>'}</div>
         <div class="ad-item-meta">${ad.active === false ? '🙈 Gizli' : '🟢 Yayında'} · ${esc(new Date(ad.created_at).toLocaleDateString('tr-TR'))}${tags ? ' · ' + tags : ''}</div>
+        ${ad.facebook ? `<a class="ad-fb-done" href="${esc(ad.facebook.url)}" target="_blank" rel="noopener">📘 Facebook'ta paylaşıldı · ${esc(new Date(ad.facebook.shared_at).toLocaleDateString('tr-TR'))}</a>` : ''}
         ${ad.body ? `<div class="ad-item-body">${esc(ad.body)}</div>` : ''}
       </div>
       <div class="ad-item-actions">
+        <button type="button" class="btn-sm btn-fb" data-act="facebook" ${fbConnected ? '' : 'disabled title="Önce Facebook sayfasını bağlayın"'}>📘 Facebook'a Gönder</button>
         <button type="button" class="btn-sm" data-act="toggle">${ad.active === false ? '👁 Yayınla' : '🙈 Gizle'}</button>
         <button type="button" class="btn-sm btn-delete" data-act="delete">🗑 Sil</button>
       </div>`;
+    card.querySelector('[data-act="facebook"]').onclick = (e) => shareAdToFacebook(ad, e.currentTarget);
     card.querySelector('[data-act="toggle"]').onclick = () => toggleAd(ad.id, ad.active === false);
     card.querySelector('[data-act="delete"]').onclick = () => deleteAd(ad.id, ad.title || 'Başlıksız');
     list.appendChild(card);

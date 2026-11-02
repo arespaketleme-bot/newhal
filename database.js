@@ -185,6 +185,25 @@ const db = {
     return true;
   },
 
+  /** Özel ayar dosyaları (ör. Facebook sayfa bağlantısı) — herkese kapalı depoda */
+  async getPrivateJson(name) {
+    const { data, error } = await supabase.storage.from(APP_DATA_BUCKET).download(name);
+    if (error || !data) return null;
+    try { return JSON.parse(await data.text()); } catch { return null; }
+  },
+
+  async savePrivateJson(name, value) {
+    const body = new Blob([JSON.stringify(value)], { type: 'application/json' });
+    const { error } = await supabase.storage.from(APP_DATA_BUCKET).upload(name, body, { upsert: true, contentType: 'application/json' });
+    if (error) console.error(`${name} kaydedilemedi:`, error.message);
+    return !error;
+  },
+
+  async deletePrivateJson(name) {
+    const { error } = await supabase.storage.from(APP_DATA_BUCKET).remove([name]);
+    return !error;
+  },
+
   adMediaUrlPrefix() {
     return supabase.storage.from(AD_MEDIA_BUCKET).getPublicUrl('').data.publicUrl;
   },

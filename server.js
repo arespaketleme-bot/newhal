@@ -491,6 +491,132 @@ app.delete('/api/admin/ads/:id', requireAdmin, async (req, res) => {
   res.json({ message: 'İlan silindi' });
 });
 
+// ── Facebook sayfasına ilan gönderme ──────────────────────────
+// Sayfa bağlantısı (kalıcı sayfa anahtarı) herkese kapalı depoda tutulur, tarayıcıya hiç gönderilmez.
+const FB_GRAPH        = `https://graph.facebook.com/${process.env.FB_GRAPH_VERSION || 'v24.0'}`;
+const FB_GRAPH_VIDEO  = `https://graph-video.facebook.com/${process.env.FB_GRAPH_VERSION || 'v24.0'}`;
+const FB_PAGE_USERNAME = process.env.FB_PAGE_USERNAME || 'halkompleksi33';
+const FB_CONFIG_FILE  = 'facebook.json';
+const SITE_URL        = process.env.SITE_URL || 'https://newhal.onrender.com';
+
+async function fbRequest(url, params, method = 'POST') {
+  const body = new URLSearchParams(params);
+  const res = method === 'GET'
+    ? await fetch(`${url}?${body}`)
+    : await fetch(url, { method, body });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.error) throw new Error(json.error ? json.error.message : `Facebook yanıt vermedi (${res.status})`);
+  return json;
+}
+
+function adFacebookMessage(ad) {
+  const parts = [ad.title, ad.body].filter(Boolean);
+  parts.push(`📍 NewHal · Mersin Hal Kompleksi Rehberi\n${SITE_URL}`);
+  return parts.join('\n\n');
+}
+
+// İlanın türüne göre doğru Facebook gönderisini oluşturur; gönderi kimliğini döner
+async function publishAdToFacebook(ad, fb) {
+  const token = fb.page_token;
+  const page = fb.page_id;
+  const message = adFacebookMessage(ad);
+  const images = ad.images || [];
+
+  if (ad.video && ad.video.type === 'file') {
+    const r = await fbRequest(`${FB_GRAPH_VIDEO}/${page}/videos`, {
+      file_url: ad.video.url, description: message, title: ad.title || '', access_token: token,
+    });
+    return { post_id: r.id, kind: 'video' };
+  }
+  if (ad.video && ad.video.type === 'youtube') {
+    const r = await fbRequest(`${FB_GRAPH}/${page}/feed`, {
+      message, link: `https://www.youtube.com/watch?v=${ad.video.id}`, access_token: token,
+    });
+    return { post_id: r.id, kind: 'link' };
+  }
+  if (images.length === 1) {
+    const r = await fbRequest(`${FB_GRAPH}/${page}/photos`, { url: images[0], message, access_token: token });
+    return { post_id: r.post_id || r.id, kind: 'photo' };
+  }
+  if (images.length > 1) {
+    // Önce resimler yayınlanmadan yüklenir, sonra tek gönderide birleştirilir
+    const ids = [];
+    for (const url of images) {
+      const r = await fbRequest(`${FB_GRAPH}/${page}/photos`, { url, published: 'false', access_token: token });
+      ids.push(r.id);
+    }
+    const params = { message, access_token: token };
+    ids.forEach((id, i) => { params[`attached_media[${i}]`] = JSON.stringify({ media_fbid: id }); });
+    const r = await fbRequest(`${FB_GRAPH}/${page}/feed`, params);
+    return { post_id: r.id, kind: 'album' };
+  }
+  const r = await fbRequest(`${FB_GRAPH}/${page}/feed`, { message, access_token: token });
+  return { post_id: r.id, kind: 'text' };
+}
+
+app.get('/api/admin/facebook', requireAdmin, async (req, res) => {
+  const fb = await db.getPrivateJson(FB_CONFIG_FILE);
+  res.json(fb ? { connected: true, page_name: fb.page_name, page_username: fb.page_username, connected_at: fb.connected_at }
+              : { connected: false, page_username: FB_PAGE_USERNAME });
+});
+
+// Kısa süreli kullanıcı anahtarını kalıcı sayfa anahtarına çevirip saklar (uygulama gizli anahtarı saklanmaz)
+app.post('/api/admin/facebook/connect', requireAdmin, async (req, res) => {
+  const appId = String(req.body.appId || '').trim();
+  const appSecret = String(req.body.appSecret || '').trim();
+  const userToken = String(req.body.userToken || '').trim();
+  if (!/^\d{5,20}$/.test(appId) || !appSecret || !userToken) {
+    return res.status(400).json({ error: 'Uygulama kimliği, gizli anahtar ve kullanıcı anahtarı gerekli' });
+  }
+  try {
+    const longLived = await fbRequest(`${FB_GRAPH}/oauth/access_token`, {
+      grant_type: 'fb_exchange_token', client_id: appId, client_secret: appSecret, fb_exchange_token: userToken,
+    }, 'GET');
+    const pages = await fbRequest(`${FB_GRAPH}/me/accounts`, {
+      fields: 'id,name,username,access_token,tasks', limit: '100', access_token: longLived.access_token,
+    }, 'GET');
+    const list = pages.data || [];
+    const page = list.find(p => (p.username || '').toLowerCase() === FB_PAGE_USERNAME.toLowerCase())
+      || (list.length === 1 ? list[0] : null);
+    if (!page) {
+      const names = list.map(p => p.name).join(', ') || 'hiç sayfa yok';
+      return res.status(400).json({ error: `"${FB_PAGE_USERNAME}" sayfası bulunamadı. Bu hesabın yönettiği sayfalar: ${names}` });
+    }
+    if (page.tasks && !page.tasks.includes('CREATE_CONTENT')) {
+      return res.status(400).json({ error: `"${page.name}" sayfasında gönderi paylaşma yetkiniz yok` });
+    }
+    const config = {
+      page_id: page.id, page_name: page.name, page_username: page.username || FB_PAGE_USERNAME,
+      page_token: page.access_token, connected_at: new Date().toISOString(),
+    };
+    if (!(await db.savePrivateJson(FB_CONFIG_FILE, config))) return res.status(500).json({ error: 'Bağlantı kaydedilemedi' });
+    res.json({ connected: true, page_name: config.page_name, page_username: config.page_username });
+  } catch (err) {
+    res.status(400).json({ error: 'Facebook: ' + err.message });
+  }
+});
+
+app.delete('/api/admin/facebook', requireAdmin, async (req, res) => {
+  await db.deletePrivateJson(FB_CONFIG_FILE);
+  res.json({ connected: false });
+});
+
+app.post('/api/admin/ads/:id/facebook', requireAdmin, async (req, res) => {
+  const fb = await db.getPrivateJson(FB_CONFIG_FILE);
+  if (!fb) return res.status(400).json({ error: 'Önce Facebook sayfasını bağlayın' });
+  const ads = await db.getAds();
+  const ad = ads.find(a => a.id === req.params.id);
+  if (!ad) return res.status(404).json({ error: 'İlan bulunamadı' });
+  try {
+    const result = await publishAdToFacebook(ad, fb);
+    ad.facebook = { ...result, url: `https://www.facebook.com/${result.post_id}`, shared_at: new Date().toISOString() };
+    await db.saveAds(ads);
+    res.json(ad.facebook);
+  } catch (err) {
+    res.status(400).json({ error: 'Facebook: ' + err.message });
+  }
+});
+
 // ── ADMIN: Etkinlik Kayıtları ─────────────────────────────────
 app.get('/api/admin/logs', requireAdmin, async (req, res) => {
   res.json(await db.getLogs());

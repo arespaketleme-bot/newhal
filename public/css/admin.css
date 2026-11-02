@@ -457,3 +457,37 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 
 .ad-paste-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
 .ad-untitled { color: var(--text-3); font-style: italic; font-weight: 500; }
+
+/* ── Facebook bağlantısı ───────────────────────────────────── */
+.fb-card {
+  margin-top: 20px; max-width: 760px; padding: 14px 16px; border-radius: 14px;
+  border: 1px solid rgba(24,119,242,0.35); background: rgba(24,119,242,0.06);
+}
+.fb-card.connected { border-color: rgba(34,197,94,0.35); background: rgba(34,197,94,0.05); }
+.fb-card-head { display: flex; align-items: center; gap: 12px; }
+.fb-logo {
+  width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%; background: #1877f2; color: #fff;
+  display: flex; align-items: center; justify-content: center; font: 800 22px/1 Arial, sans-serif;
+}
+.fb-card-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.fb-card-text strong { color: var(--text-1); font-size: 14px; }
+.fb-card-text span { color: var(--text-3); font-size: 12px; }
+.fb-connect { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.fb-connect[hidden] { display: none; }
+.fb-connect label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-2); }
+.fb-connect input {
+  padding: 10px 12px; border-radius: 10px; font-size: 14px; font-family: inherit;
+  background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: var(--text-1); outline: none;
+}
+.fb-connect input:focus { border-color: rgba(24,119,242,0.6); }
+.fb-btn { background: #1877f2 !important; }
+.ad-item-actions .btn-sm.btn-fb { color: #8ab4ff; border-color: rgba(24,119,242,0.4); }
+.ad-item-actions .btn-sm.btn-fb:hover:not(:disabled) { background: rgba(24,119,242,0.15); color: #fff; }
+.ad-item-actions .btn-sm:disabled { opacity: 0.45; cursor: not-allowed; }
+.ad-fb-done { display: inline-block; margin-top: 4px; font-size: 12px; color: #8ab4ff; text-decoration: none; }
+.ad-fb-done:hover { text-decoration: underline; }
+@media (max-width: 640px) {
+  .fb-card-head { flex-wrap: wrap; }
+  .ad-item-actions { flex-wrap: wrap; }
+  .fb-connect input { font-size: 16px; }
+}
