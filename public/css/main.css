@@ -1499,3 +1499,65 @@ img.ad-media {
   aspect-ratio: auto; height: auto; max-height: 520px; object-fit: contain;
   background: radial-gradient(circle at 50% 40%, rgba(16,185,129,0.12), #070b09 70%);
 }
+
+
+/* ── İlan kartı: dokununca büyür ───────────────────────────── */
+.ad-card { cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
+.ad-card:hover { border-color: var(--border-g); transform: translateY(-2px); box-shadow: 0 20px 44px rgba(0,0,0,0.35), var(--shadow-g); }
+.ad-card:focus-visible { outline: 2px solid var(--green-400); outline-offset: 2px; }
+.ad-card .ad-body p { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ── İlan büyütme penceresi ────────────────────────────────── */
+.ad-viewer {
+  position: fixed; inset: 0; z-index: 280; display: flex; align-items: center; justify-content: center;
+  padding: 24px; background: rgba(2, 6, 4, 0.88); backdrop-filter: blur(6px); animation: fadeIn 0.18s ease;
+}
+.ad-viewer[hidden] { display: none; }
+body.ad-viewer-open { overflow: hidden; }
+.ad-viewer-box {
+  position: relative; width: min(1000px, 100%); max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: #0b120e; border: 1px solid var(--border-g); border-radius: 20px; box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+}
+.ad-viewer-close {
+  position: absolute; top: 12px; right: 12px; z-index: 3; width: 42px; height: 42px; border-radius: 50%;
+  border: none; cursor: pointer; font-size: 16px; color: #fff; background: rgba(0,0,0,0.6);
+}
+.ad-viewer-close:hover { background: rgba(0,0,0,0.85); }
+.ad-viewer-stage { position: relative; flex: 0 1 auto; min-height: 0; background: #000; display: flex; align-items: center; justify-content: center; }
+.ad-viewer.no-media .ad-viewer-stage { display: none; }
+.ad-viewer-media { width: 100%; display: flex; align-items: center; justify-content: center; }
+.ad-viewer-media img, .ad-viewer-media video {
+  display: block; max-width: 100%; max-height: 70vh; max-height: 70dvh; object-fit: contain;
+}
+.ad-viewer-media iframe { display: block; width: 100%; aspect-ratio: 16 / 9; max-height: 70vh; border: 0; }
+.ad-viewer-nav {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+  width: 46px; height: 46px; border-radius: 50%; border: none; cursor: pointer;
+  font-size: 30px; line-height: 1; color: #fff; background: rgba(0,0,0,0.55);
+}
+.ad-viewer-nav[hidden] { display: none; }
+.ad-viewer-nav.prev { left: 12px; }
+.ad-viewer-nav.next { right: 12px; }
+.ad-viewer-nav:hover { background: rgba(16,185,129,0.6); }
+.ad-viewer-count {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+  font-size: 12px; color: #fff; background: rgba(0,0,0,0.55); padding: 3px 10px; border-radius: 999px;
+}
+.ad-viewer-count:empty { display: none; }
+.ad-viewer-info { padding: 18px 22px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.ad-viewer.no-media .ad-viewer-info { padding-top: 26px; padding-right: 64px; }
+.ad-viewer-info h3 { font-size: 22px; color: var(--text-1); line-height: 1.3; }
+.ad-viewer-info p { font-size: 15px; color: var(--text-2); line-height: 1.65; white-space: pre-line; overflow-wrap: anywhere; }
+.ad-viewer-info time { font-size: 12px; color: var(--text-3); }
+
+@media (max-width: 768px) {
+  .ad-viewer { padding: 0; align-items: stretch; }
+  .ad-viewer-box { width: 100%; max-height: none; height: 100vh; height: 100dvh; border-radius: 0; border: none; }
+  .ad-viewer-stage { flex: 0 0 auto; }
+  .ad-viewer-media img, .ad-viewer-media video { max-height: 62vh; max-height: 62dvh; }
+  .ad-viewer-info { flex: 1; padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); }
+  .ad-viewer-info h3 { font-size: 19px; }
+  .ad-viewer-close { top: calc(10px + env(safe-area-inset-top)); }
+}
+@media (prefers-reduced-motion: reduce) { .ad-viewer { animation: none; } .ad-card { transition: none; } }

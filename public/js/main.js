@@ -1785,15 +1785,7 @@ function buildAdCard(ad) {
     yt.setAttribute('aria-label', 'Videoyu oynat');
     yt.style.backgroundImage = `url("https://i.ytimg.com/vi/${encodeURIComponent(ad.video.id)}/hqdefault.jpg")`;
     yt.innerHTML = '<span class="ad-play">▶</span>';
-    yt.onclick = () => {
-      const iframe = document.createElement('iframe');
-      iframe.className = 'ad-media';
-      iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(ad.video.id)}?autoplay=1&rel=0`;
-      iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
-      iframe.allowFullscreen = true;
-      iframe.title = ad.title || 'İlan videosu';
-      yt.replaceWith(iframe);
-    };
+    yt.onclick = (e) => { e.stopPropagation(); openAdViewer(ad, 0); };
     card.appendChild(yt);
   } else if (images.length) {
     const main = document.createElement('img');
@@ -1809,7 +1801,7 @@ function buildAdCard(ad) {
   if (thumbs.length) {
     const strip = document.createElement('div');
     strip.className = 'ad-thumbs';
-    thumbs.forEach(url => {
+    thumbs.forEach((url, i) => {
       const a = document.createElement('a');
       a.href = url;
       a.target = '_blank';
@@ -1818,9 +1810,7 @@ function buildAdCard(ad) {
       img.src = url;
       img.alt = '';
       img.loading = 'lazy';
-      if (!ad.video) {
-        a.onclick = (e) => { e.preventDefault(); card.querySelector('img.ad-media').src = url; };
-      }
+      a.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openAdViewer(ad, (ad.video ? 1 : 0) + i); };
       a.appendChild(img);
       strip.appendChild(a);
     });
@@ -1845,5 +1835,151 @@ function buildAdCard(ad) {
   body.appendChild(date);
   card.appendChild(body);
   if (!images.length && !ad.video) card.classList.add('text-only');
+
+  card.tabIndex = 0;
+  card.setAttribute('role', 'button');
+  card.setAttribute('aria-label', `${ad.title || 'İlan'}: büyüt`);
+  card.addEventListener('click', (e) => {
+    if (e.target.closest('video')) return;
+    openAdViewer(ad, 0);
+  });
+  card.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAdViewer(ad, 0); }
+  });
   return card;
 }
+
+// ── İlan büyütme penceresi ────────────────────────────────────
+let adViewer = null;   // { ad, items, index }
+
+// Pencerede gösterilecek parçalar: önce video (varsa), sonra resimler
+function adViewerItems(ad) {
+  const items = [];
+  if (ad.video) items.push({ kind: ad.video.type === 'youtube' ? 'youtube' : 'video', value: ad.video.type === 'youtube' ? ad.video.id : ad.video.url });
+  (ad.images || []).forEach(url => items.push({ kind: 'image', value: url }));
+  return items;
+}
+
+function ensureAdViewerDom() {
+  let el = document.getElementById('adViewer');
+  if (el) return el;
+  el = document.createElement('div');
+  el.id = 'adViewer';
+  el.className = 'ad-viewer';
+  el.hidden = true;
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  el.innerHTML = `
+    <div class="ad-viewer-box">
+      <button type="button" class="ad-viewer-close" aria-label="Kapat">✕</button>
+      <div class="ad-viewer-stage">
+        <button type="button" class="ad-viewer-nav prev" aria-label="Önceki">‹</button>
+        <div class="ad-viewer-media"></div>
+        <button type="button" class="ad-viewer-nav next" aria-label="Sonraki">›</button>
+        <div class="ad-viewer-count"></div>
+      </div>
+      <div class="ad-viewer-info"></div>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', (e) => { if (e.target === el) closeAdViewer(); });
+  el.querySelector('.ad-viewer-close').onclick = closeAdViewer;
+  el.querySelector('.prev').onclick = () => stepAdViewer(-1);
+  el.querySelector('.next').onclick = () => stepAdViewer(1);
+  // Telefonda parmakla sağa/sola kaydırma
+  let startX = null;
+  const stage = el.querySelector('.ad-viewer-stage');
+  stage.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
+  stage.addEventListener('touchend', (e) => {
+    if (startX == null) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    startX = null;
+    if (Math.abs(dx) > 50) stepAdViewer(dx < 0 ? 1 : -1);
+  });
+  return el;
+}
+
+function openAdViewer(ad, index) {
+  const el = ensureAdViewerDom();
+  const firstOpen = !adViewer;
+  adViewer = { ad, items: adViewerItems(ad), index: index || 0 };
+  renderAdViewer();
+  el.hidden = false;
+  document.body.classList.add('ad-viewer-open');
+  // Telefonun geri tuşu pencereyi kapatsın
+  if (firstOpen) history.pushState({ adViewer: true }, '');
+  el.querySelector('.ad-viewer-close').focus({ preventScroll: true });
+}
+
+function closeAdViewer(fromHistory) {
+  const el = document.getElementById('adViewer');
+  if (!el || el.hidden) return;
+  el.hidden = true;
+  el.querySelector('.ad-viewer-media').innerHTML = '';   // videoyu durdur
+  document.body.classList.remove('ad-viewer-open');
+  adViewer = null;
+  if (fromHistory !== true && history.state && history.state.adViewer) history.back();
+}
+
+function stepAdViewer(dir) {
+  if (!adViewer || adViewer.items.length < 2) return;
+  adViewer.index = (adViewer.index + dir + adViewer.items.length) % adViewer.items.length;
+  renderAdViewer();
+}
+
+function renderAdViewer() {
+  const el = document.getElementById('adViewer');
+  const { ad, items, index } = adViewer;
+  const media = el.querySelector('.ad-viewer-media');
+  media.innerHTML = '';
+  const item = items[index];
+  el.classList.toggle('no-media', !item);
+  if (item && item.kind === 'image') {
+    const img = document.createElement('img');
+    img.src = item.value;
+    img.alt = ad.title || 'İlan resmi';
+    media.appendChild(img);
+  } else if (item && item.kind === 'video') {
+    const video = document.createElement('video');
+    video.src = item.value;
+    video.controls = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    media.appendChild(video);
+  } else if (item && item.kind === 'youtube') {
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(item.value)}?autoplay=1&rel=0`;
+    iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+    iframe.allowFullscreen = true;
+    iframe.title = ad.title || 'İlan videosu';
+    media.appendChild(iframe);
+  }
+  const multi = items.length > 1;
+  el.querySelectorAll('.ad-viewer-nav').forEach(b => { b.hidden = !multi; });
+  el.querySelector('.ad-viewer-count').textContent = multi ? `${index + 1} / ${items.length}` : '';
+
+  const info = el.querySelector('.ad-viewer-info');
+  info.innerHTML = '';
+  if (ad.title) {
+    const h = document.createElement('h3');
+    h.textContent = ad.title;
+    info.appendChild(h);
+  }
+  if (ad.body) {
+    const p = document.createElement('p');
+    p.textContent = ad.body;
+    info.appendChild(p);
+  }
+  const t = document.createElement('time');
+  t.dateTime = ad.created_at;
+  t.textContent = new Date(ad.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  info.appendChild(t);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (!adViewer) return;
+  if (e.key === 'Escape') { e.stopPropagation(); closeAdViewer(); }
+  else if (e.key === 'ArrowRight') stepAdViewer(1);
+  else if (e.key === 'ArrowLeft') stepAdViewer(-1);
+}, true);
+
+window.addEventListener('popstate', () => { if (adViewer) closeAdViewer(true); });
