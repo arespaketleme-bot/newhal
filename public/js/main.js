@@ -119,9 +119,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Açılış banner popup'ı tetikle
+  // Açılış banner popup'ı sadece ilk ziyarette göster
   const welcomePopup = document.getElementById('welcomePopup');
-  if (welcomePopup) {
+  let welcomeSeen = false;
+  try { welcomeSeen = localStorage.getItem('welcomeSeen') === '1'; } catch {}
+  if (welcomePopup && !welcomeSeen) {
     setTimeout(() => {
       welcomePopup.classList.add('open');
     }, 300);
@@ -256,10 +258,35 @@ async function loadPins() {
   }
 }
 
+// Yakın iğneleri sayılı yuvarlaklarda gruplar; yaklaştıkça tek tek açılır
+let pinCluster = null;
+function getPinCluster() {
+  if (pinCluster || typeof L.markerClusterGroup !== 'function') return pinCluster;
+  pinCluster = L.markerClusterGroup({
+    maxClusterRadius: 45,
+    disableClusteringAtZoom: 19,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    iconCreateFunction: (cluster) => {
+      const n = cluster.getChildCount();
+      const size = n < 10 ? 38 : n < 50 ? 46 : 54;
+      return L.divIcon({
+        html: `<div class="pin-cluster" style="width:${size}px;height:${size}px">${n}</div>`,
+        className: 'pin-cluster-wrap',
+        iconSize: [size, size],
+      });
+    },
+  });
+  map.addLayer(pinCluster);
+  return pinCluster;
+}
+
 function renderPins(pins) {
+  const cluster = getPinCluster();
+  if (cluster) cluster.clearLayers();
   // Haritadaki eski markerları temizle (temp hariç)
   map.eachLayer(layer => {
-    if (layer instanceof L.Marker && layer !== tempMarker) map.removeLayer(layer);
+    if (layer instanceof L.Marker && layer !== tempMarker && !(cluster && cluster.hasLayer(layer))) map.removeLayer(layer);
   });
 
   // Kartları temizle
@@ -277,7 +304,8 @@ function renderPins(pins) {
   // Haritaya ekle
   filtered.forEach(pin => {
     const emoji = CATEGORY_ICONS[pin.category] || '📦';
-    const marker = L.marker([pin.lat, pin.lng], { icon: createIcon(emoji) }).addTo(map);
+    const marker = L.marker([pin.lat, pin.lng], { icon: createIcon(emoji), title: pin.title });
+    if (cluster) cluster.addLayer(marker); else marker.addTo(map);
     
     // Popup shows contact info optionally
     marker.bindPopup(`
@@ -1389,6 +1417,7 @@ function closeWelcomePopup() {
   if (popup) {
     popup.classList.remove('open');
   }
+  try { localStorage.setItem('welcomeSeen', '1'); } catch {}
 }
 
 function closeWelcomePopupOnBg(e) {

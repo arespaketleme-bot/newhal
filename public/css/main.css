@@ -1357,3 +1357,13 @@ button, a { cursor: pointer; text-decoration: none; border: none; background: no
   .location-picking .bottom-nav { display: none; }
   .modal-actions .btn-primary { flex: 2; white-space: nowrap; }
 }
+
+/* ── Harita iğne grupları ──────────────────────────────────── */
+.pin-cluster-wrap { background: none; border: none; }
+.pin-cluster {
+  display: flex; align-items: center; justify-content: center; border-radius: 50%;
+  font-family: var(--font-head); font-weight: 800; font-size: 14px; color: #052e16;
+  background: radial-gradient(circle at 35% 30%, #6ee7b7, var(--green-500));
+  border: 3px solid rgba(255,255,255,0.85);
+  box-shadow: 0 0 0 6px rgba(16,185,129,0.25), 0 6px 16px rgba(0,0,0,0.35);
+}
