@@ -545,3 +545,18 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 .ad-item-actions .btn-sm.btn-wa:hover { background: rgba(37,211,102,0.14); color: #fff; }
 .ad-wa-done { margin-top: 4px; font-size: 12px; color: #4ade80; }
 @media (max-width: 640px) { .wa-body textarea { font-size: 16px; } }
+
+/* ── İlan numarası ve düzenleme ────────────────────────────── */
+.ad-item-no {
+  display: inline-block; padding: 1px 7px; margin-right: 4px; border-radius: 6px; font-size: 12px; font-weight: 800;
+  color: var(--green-400); background: rgba(34,197,94,0.1); border: 1px solid var(--border-g); font-variant-numeric: tabular-nums;
+}
+.ad-form.editing { border-color: rgba(96,165,250,0.6); box-shadow: 0 0 0 3px rgba(96,165,250,0.12); }
+.ad-edit-banner {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px;
+  background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.35); color: #bfdbfe; font-size: 13px;
+}
+.ad-edit-banner[hidden] { display: none; }
+.ad-edit-banner strong { flex: 1; }
+.ad-item-actions .btn-sm.btn-edit-ad { color: #93c5fd; border-color: rgba(96,165,250,0.4); }
+.ad-item-actions .btn-sm.btn-edit-ad:hover { background: rgba(96,165,250,0.14); color: #fff; }

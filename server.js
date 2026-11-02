@@ -3,6 +3,7 @@ const express = require('express');
 const cors    = require('cors');
 const jwt     = require('jsonwebtoken');
 const path    = require('path');
+const fs      = require('fs');
 const crypto  = require('crypto');
 const db      = require('./database');
 const bcrypt  = require('bcryptjs');
@@ -17,6 +18,35 @@ app.use(cors());
 // Fotoğraf yükleme kendi (daha büyük) sınırıyla ayrıca okunur
 const jsonSmall = express.json();
 app.use((req, res, next) => (req.path === '/api/uploads' ? next() : jsonSmall(req, res, next)));
+// "/?ilan=<kimlik>" bağlantısı paylaşılınca Facebook/WhatsApp önizlemesi ilanın kendi resmi ve başlığıyla çıksın
+const INDEX_HTML = path.join(__dirname, 'public', 'index.html');
+const escAttr = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+app.use(async (req, res, next) => {
+  if (req.method !== 'GET' || req.path !== '/' || !req.query.ilan) return next();
+  try {
+    const ad = (await db.getAds()).find(a => a.id === String(req.query.ilan) && a.active !== false && !a.pending);
+    if (!ad) return next();
+    const siteUrl = process.env.SITE_URL || 'https://newhal.onrender.com';
+    const summary = (ad.title || ad.body || 'İlan').replace(/\s+/g, ' ').trim();
+    const title = `#${ad.no} · ${summary.slice(0, 70)} | NewHal İlanlar`;
+    const desc = (ad.body || ad.title || 'Mersin Hal Kompleksi ilanı').replace(/\s+/g, ' ').trim().slice(0, 200);
+    const image = (ad.images || [])[0]
+      || (ad.video && ad.video.type === 'youtube' ? `https://i.ytimg.com/vi/${ad.video.id}/hqdefault.jpg` : `${siteUrl}/img/ilan-logo.jpg`);
+    const url = `${siteUrl}/?ilan=${encodeURIComponent(ad.id)}`;
+    let html = fs.readFileSync(INDEX_HTML, 'utf8');
+    const setMeta = (prop, value) => {
+      html = html.replace(new RegExp(`(<meta property="${prop}" content=")[^"]*(")`), `$1${escAttr(value)}$2`);
+    };
+    setMeta('og:url', url); setMeta('twitter:url', url);
+    setMeta('og:title', title); setMeta('twitter:title', title);
+    setMeta('og:description', desc); setMeta('twitter:description', desc);
+    setMeta('og:image', image); setMeta('twitter:image', image);
+    html = html.replace(/<title>[^<]*<\/title>/, `<title>${escAttr(title)}</title>`);
+    res.set('Cache-Control', 'no-cache').type('html').send(html);
+  } catch (err) {
+    next();
+  }
+});
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(passport.initialize());
 
@@ -480,7 +510,7 @@ app.post('/api/ads', requireAuth, async (req, res) => {
 app.get('/api/my-ads', requireAuth, async (req, res) => {
   const ads = (await db.getAds()).filter(a => a.owner && a.owner.id === req.user.id);
   res.json(ads.sort((a, b) => b.created_at.localeCompare(a.created_at)).map(a => ({
-    id: a.id, title: a.title, body: a.body, images: a.images, video: a.video, created_at: a.created_at,
+    id: a.id, no: a.no, title: a.title, body: a.body, images: a.images, video: a.video, created_at: a.created_at,
     status: a.pending ? 'pending' : a.active === false ? 'hidden' : 'live',
   })));
 });
@@ -524,6 +554,27 @@ app.post('/api/admin/ads', requireAdmin, async (req, res) => {
   const created = { id: crypto.randomUUID(), ...ad, featured: !!req.body.featured, active: true, created_at: new Date().toISOString() };
   if (!(await db.saveAds([created, ...ads]))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
   res.status(201).json(created);
+});
+
+// İlanı düzenle: içerik değişir; numara, tarih, ekleyen, paylaşım bilgileri korunur
+app.put('/api/admin/ads/:id', requireAdmin, async (req, res) => {
+  const ads = await db.getAds();
+  const ad = ads.find(a => a.id === req.params.id);
+  if (!ad) return res.status(404).json({ error: 'İlan bulunamadı' });
+  const next = cleanAd(req.body);
+  if (!next.title && !next.body && !next.images.length && !next.video) {
+    return res.status(400).json({ error: 'İlan boş olamaz: yazı, resim ya da video ekleyin' });
+  }
+  if (req.body.video && req.body.video.type === 'youtube' && !next.video) {
+    return res.status(400).json({ error: 'YouTube bağlantısı anlaşılamadı' });
+  }
+  const before = adMedia(ad).filter(Boolean);
+  Object.assign(ad, next, { featured: !!req.body.featured, updated_at: new Date().toISOString() });
+  if (!(await db.saveAds(ads))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
+  // Artık kullanılmayan resim/video dosyalarını depodan sil
+  const now = new Set(adMedia(ad).filter(Boolean));
+  await deleteAdFiles({ images: before.filter(u => !now.has(u)) });
+  res.json(ad);
 });
 
 // Yayından kaldır / yeniden yayınla

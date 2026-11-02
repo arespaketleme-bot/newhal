@@ -1783,6 +1783,8 @@ function renderAds(ads) {
 
 // Başlık ve metinde arar; telefon numarası rakamlarla da bulunur ("0537 032" = "+90 537 032")
 function adMatchesSearch(ad, query) {
+  const noMatch = query.trim().match(/^#?\s*(\d{4,6})$/);
+  if (noMatch && ad.no === Number(noMatch[1])) return true;
   const text = normalizeSearch(`${ad.title || ''} ${ad.body || ''}`);
   const digits = `${ad.title || ''} ${ad.body || ''}`.replace(/\D/g, '');
   return normalizeSearch(query).split(' ').every(word => {
@@ -1904,10 +1906,8 @@ function buildAdCard(ad) {
     appendTextWithPhoneLinks(text, ad.body);
     body.appendChild(text);
   }
-  const date = document.createElement('time');
-  date.dateTime = ad.created_at;
-  date.textContent = new Date(ad.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-  body.appendChild(date);
+  body.appendChild(adMetaLine(ad));
+  body.appendChild(buildShareBar(ad));
   card.appendChild(body);
   if (ad.featured) {
     card.classList.add('is-featured');
@@ -2085,10 +2085,8 @@ function renderAdViewer() {
     appendTextWithPhoneLinks(p, ad.body);
     info.appendChild(p);
   }
-  const t = document.createElement('time');
-  t.dateTime = ad.created_at;
-  t.textContent = new Date(ad.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-  info.appendChild(t);
+  info.appendChild(adMetaLine(ad));
+  info.appendChild(buildShareBar(ad, true));
 }
 
 document.addEventListener('keydown', (e) => {
@@ -2157,10 +2155,19 @@ function renderVitrin(ads) {
 
     const overlay = document.createElement('div');
     overlay.className = 'vitrin-overlay';
+    const badges = document.createElement('div');
+    badges.className = 'vitrin-badges';
     const badge = document.createElement('span');
     badge.className = 'vitrin-badge';
     badge.textContent = '⭐ Vitrin';
-    overlay.appendChild(badge);
+    badges.appendChild(badge);
+    if (ad.no) {
+      const no = document.createElement('span');
+      no.className = 'ad-no ad-no-light';
+      no.textContent = `#${ad.no}`;
+      badges.appendChild(no);
+    }
+    overlay.appendChild(badges);
     if (ad.title) {
       const h = document.createElement('h3');
       h.textContent = ad.title;
@@ -2326,4 +2333,101 @@ async function deleteMyAd(id) {
   showToast('İlan silindi', 'success');
   loadMyAds();
   loadAds();
+}
+
+
+// ── İlan numarası ve paylaşım ─────────────────────────────────
+function adMetaLine(ad) {
+  const line = document.createElement('div');
+  line.className = 'ad-meta';
+  if (ad.no) {
+    const no = document.createElement('span');
+    no.className = 'ad-no';
+    no.textContent = `#${ad.no}`;
+    line.appendChild(no);
+  }
+  const t = document.createElement('time');
+  t.dateTime = ad.created_at;
+  t.textContent = new Date(ad.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  line.appendChild(t);
+  return line;
+}
+
+function adShareUrl(ad) {
+  return `${location.origin}/?ilan=${encodeURIComponent(ad.id)}`;
+}
+
+function adShareText(ad) {
+  const s = (ad.title || ad.body || 'İlan').replace(/\s+/g, ' ').trim();
+  return `${ad.no ? `#${ad.no} · ` : ''}${s.length > 90 ? s.slice(0, 87) + '...' : s} | NewHal Mersin Hal İlanları`;
+}
+
+const SHARE_ICONS = {
+  whatsapp: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.1-.2.3-.8.9-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.6-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.6 0-3.1-.4-4.4-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg>',
+  facebook: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 8V6.3c0-.8.2-1.3 1.4-1.3H17V2.2C16.7 2.1 15.7 2 14.6 2 12.2 2 10.6 3.4 10.6 6v2H8v3.1h2.6V22H14V11.1h2.7L17 8h-3z"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.8 3h3.1l-6.7 7.7L22 21h-6.2l-4.8-6.3L5.5 21H2.4l7.2-8.2L2 3h6.3l4.4 5.8L17.8 3zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5z"/></svg>',
+  telegram: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.3 18.6 19.8c-.2 1.1-.9 1.4-1.8.9l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.2-8.3c.4-.4-.1-.6-.6-.2L6 13.4l-4.9-1.5c-1.1-.3-1.1-1.1.2-1.6L20.5 3c.9-.3 1.7.2 1.4 1.3z"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>',
+  more: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>',
+};
+
+function buildShareBar(ad, large) {
+  const bar = document.createElement('div');
+  bar.className = 'ad-share' + (large ? ' large' : '');
+  // Karttaki büyütmeyi tetiklemesin
+  bar.addEventListener('click', (e) => e.stopPropagation());
+  bar.addEventListener('keydown', (e) => e.stopPropagation());
+
+  const url = adShareUrl(ad);
+  const text = adShareText(ad);
+  const targets = [
+    ['whatsapp', 'WhatsApp', `https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`],
+    ['facebook', 'Facebook', `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`],
+    ['x', 'X', `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`],
+    ['telegram', 'Telegram', `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`],
+  ];
+  const label = document.createElement('span');
+  label.className = 'ad-share-label';
+  label.textContent = 'Paylaş:';
+  bar.appendChild(label);
+  targets.forEach(([key, name, href]) => {
+    const a = document.createElement('a');
+    a.className = `ad-share-btn ${key}`;
+    a.href = href;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.title = `${name}'ta paylaş`;
+    a.setAttribute('aria-label', `${name}'ta paylaş`);
+    a.innerHTML = SHARE_ICONS[key];
+    bar.appendChild(a);
+  });
+
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.className = 'ad-share-btn copy';
+  copy.title = 'Bağlantıyı kopyala';
+  copy.setAttribute('aria-label', 'Bağlantıyı kopyala');
+  copy.innerHTML = SHARE_ICONS.copy;
+  copy.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('🔗 İlan bağlantısı kopyalandı', 'success');
+    } catch {
+      prompt('Bağlantıyı kopyalayın:', url);
+    }
+  };
+  bar.appendChild(copy);
+
+  // Telefonda Instagram, Messenger vb. için cihazın kendi paylaş menüsü
+  if (navigator.share) {
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'ad-share-btn more';
+    more.title = 'Diğer uygulamalar';
+    more.setAttribute('aria-label', 'Diğer uygulamalarda paylaş');
+    more.innerHTML = SHARE_ICONS.more;
+    more.onclick = () => navigator.share({ title: text, text, url }).catch(() => {});
+    bar.appendChild(more);
+  }
+  return bar;
 }

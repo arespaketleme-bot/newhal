@@ -1126,8 +1126,14 @@ async function uploadAdVideo(file) {
   }
 }
 
+let editingAdId = null;
+
 function resetAdForm() {
   document.getElementById('adForm').reset();
+  editingAdId = null;
+  document.getElementById('adEditBanner').hidden = true;
+  document.getElementById('adForm').classList.remove('editing');
+  document.getElementById('adSubmitBtn').textContent = '📢 İlanı Yayınla';
   adPhotoUrls = [];
   adVideoUrl = null;
   setAdVideoType('none');
@@ -1154,8 +1160,9 @@ async function submitAd(e) {
   const btn = document.getElementById('adSubmitBtn');
   btn.disabled = true;
   try {
-    const res = await api('/api/admin/ads', {
-      method: 'POST',
+    const editing = editingAdId;
+    const res = await api(editing ? `/api/admin/ads/${encodeURIComponent(editing)}` : '/api/admin/ads', {
+      method: editing ? 'PUT' : 'POST',
       body: JSON.stringify({
         title: document.getElementById('adTitle').value,
         body: document.getElementById('adBody').value,
@@ -1167,7 +1174,7 @@ async function submitAd(e) {
     if (!res) return;
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'İlan kaydedilemedi');
-    showToast('📢 İlan yayınlandı', 'success');
+    showToast(editing ? '✏️ İlan güncellendi' : '📢 İlan yayınlandı', 'success');
     resetAdForm();
     loadAds();
   } catch (err) {
@@ -1197,13 +1204,14 @@ function renderAdList(ads) {
     card.innerHTML = `
       <div class="ad-thumb">${media}</div>
       <div class="ad-info">
-        <div class="ad-item-title">${ad.title ? esc(ad.title) : '<span class="ad-untitled">(Başlıksız ilan)</span>'}</div>
+        <div class="ad-item-title">${ad.no ? `<span class="ad-item-no">#${ad.no}</span> ` : ''}${ad.title ? esc(ad.title) : '<span class="ad-untitled">(Başlıksız ilan)</span>'}</div>
         <div class="ad-item-meta">${ad.featured ? '<span class="ad-vitrin-badge">⭐ Vitrin</span> ' : ''}${ad.pending ? '<span class="ad-pending-badge">⏳ Onay bekliyor</span>' : ad.active === false ? '🙈 Gizli' : '🟢 Yayında'}${ad.owner ? ` · 👤 ${esc(ad.owner.name)}` : ''} · ${esc(new Date(ad.created_at).toLocaleDateString('tr-TR'))}${tags ? ' · ' + tags : ''}</div>
         ${ad.whatsapp_sent_at ? `<div class="ad-wa-done">💬 WhatsApp'tan gönderildi · ${esc(new Date(ad.whatsapp_sent_at).toLocaleDateString('tr-TR'))}</div>` : ''}
         ${ad.facebook ? `<a class="ad-fb-done" href="${esc(ad.facebook.url)}" target="_blank" rel="noopener">📘 Facebook'ta paylaşıldı · ${esc(new Date(ad.facebook.shared_at).toLocaleDateString('tr-TR'))}</a>` : ''}
         ${ad.body ? `<div class="ad-item-body">${esc(ad.body)}</div>` : ''}
       </div>
       <div class="ad-item-actions">
+        <button type="button" class="btn-sm btn-edit-ad" data-act="edit">✏️ Düzenle</button>
         ${adWhatsappNumber(ad) ? `<button type="button" class="btn-sm btn-wa" data-act="whatsapp">💬 WhatsApp'tan Gönder</button>` : ''}
         <button type="button" class="btn-sm btn-fb" data-act="facebook" ${fbConnected ? '' : 'disabled title="Önce Facebook sayfasını bağlayın"'}>📘 Facebook'a Gönder</button>
         <button type="button" class="btn-sm btn-vitrin" data-act="featured">${ad.featured ? '☆ Vitrinden Çıkar' : '⭐ Vitrine Ekle'}</button>
@@ -1211,6 +1219,7 @@ function renderAdList(ads) {
         <button type="button" class="btn-sm btn-delete" data-act="delete">🗑 Sil</button>
       </div>`;
     card.querySelector('[data-act="facebook"]').onclick = (e) => shareAdToFacebook(ad, e.currentTarget);
+    card.querySelector('[data-act="edit"]').onclick = () => editAd(ad);
     const waBtn = card.querySelector('[data-act="whatsapp"]');
     if (waBtn) waBtn.onclick = () => sendAdWhatsapp(ad);
     card.querySelector('[data-act="featured"]').onclick = () => setAdFeatured(ad.id, !ad.featured);
@@ -1251,7 +1260,7 @@ const DEFAULT_WA_TEMPLATE = [
   '',
   'Mersin Manşet olarak yazıyoruz. İlanınız NewHal · Mersin Hal Kompleksi Rehberi\'nde yayında 🎉',
   '',
-  '📌 {baslik}',
+  '📌 #{no} · {baslik}',
   '🔗 {link}',
   '',
   '✅ NewHal\'de ilanlarınızı *ücretsiz* yayınlayabilir, işletmenizi hal haritasına ekleyebilirsiniz.',
@@ -1288,6 +1297,7 @@ function adSummary(ad) {
 
 function buildWaMessage(ad) {
   return waTemplate
+    .split('{no}').join(ad.no ? String(ad.no) : '')
     .split('{baslik}').join(adSummary(ad))
     .split('{link}').join(`${SITE_URL}/?ilan=${encodeURIComponent(ad.id)}`)
     .split('{site}').join(SITE_URL);
@@ -1325,4 +1335,38 @@ async function saveWaTemplate() {
 function resetWaTemplate() {
   document.getElementById('waTemplate').value = DEFAULT_WA_TEMPLATE;
   showToast('Varsayılan şablon yüklendi, kaydetmeyi unutmayın', 'success');
+}
+
+
+// ── İlanı düzenle: formu ilanın bilgileriyle doldurur ──────────
+function editAd(ad) {
+  resetAdForm();
+  editingAdId = ad.id;
+  document.getElementById('adTitle').value = ad.title || '';
+  document.getElementById('adBody').value = ad.body || '';
+  document.getElementById('adFeatured').checked = !!ad.featured;
+  adPhotoUrls = [...(ad.images || [])];
+  renderAdPhotos();
+
+  const type = ad.video ? (ad.video.type === 'youtube' ? 'youtube' : 'file') : 'none';
+  document.querySelector(`input[name="adVideoType"][value="${type}"]`).checked = true;
+  setAdVideoType(type);
+  if (type === 'youtube') {
+    document.getElementById('adYoutube').value = `https://youtu.be/${ad.video.id}`;
+  } else if (type === 'file') {
+    adVideoUrl = ad.video.url;
+    const preview = document.getElementById('adVideoPreview');
+    preview.src = adVideoUrl;
+    preview.hidden = false;
+    document.getElementById('adVideoProgress').hidden = false;
+    document.getElementById('adVideoBar').style.width = '100%';
+    document.getElementById('adVideoText').textContent = '✅ Mevcut video (değiştirmek için yeni dosya seçin)';
+  }
+
+  document.getElementById('adEditLabel').textContent = `#${ad.no || ''} numaralı ilan düzenleniyor`;
+  document.getElementById('adEditBanner').hidden = false;
+  document.getElementById('adForm').classList.add('editing');
+  document.getElementById('adSubmitBtn').textContent = '💾 Değişiklikleri Kaydet';
+  document.getElementById('adForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.getElementById('adTitle').focus({ preventScroll: true });
 }

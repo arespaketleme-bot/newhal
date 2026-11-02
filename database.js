@@ -15,7 +15,18 @@ const AD_MEDIA_BUCKET  = 'ad-media';   // ilan resim ve videoları (herkese aç�
 const APP_DATA_BUCKET  = 'app-data';   // ilan listesi (özel)
 const ADS_FILE         = 'ads.json';
 const ADS_CACHE_MS     = 60 * 1000;
+const AD_FIRST_NO      = 1000;
 let adsCache = null;
+
+// Numarası olmayan ilanlara eskiden yeniye sıralı numara verir (#1000, #1001 ...); değişiklik olduysa true
+function assignAdNumbers(list) {
+  let next = Math.max(AD_FIRST_NO - 1, ...list.map(a => a.no || 0)) + 1;
+  let changed = false;
+  [...list].filter(a => !a.no)
+    .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+    .forEach(a => { a.no = next++; changed = true; });
+  return changed;
+}
 
 const db = {
   /** Kullanıcı İşlemleri */
@@ -171,10 +182,12 @@ const db = {
       try { list = JSON.parse(await data.text()); } catch { list = []; }
     }
     adsCache = { at: Date.now(), list };
+    if (assignAdNumbers(list)) await this.saveAds(list);   // eski ilanlar ilk okumada numaralanır
     return list;
   },
 
   async saveAds(list) {
+    assignAdNumbers(list);   // yeni ilan kaydedilirken numarasını alır
     const body = new Blob([JSON.stringify(list)], { type: 'application/json' });
     const { error } = await supabase.storage.from(APP_DATA_BUCKET).upload(ADS_FILE, body, { upsert: true, contentType: 'application/json' });
     if (error) {
