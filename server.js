@@ -460,7 +460,9 @@ app.post('/api/admin/ads/upload-url', requireAdmin, async (req, res) => {
 
 app.post('/api/admin/ads', requireAdmin, async (req, res) => {
   const ad = cleanAd(req.body);
-  if (!ad.title) return res.status(400).json({ error: 'İlan başlığı zorunlu' });
+  if (!ad.title && !ad.body && !ad.images.length && !ad.video) {
+    return res.status(400).json({ error: 'İlan boş olamaz: yazı, resim ya da video ekleyin' });
+  }
   if (req.body.video && req.body.video.type === 'youtube' && !ad.video) {
     return res.status(400).json({ error: 'YouTube bağlantısı anlaşılamadı' });
   }

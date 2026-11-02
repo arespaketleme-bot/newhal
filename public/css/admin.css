@@ -454,3 +454,6 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 .ad-item-actions .btn-sm:hover { border-color: var(--border-g); color: var(--text-1); }
 .ad-item-actions .btn-sm.btn-delete { color: #f87171; border-color: rgba(248,113,113,0.3); }
 .ad-item-actions .btn-sm.btn-delete:hover { background: rgba(248,113,113,0.1); }
+
+.ad-paste-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.ad-untitled { color: var(--text-3); font-style: italic; font-weight: 500; }

@@ -261,8 +261,8 @@
 
         <form class="ad-form" id="adForm" onsubmit="submitAd(event)">
           <div class="ad-field">
-            <label for="adTitle">Başlık <span class="ad-req">*</span></label>
-            <input type="text" id="adTitle" maxlength="120" placeholder="Örn: Hal girişinde kiralık dükkan" required />
+            <label for="adTitle">Başlık <span class="ad-hint">(isteğe bağlı)</span></label>
+            <input type="text" id="adTitle" maxlength="120" placeholder="Örn: Hal girişinde kiralık dükkan" />
           </div>
           <div class="ad-field">
             <label for="adBody">İlan metni</label>
@@ -271,6 +271,10 @@
           <div class="ad-field">
             <label>Resimler <span class="ad-hint">(isteğe bağlı, en fazla 5)</span></label>
             <div class="ad-photos" id="adPhotos"></div>
+            <div class="ad-paste-row">
+              <button type="button" class="btn-ghost-sm" onclick="pasteAdImageFromButton()">📋 Resim Yapıştır</button>
+              <span class="ad-hint">Kopyaladığın resmi bu sayfada <b>Ctrl+V</b> ile de yapıştırabilirsin.</span>
+            </div>
           </div>
           <div class="ad-field">
             <label>Video <span class="ad-hint">(isteğe bağlı)</span></label>

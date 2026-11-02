@@ -1791,7 +1791,7 @@ function buildAdCard(ad) {
       iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(ad.video.id)}?autoplay=1&rel=0`;
       iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
       iframe.allowFullscreen = true;
-      iframe.title = ad.title;
+      iframe.title = ad.title || 'İlan videosu';
       yt.replaceWith(iframe);
     };
     card.appendChild(yt);
@@ -1799,7 +1799,7 @@ function buildAdCard(ad) {
     const main = document.createElement('img');
     main.className = 'ad-media';
     main.src = images[0];
-    main.alt = ad.title;
+    main.alt = ad.title || 'İlan resmi';
     main.loading = 'lazy';
     card.appendChild(main);
   }
@@ -1829,9 +1829,11 @@ function buildAdCard(ad) {
 
   const body = document.createElement('div');
   body.className = 'ad-body';
-  const title = document.createElement('h3');
-  title.textContent = ad.title;
-  body.appendChild(title);
+  if (ad.title) {
+    const title = document.createElement('h3');
+    title.textContent = ad.title;
+    body.appendChild(title);
+  }
   if (ad.body) {
     const text = document.createElement('p');
     text.textContent = ad.body;

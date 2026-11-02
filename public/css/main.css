@@ -1494,3 +1494,8 @@ video.ad-media { object-fit: contain; }
   .ads-head h2 { font-size: 21px; }
   .ads-grid { grid-template-columns: 1fr; gap: 14px; }
 }
+/* İlan resmi kırpılmasın: dikey/kare resim tamamıyla, en fazla 520 px yükseklikte */
+img.ad-media {
+  aspect-ratio: auto; height: auto; max-height: 520px; object-fit: contain;
+  background: radial-gradient(circle at 50% 40%, rgba(16,185,129,0.12), #070b09 70%);
+}

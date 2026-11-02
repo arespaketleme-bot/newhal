@@ -964,6 +964,45 @@ async function addAdPhotos(files) {
   }));
 }
 
+// ── Resim yapıştırma (Ctrl+V ya da düğme) ─────────────────────
+function isAdsSectionOpen() {
+  const section = document.getElementById('sectionAds');
+  return section && section.classList.contains('active');
+}
+
+// Panodan gelen resimleri yükler; resim yoksa false döner
+function addPastedImages(files) {
+  const images = files.filter(f => f && /^image\//.test(f.type));
+  if (!images.length) return false;
+  addAdPhotos(images.map((f, i) => new File([f], `yapistirilan-${Date.now()}-${i}.png`, { type: f.type })));
+  showToast(`📋 ${images.length} resim yapıştırıldı, yükleniyor...`, 'success');
+  return true;
+}
+
+document.addEventListener('paste', (e) => {
+  if (!isAdsSectionOpen() || !e.clipboardData) return;
+  const files = [...e.clipboardData.items].filter(it => it.kind === 'file').map(it => it.getAsFile());
+  // Yazı kutusuna düz yazı yapıştırılıyorsa karışma
+  if (addPastedImages(files)) e.preventDefault();
+});
+
+async function pasteAdImageFromButton() {
+  if (!navigator.clipboard || !navigator.clipboard.read) {
+    return showToast('Bu tarayıcıda düğme çalışmıyor, Ctrl+V ile yapıştırın', 'error');
+  }
+  try {
+    const items = await navigator.clipboard.read();
+    const files = [];
+    for (const item of items) {
+      const type = item.types.find(t => t.startsWith('image/'));
+      if (type) files.push(new File([await item.getType(type)], 'pano.png', { type }));
+    }
+    if (!addPastedImages(files)) showToast('Panoda resim yok. Önce bir resmi kopyalayın.', 'error');
+  } catch {
+    showToast('Panoya erişim izni verilmedi, Ctrl+V ile yapıştırın', 'error');
+  }
+}
+
 function setAdVideoType(type) {
   document.getElementById('adVideoFileBox').hidden = type !== 'file';
   document.getElementById('adVideoYoutubeBox').hidden = type !== 'youtube';
@@ -1067,7 +1106,7 @@ function renderAdList(ads) {
     card.innerHTML = `
       <div class="ad-thumb">${media}</div>
       <div class="ad-info">
-        <div class="ad-item-title">${esc(ad.title)}</div>
+        <div class="ad-item-title">${ad.title ? esc(ad.title) : '<span class="ad-untitled">(Başlıksız ilan)</span>'}</div>
         <div class="ad-item-meta">${ad.active === false ? '🙈 Gizli' : '🟢 Yayında'} · ${esc(new Date(ad.created_at).toLocaleDateString('tr-TR'))}${tags ? ' · ' + tags : ''}</div>
         ${ad.body ? `<div class="ad-item-body">${esc(ad.body)}</div>` : ''}
       </div>
@@ -1076,7 +1115,7 @@ function renderAdList(ads) {
         <button type="button" class="btn-sm btn-delete" data-act="delete">🗑 Sil</button>
       </div>`;
     card.querySelector('[data-act="toggle"]').onclick = () => toggleAd(ad.id, ad.active === false);
-    card.querySelector('[data-act="delete"]').onclick = () => deleteAd(ad.id, ad.title);
+    card.querySelector('[data-act="delete"]').onclick = () => deleteAd(ad.id, ad.title || 'Başlıksız');
     list.appendChild(card);
   });
 }
