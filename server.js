@@ -401,6 +401,17 @@ app.delete('/api/admin/reports/:id', requireAdmin, async (req, res) => {
   res.json({ message: 'Bildirim silindi' });
 });
 
+// ── ADMIN: Etkinlik Kayıtları ─────────────────────────────────
+app.get('/api/admin/logs', requireAdmin, async (req, res) => {
+  res.json(await db.getLogs());
+});
+
+app.delete('/api/admin/logs', requireAdmin, async (req, res) => {
+  const ok = await db.clearLogs();
+  if (!ok) return res.status(500).json({ error: 'Loglar temizlenemedi' });
+  res.json({ message: 'Loglar temizlendi' });
+});
+
 // ── ADMIN: Sohbet Geçmişini Temizle ──────────────────────────────
 app.delete('/api/admin/chat', requireAdmin, async (req, res) => {
   await db.clearChat();
