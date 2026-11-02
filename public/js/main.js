@@ -1737,6 +1737,29 @@ if (isIos() && !isStandaloneApp()) {
   setTimeout(() => showInstallBanner(true), 4000);
 }
 
+// Menüdeki kalıcı "Uygulamayı Yükle": bant kapatılmış olsa da her zaman çalışır
+async function installFromMenu() {
+  if (isStandaloneApp()) return showToast('NewHal zaten uygulama olarak açık', 'success');
+  if (deferredInstallPrompt) return installApp();
+  try { localStorage.removeItem('installDismissedUntil'); } catch {}
+  const banner = document.getElementById('installBanner');
+  const hint = document.getElementById('installBannerHint');
+  document.getElementById('installBannerBtn').hidden = true;
+  if (isIos()) {
+    hint.textContent = 'Safari\'de alttaki Paylaş ⬆️ simgesine, sonra "Ana Ekrana Ekle"ye dokun';
+  } else if (/android/i.test(navigator.userAgent)) {
+    hint.textContent = 'Chrome\'da sağ üstteki ⋮ menüsüne, sonra "Ana ekrana ekle" ya da "Uygulamayı yükle"ye dokun';
+  } else {
+    hint.textContent = 'Adres çubuğunun sağındaki yükle simgesine ya da tarayıcı menüsünden "Uygulamayı yükle"ye tıkla';
+  }
+  banner.hidden = false;
+}
+
+// Uygulama olarak açıldıysa menüdeki düğmeyi gizle
+if (isStandaloneApp()) {
+  document.querySelectorAll('.install-nav-link').forEach(el => { el.hidden = true; });
+}
+
 
 // ── İlanlar (yönetici ekler, herkes görür) ────────────────────
 async function loadAds() {

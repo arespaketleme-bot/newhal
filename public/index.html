@@ -79,6 +79,7 @@
         <button class="btn-ghost" onclick="scrollToMap()">Harita</button>
         <button class="btn-ghost" onclick="showPinList()">İşletmeler</button>
         <button class="btn-ghost ads-nav-link" onclick="showAds()" hidden>İlanlar</button>
+        <button class="btn-ghost install-nav-link" onclick="installFromMenu()" title="NewHal'i uygulama olarak yükle">📲 Yükle</button>
         <a href="#" class="btn-outline" id="authBtn" onclick="openAuthModal()" style="display:flex;align-items:center;gap:6px;">
           👤 Google ile Devam Et
         </a>
@@ -95,6 +96,7 @@
       <button onclick="scrollToMap(); toggleMobileMenu()">Harita</button>
       <button onclick="showPinList(); toggleMobileMenu()">İşletmeler</button>
       <button class="ads-nav-link" onclick="showAds(); toggleMobileMenu()" hidden>📢 İlanlar</button>
+      <button class="install-nav-link" onclick="toggleMobileMenu(); installFromMenu()">📲 Uygulamayı Yükle</button>
       <a href="#" id="mobileAuthBtn" onclick="openAuthModal(); toggleMobileMenu()">Google ile Devam Et</a>
       <button class="btn-primary" onclick="openAddPinModal(); toggleMobileMenu()">İğne Ekle</button>
     </div>
