@@ -1821,12 +1821,12 @@ function buildAdCard(ad) {
   body.className = 'ad-body';
   if (ad.title) {
     const title = document.createElement('h3');
-    title.textContent = ad.title;
+    appendTextWithPhoneLinks(title, ad.title);
     body.appendChild(title);
   }
   if (ad.body) {
     const text = document.createElement('p');
-    text.textContent = ad.body;
+    appendTextWithPhoneLinks(text, ad.body);
     body.appendChild(text);
   }
   const date = document.createElement('time');
@@ -1847,6 +1847,36 @@ function buildAdCard(ad) {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAdViewer(ad, 0); }
   });
   return card;
+}
+
+// ── İlan metnindeki telefon numaraları dokununca aranır ───────
+// +90 537 032 88 42 · 0537 032 88 42 · 05370328842 · (0324) 234 10 00 · 0 324 234 10 00
+const PHONE_IN_TEXT = /(?:\+?90[\s.-]?)?\(?0?\s?[2-5]\d{2}\)?[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}(?!\d)/g;
+
+// Numarayı arama biçimine çevirir: +90XXXXXXXXXX; uymuyorsa null
+function toTelNumber(raw) {
+  let digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('90') && digits.length === 12) digits = digits.slice(2);
+  else if (digits.startsWith('0') && digits.length === 11) digits = digits.slice(1);
+  return digits.length === 10 && /^[2-5]/.test(digits) ? '+90' + digits : null;
+}
+
+// Metni ekler; içindeki numaraları "tel:" bağlantısı yapar (HTML yorumlamadan, güvenli)
+function appendTextWithPhoneLinks(parent, text) {
+  let last = 0;
+  for (const match of text.matchAll(PHONE_IN_TEXT)) {
+    const tel = toTelNumber(match[0]);
+    if (!tel) continue;
+    if (match.index > last) parent.appendChild(document.createTextNode(text.slice(last, match.index)));
+    const a = document.createElement('a');
+    a.href = `tel:${tel}`;
+    a.className = 'ad-phone';
+    a.textContent = `📞 ${match[0].trim()}`;
+    a.addEventListener('click', (e) => e.stopPropagation());   // karttaki büyütmeyi tetiklemesin
+    parent.appendChild(a);
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parent.appendChild(document.createTextNode(text.slice(last)));
 }
 
 // ── İlan büyütme penceresi ────────────────────────────────────
@@ -1961,12 +1991,12 @@ function renderAdViewer() {
   info.innerHTML = '';
   if (ad.title) {
     const h = document.createElement('h3');
-    h.textContent = ad.title;
+    appendTextWithPhoneLinks(h, ad.title);
     info.appendChild(h);
   }
   if (ad.body) {
     const p = document.createElement('p');
-    p.textContent = ad.body;
+    appendTextWithPhoneLinks(p, ad.body);
     info.appendChild(p);
   }
   const t = document.createElement('time');

@@ -1561,3 +1561,12 @@ body.ad-viewer-open { overflow: hidden; }
   .ad-viewer-close { top: calc(10px + env(safe-area-inset-top)); }
 }
 @media (prefers-reduced-motion: reduce) { .ad-viewer { animation: none; } .ad-card { transition: none; } }
+
+/* İlan metnindeki aranabilir numara */
+.ad-phone {
+  display: inline-flex; align-items: center; gap: 4px; margin: 2px 0; padding: 2px 10px;
+  border-radius: 999px; white-space: nowrap; font-weight: 600; text-decoration: none;
+  color: #052e16; background: var(--green-400);
+}
+.ad-phone:hover { filter: brightness(1.1); }
+.ad-viewer-info .ad-phone { font-size: 16px; padding: 6px 14px; }
