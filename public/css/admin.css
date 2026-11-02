@@ -510,3 +510,12 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 }
 .ad-item-actions .btn-sm.btn-vitrin { color: #fcd34d; border-color: rgba(251,191,36,0.4); }
 .ad-item-actions .btn-sm.btn-vitrin:hover { background: rgba(251,191,36,0.12); color: #fff; }
+
+/* Onay bekleyen kullanıcı ilanı */
+.ad-item.pending-ad { border-color: rgba(251,191,36,0.5); background: rgba(251,191,36,0.05); }
+.ad-pending-badge {
+  display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700;
+  color: #451a03; background: #fcd34d;
+}
+.ad-item-actions .btn-sm.btn-approve-ad { color: #052e16; background: var(--green-400); border-color: transparent; font-weight: 700; }
+.nav-badge:empty { display: none; }

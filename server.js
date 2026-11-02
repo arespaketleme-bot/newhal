@@ -416,15 +416,16 @@ function youtubeId(url) {
   return m ? m[1] : null;
 }
 
-function cleanAd(body) {
+function cleanAd(body, { allowVideoFile = true } = {}) {
   const title = String(body.title || '').trim().slice(0, AD_TITLE_MAX);
   const text  = String(body.body || '').trim().slice(0, AD_BODY_MAX);
   const prefix = db.adMediaUrlPrefix();
+  const prefixes = [prefix, db.pinImageUrlPrefix()];
   const images = (Array.isArray(body.images) ? body.images : [])
-    .filter(u => typeof u === 'string' && u.startsWith(prefix) && !u.includes('..'))
+    .filter(u => typeof u === 'string' && prefixes.some(pre => u.startsWith(pre)) && !u.includes('..'))
     .slice(0, AD_MAX_IMAGES);
   let video = null;
-  if (body.video && body.video.type === 'file' && typeof body.video.url === 'string' && body.video.url.startsWith(prefix)) {
+  if (allowVideoFile && body.video && body.video.type === 'file' && typeof body.video.url === 'string' && body.video.url.startsWith(prefix)) {
     video = { type: 'file', url: body.video.url };
   } else if (body.video && body.video.type === 'youtube') {
     const id = youtubeId(body.video.url);
@@ -435,9 +436,66 @@ function cleanAd(body) {
 
 const adMedia = ad => [...(ad.images || []), ad.video && ad.video.type === 'file' ? ad.video.url : null];
 
+// İlanın resim/video dosyalarını hangi depodaysa oradan siler
+async function deleteAdFiles(ad) {
+  const files = adMedia(ad).filter(Boolean);
+  await db.deleteAdMedia(files);
+  await db.deletePinImages(files);
+}
+
+// Herkese açık ilan: ekleyenin hesap kimliği gösterilmez
+const publicAd = ({ owner, ...ad }) => (owner ? { ...ad, owner_name: owner.name } : ad);
+
 app.get('/api/ads', async (req, res) => {
-  const ads = (await db.getAds()).filter(a => a.active !== false);
-  res.json(ads.sort((a, b) => b.created_at.localeCompare(a.created_at)));
+  const ads = (await db.getAds()).filter(a => a.active !== false && !a.pending);
+  res.json(ads.sort((a, b) => b.created_at.localeCompare(a.created_at)).map(publicAd));
+});
+
+// ── Kullanıcı ilanları: giriş yapan herkes verebilir, yönetici onayından sonra yayınlanır ──
+const USER_MAX_PENDING_ADS = 5;
+const USER_MAX_ADS_PER_DAY = 10;
+
+app.post('/api/ads', requireAuth, async (req, res) => {
+  if (req.user.role !== 'user' || !req.user.id) return res.status(403).json({ error: 'Google ile giriş yapmalısınız' });
+  const ad = cleanAd(req.body, { allowVideoFile: false });
+  if (!ad.title && !ad.body && !ad.images.length && !ad.video) {
+    return res.status(400).json({ error: 'İlan boş olamaz: yazı ya da resim ekleyin' });
+  }
+  if (req.body.video && req.body.video.url && !ad.video) {
+    return res.status(400).json({ error: 'YouTube bağlantısı anlaşılamadı' });
+  }
+  const ads = await db.getAds();
+  const mine = ads.filter(a => a.owner && a.owner.id === req.user.id);
+  if (mine.filter(a => a.pending).length >= USER_MAX_PENDING_ADS) {
+    return res.status(429).json({ error: `Onay bekleyen ${USER_MAX_PENDING_ADS} ilanınız var, onaylanmalarını bekleyin` });
+  }
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  if (mine.filter(a => a.created_at > dayAgo).length >= USER_MAX_ADS_PER_DAY) {
+    return res.status(429).json({ error: `Günde en fazla ${USER_MAX_ADS_PER_DAY} ilan verebilirsiniz` });
+  }
+  const created = {
+    id: crypto.randomUUID(), ...ad, featured: false, active: false, pending: true,
+    owner: { id: req.user.id, name: req.user.name || 'Kullanıcı' }, created_at: new Date().toISOString(),
+  };
+  if (!(await db.saveAds([created, ...ads]))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
+  res.status(201).json({ id: created.id, message: 'İlanınız alındı, yönetici onayından sonra yayınlanacak' });
+});
+
+app.get('/api/my-ads', requireAuth, async (req, res) => {
+  const ads = (await db.getAds()).filter(a => a.owner && a.owner.id === req.user.id);
+  res.json(ads.sort((a, b) => b.created_at.localeCompare(a.created_at)).map(a => ({
+    id: a.id, title: a.title, body: a.body, images: a.images, video: a.video, created_at: a.created_at,
+    status: a.pending ? 'pending' : a.active === false ? 'hidden' : 'live',
+  })));
+});
+
+app.delete('/api/my-ads/:id', requireAuth, async (req, res) => {
+  const ads = await db.getAds();
+  const ad = ads.find(a => a.id === req.params.id && a.owner && a.owner.id === req.user.id);
+  if (!ad) return res.status(404).json({ error: 'İlan bulunamadı' });
+  if (!(await db.saveAds(ads.filter(a => a.id !== ad.id)))) return res.status(500).json({ error: 'Silinemedi' });
+  await deleteAdFiles(ad);
+  res.json({ message: 'İlan silindi' });
 });
 
 app.get('/api/admin/ads', requireAdmin, async (req, res) => {
@@ -479,6 +537,7 @@ app.patch('/api/admin/ads/:id', requireAdmin, async (req, res) => {
   if (!ad) return res.status(404).json({ error: 'İlan bulunamadı' });
   // Yayında/gizli ve vitrin durumu ayrı ayrı değiştirilebilir
   if ('active' in req.body) ad.active = !!req.body.active;
+  if (ad.active) delete ad.pending;   // yayına alınan kullanıcı ilanı artık onaylıdır
   if ('featured' in req.body) ad.featured = !!req.body.featured;
   if (!(await db.saveAds(ads))) return res.status(500).json({ error: 'Kaydedilemedi' });
   res.json(ad);
@@ -489,7 +548,7 @@ app.delete('/api/admin/ads/:id', requireAdmin, async (req, res) => {
   const ad = ads.find(a => a.id === req.params.id);
   if (!ad) return res.status(404).json({ error: 'İlan bulunamadı' });
   if (!(await db.saveAds(ads.filter(a => a.id !== ad.id)))) return res.status(500).json({ error: 'Silinemedi' });
-  await db.deleteAdMedia(adMedia(ad));
+  await deleteAdFiles(ad);
   res.json({ message: 'İlan silindi' });
 });
 

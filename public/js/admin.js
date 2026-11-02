@@ -94,6 +94,7 @@ async function api(path, opts = {}) {
 
 // ── Load All Data ──────────────────────────────────────────────
 async function loadAll() {
+  api('/api/admin/ads').then(r => r && r.json()).then(ads => ads && updateAdsBadge(ads)).catch(() => {});
   await Promise.all([loadStats(), loadPending(), loadApproved(), loadRejected(), loadCategories(), loadReports(), loadLogs()]);
 }
 
@@ -866,8 +867,18 @@ async function loadAds() {
   loadFacebookStatus();
   const res = await api('/api/admin/ads');
   if (!res) return;
-  renderAdList(await res.json());
+  const ads = await res.json();
+  // Onay bekleyenler en üstte
+  ads.sort((a, b) => (b.pending ? 1 : 0) - (a.pending ? 1 : 0));
+  renderAdList(ads);
   renderAdPhotos();
+  updateAdsBadge(ads);
+}
+
+function updateAdsBadge(ads) {
+  const n = ads.filter(a => a.pending).length;
+  const badge = document.getElementById('adsBadge');
+  if (badge) badge.textContent = n > 0 ? n : '';
 }
 
 // ── Facebook sayfası ───────────────────────────────────────────
@@ -1174,7 +1185,7 @@ function renderAdList(ads) {
   }
   ads.forEach(ad => {
     const card = document.createElement('div');
-    card.className = 'ad-item' + (ad.active === false ? ' hidden-ad' : '') + (ad.featured ? ' featured-ad' : '');
+    card.className = 'ad-item' + (ad.pending ? ' pending-ad' : ad.active === false ? ' hidden-ad' : '') + (ad.featured ? ' featured-ad' : '');
     const media = (ad.images || []).length
       ? `<img src="${esc(ad.images[0])}" alt="" />`
       : ad.video ? `<div class="ad-thumb-icon">🎬</div>` : `<div class="ad-thumb-icon">📝</div>`;
@@ -1186,14 +1197,14 @@ function renderAdList(ads) {
       <div class="ad-thumb">${media}</div>
       <div class="ad-info">
         <div class="ad-item-title">${ad.title ? esc(ad.title) : '<span class="ad-untitled">(Başlıksız ilan)</span>'}</div>
-        <div class="ad-item-meta">${ad.featured ? '<span class="ad-vitrin-badge">⭐ Vitrin</span> ' : ''}${ad.active === false ? '🙈 Gizli' : '🟢 Yayında'} · ${esc(new Date(ad.created_at).toLocaleDateString('tr-TR'))}${tags ? ' · ' + tags : ''}</div>
+        <div class="ad-item-meta">${ad.featured ? '<span class="ad-vitrin-badge">⭐ Vitrin</span> ' : ''}${ad.pending ? '<span class="ad-pending-badge">⏳ Onay bekliyor</span>' : ad.active === false ? '🙈 Gizli' : '🟢 Yayında'}${ad.owner ? ` · 👤 ${esc(ad.owner.name)}` : ''} · ${esc(new Date(ad.created_at).toLocaleDateString('tr-TR'))}${tags ? ' · ' + tags : ''}</div>
         ${ad.facebook ? `<a class="ad-fb-done" href="${esc(ad.facebook.url)}" target="_blank" rel="noopener">📘 Facebook'ta paylaşıldı · ${esc(new Date(ad.facebook.shared_at).toLocaleDateString('tr-TR'))}</a>` : ''}
         ${ad.body ? `<div class="ad-item-body">${esc(ad.body)}</div>` : ''}
       </div>
       <div class="ad-item-actions">
         <button type="button" class="btn-sm btn-fb" data-act="facebook" ${fbConnected ? '' : 'disabled title="Önce Facebook sayfasını bağlayın"'}>📘 Facebook'a Gönder</button>
         <button type="button" class="btn-sm btn-vitrin" data-act="featured">${ad.featured ? '☆ Vitrinden Çıkar' : '⭐ Vitrine Ekle'}</button>
-        <button type="button" class="btn-sm" data-act="toggle">${ad.active === false ? '👁 Yayınla' : '🙈 Gizle'}</button>
+        <button type="button" class="btn-sm${ad.pending ? ' btn-approve-ad' : ''}" data-act="toggle">${ad.pending ? '✅ Onayla' : ad.active === false ? '👁 Yayınla' : '🙈 Gizle'}</button>
         <button type="button" class="btn-sm btn-delete" data-act="delete">🗑 Sil</button>
       </div>`;
     card.querySelector('[data-act="facebook"]').onclick = (e) => shareAdToFacebook(ad, e.currentTarget);

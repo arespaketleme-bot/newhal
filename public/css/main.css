@@ -1712,3 +1712,38 @@ img.ad-media.ad-logo-media {
 @media (max-width: 768px) {
   .vitrin-slide.logo-slide .vitrin-img { padding: 14px 14px 110px; }
 }
+
+
+/* ── Kullanıcı ilanı ───────────────────────────────────────── */
+.ads-head-actions { display: flex; align-items: center; gap: 12px; flex: 0 1 560px; justify-content: flex-end; flex-wrap: wrap; }
+.ads-post-btn { min-height: 44px; padding: 0 20px; border-radius: 999px; white-space: nowrap; }
+.ads-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+  padding: 36px 16px; margin-bottom: 18px; border-radius: 18px; border: 1px dashed var(--border-g); color: var(--text-3);
+}
+.ads-empty[hidden] { display: none; }
+.ads-empty-icon { font-size: 34px; }
+.ads-empty strong { color: var(--text-1); font-size: 16px; }
+#userAdForm textarea {
+  width: 100%; padding: 10px 12px; border-radius: var(--radius); resize: vertical; font-family: var(--font-body); font-size: 14px;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border); color: var(--text-1); outline: none;
+}
+#userAdForm textarea:focus { border-color: var(--border-g); }
+.my-ads { margin-top: 22px; padding-top: 16px; border-top: 1px dashed var(--border); }
+.my-ads[hidden] { display: none; }
+.my-ads h4 { font-size: 14px; color: var(--text-2); margin-bottom: 10px; }
+.my-ad { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 8px; }
+.my-ad img { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: #080b10; }
+.my-ad-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.my-ad-info strong { font-size: 13px; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.my-ad-status { font-size: 12px; color: var(--text-3); }
+.my-ad-status.pending { color: #fcd34d; }
+.my-ad-status.live { color: var(--green-400); }
+.my-ad-delete {
+  flex-shrink: 0; min-height: 34px; padding: 0 12px; border-radius: 8px; cursor: pointer; font-size: 12px;
+  background: none; border: 1px solid rgba(248,113,113,0.35); color: #f87171;
+}
+@media (max-width: 768px) {
+  .ads-head-actions { flex: 1 1 100%; justify-content: stretch; }
+  .ads-post-btn { flex: 1 1 100%; justify-content: center; }
+}

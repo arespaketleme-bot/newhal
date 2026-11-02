@@ -1759,9 +1759,10 @@ let adsQuery = '';
 
 function renderAds(ads) {
   allAds = ads;
-  const hasAds = ads.length > 0;
-  document.getElementById('adsSection').hidden = !hasAds;
-  document.querySelectorAll('.ads-nav-link').forEach(el => { el.hidden = !hasAds; });
+  // Alan hep görünür: ilan yokken de kullanıcılar "İlan Ver" diyebilsin
+  document.getElementById('adsSection').hidden = false;
+  document.querySelectorAll('.ads-nav-link').forEach(el => { el.hidden = false; });
+  document.getElementById('adsEmpty').hidden = ads.length > 0;
   renderAdsGrid();
 }
 
@@ -2210,4 +2211,103 @@ function restartVitrinTimer() {
   const n = document.getElementById('vitrinTrack').children.length;
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (n > 1 && !reduce) vitrinTimer = setInterval(() => { if (!adViewer) vitrinGo(vitrinIndex + 1); }, VITRIN_AUTOPLAY_MS);
+}
+
+
+// ── Kullanıcı ilanı (giriş gerekir, yönetici onayından sonra yayınlanır) ──
+let userAdPhotos = null;
+
+function openUserAdModal() {
+  if (!checkAuthAndRun()) return;
+  if (!userAdPhotos) userAdPhotos = createPhotoEditor('userAdPhotos');
+  document.getElementById('userAdModal').classList.add('open');
+  loadMyAds();
+}
+
+function closeUserAdModal() {
+  document.getElementById('userAdModal').classList.remove('open');
+}
+
+async function submitUserAd(e) {
+  e.preventDefault();
+  if (userAdPhotos.isBusy()) return showToast('Resimler yükleniyor, lütfen bekleyin', 'error');
+  const youtube = document.getElementById('userAdYoutube').value.trim();
+  const payload = {
+    title: document.getElementById('userAdTitle').value,
+    body: document.getElementById('userAdBody').value,
+    images: userAdPhotos.getUrls(),
+    video: youtube ? { type: 'youtube', url: youtube } : null,
+  };
+  if (!payload.title.trim() && !payload.body.trim() && !payload.images.length && !payload.video) {
+    return showToast('İlana yazı ya da resim ekleyin', 'error');
+  }
+  const btn = document.getElementById('userAdSubmitBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/ads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('userToken') },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.status === 401) { closeUserAdModal(); openAuthModal(); throw new Error('Oturum süresi doldu, tekrar giriş yapın'); }
+    if (!res.ok) throw new Error(data.error || 'İlan gönderilemedi');
+    showToast('✅ İlanınız alındı, onaydan sonra yayınlanacak', 'success');
+    document.getElementById('userAdForm').reset();
+    userAdPhotos.setUrls([]);
+    loadMyAds();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+const MY_AD_STATUS = { pending: '⏳ Onay bekliyor', live: '🟢 Yayında', hidden: '🙈 Yayından kaldırıldı' };
+
+async function loadMyAds() {
+  const box = document.getElementById('myAdsBox');
+  const list = document.getElementById('myAdsList');
+  try {
+    const res = await fetch('/api/my-ads', { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('userToken') } });
+    if (!res.ok) { box.hidden = true; return; }
+    const ads = await res.json();
+    box.hidden = !ads.length;
+    list.innerHTML = '';
+    ads.forEach(ad => {
+      const row = document.createElement('div');
+      row.className = 'my-ad';
+      const thumb = document.createElement('img');
+      thumb.src = (ad.images || [])[0] || AD_LOGO_URL;
+      thumb.alt = '';
+      const info = document.createElement('div');
+      info.className = 'my-ad-info';
+      const t = document.createElement('strong');
+      t.textContent = ad.title || (ad.body || 'İlan').slice(0, 60);
+      const st = document.createElement('span');
+      st.className = `my-ad-status ${ad.status}`;
+      st.textContent = `${MY_AD_STATUS[ad.status] || ''} · ${new Date(ad.created_at).toLocaleDateString('tr-TR')}`;
+      info.append(t, st);
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'my-ad-delete';
+      del.textContent = 'Sil';
+      del.onclick = () => deleteMyAd(ad.id);
+      row.append(thumb, info, del);
+      list.appendChild(row);
+    });
+  } catch {
+    box.hidden = true;
+  }
+}
+
+async function deleteMyAd(id) {
+  if (!confirm('Bu ilan silinsin mi?')) return;
+  const res = await fetch(`/api/my-ads/${encodeURIComponent(id)}`, {
+    method: 'DELETE', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('userToken') },
+  });
+  if (!res.ok) return showToast('İlan silinemedi', 'error');
+  showToast('İlan silindi', 'success');
+  loadMyAds();
+  loadAds();
 }
