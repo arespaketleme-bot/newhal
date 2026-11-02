@@ -124,8 +124,10 @@ async function main() {
     items = await scan(token);
   }
 
-  const { data: categories } = await supabase.from('categories').select('name');
-  const { data: existing } = await supabase.from('pins').select('id,title,phone,lat,lng');
+  const { data: categories, error: catErr } = await supabase.from('categories').select('name');
+  const { data: existingRows, error: pinErr } = await supabase.from('pins').select('id,title,phone,lat,lng');
+  if (catErr || pinErr) throw new Error('Veritabanı okunamadı: ' + (catErr || pinErr).message);
+  const existing = existingRows || [];
 
   const seenPlace = new Set();
   const picked = [], skipped = { disari: 0, kapali: 0, tekrar: 0, zatenVar: 0, eksik: 0 };
