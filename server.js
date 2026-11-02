@@ -552,8 +552,9 @@ async function publishAdToFacebook(ad, fb) {
     const r = await fbRequest(`${FB_GRAPH}/${page}/feed`, params);
     return { post_id: r.id, kind: 'album' };
   }
-  const r = await fbRequest(`${FB_GRAPH}/${page}/feed`, { message, access_token: token });
-  return { post_id: r.id, kind: 'text' };
+  // Resimsiz ilan NewHal logosuyla fotoğraflı gönderi olarak paylaşılır
+  const r = await fbRequest(`${FB_GRAPH}/${page}/photos`, { url: `${SITE_URL}/img/ilan-logo.jpg`, message, access_token: token });
+  return { post_id: r.post_id || r.id, kind: 'photo' };
 }
 
 app.get('/api/admin/facebook', requireAdmin, async (req, res) => {

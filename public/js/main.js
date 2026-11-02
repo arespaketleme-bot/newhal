@@ -1845,6 +1845,14 @@ function buildAdCard(ad) {
     main.alt = ad.title || 'İlan resmi';
     main.loading = 'lazy';
     card.appendChild(main);
+  } else {
+    // Resimsiz ilan NewHal logosuyla gösterilir
+    const logo = document.createElement('img');
+    logo.className = 'ad-media ad-logo-media';
+    logo.src = AD_LOGO_URL;
+    logo.alt = 'NewHal';
+    logo.loading = 'lazy';
+    card.appendChild(logo);
   }
 
   // Küçük resimler: videolu ilanda tüm resimler, resimli ilanda birden fazla resim varsa
@@ -1885,7 +1893,6 @@ function buildAdCard(ad) {
   date.textContent = new Date(ad.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
   body.appendChild(date);
   card.appendChild(body);
-  if (!images.length && !ad.video) card.classList.add('text-only');
   if (ad.featured) {
     card.classList.add('is-featured');
     const badge = document.createElement('span');
@@ -1906,6 +1913,9 @@ function buildAdCard(ad) {
   });
   return card;
 }
+
+// Resimsiz ilanlarda gösterilen NewHal logosu
+const AD_LOGO_URL = '/img/ilan-logo.jpg';
 
 // ── İlan metnindeki telefon numaraları dokununca aranır ───────
 // +90 537 032 88 42 · 0537 032 88 42 · 05370328842 · (0324) 234 10 00 · 0 324 234 10 00
@@ -1945,6 +1955,7 @@ function adViewerItems(ad) {
   const items = [];
   if (ad.video) items.push({ kind: ad.video.type === 'youtube' ? 'youtube' : 'video', value: ad.video.type === 'youtube' ? ad.video.id : ad.video.url });
   (ad.images || []).forEach(url => items.push({ kind: 'image', value: url }));
+  if (!items.length) items.push({ kind: 'image', value: AD_LOGO_URL, logo: true });
   return items;
 }
 
@@ -2021,6 +2032,7 @@ function renderAdViewer() {
   media.innerHTML = '';
   const item = items[index];
   el.classList.toggle('no-media', !item);
+  el.classList.toggle('logo-media', !!(item && item.logo));
   if (item && item.kind === 'image') {
     const img = document.createElement('img');
     img.src = item.value;
@@ -2096,7 +2108,9 @@ function renderVitrin(ads) {
     slide.setAttribute('role', 'button');
     slide.setAttribute('aria-label', `${ad.title || 'Vitrin ilanı'}: büyüt`);
     const cover = (ad.images || [])[0]
-      || (ad.video && ad.video.type === 'youtube' ? `https://i.ytimg.com/vi/${encodeURIComponent(ad.video.id)}/hqdefault.jpg` : null);
+      || (ad.video && ad.video.type === 'youtube' ? `https://i.ytimg.com/vi/${encodeURIComponent(ad.video.id)}/hqdefault.jpg` : null)
+      || (ad.video ? null : AD_LOGO_URL);
+    if (cover === AD_LOGO_URL) slide.classList.add('logo-slide');
     if (cover) {
       const bg = document.createElement('div');
       bg.className = 'vitrin-bg';

@@ -1698,3 +1698,17 @@ body.ad-viewer-open { overflow: hidden; }
   .vitrin-track { scroll-behavior: auto; }
   .vitrin-img, .vitrin-dot { transition: none; }
 }
+
+/* ── Resimsiz ilan: NewHal logosu ──────────────────────────── */
+/* Arka plan logonun kendi zeminiyle aynı renk: kare çerçeve görünmez */
+img.ad-media.ad-logo-media {
+  aspect-ratio: 16 / 9; height: auto; max-height: none; object-fit: contain; padding: 0;
+  background: #080b10;
+}
+.ad-viewer.logo-media .ad-viewer-stage { background: #080b10; }
+.ad-viewer.logo-media .ad-viewer-media img { max-height: 50vh; }
+.vitrin-slide.logo-slide .vitrin-bg { filter: blur(30px) brightness(0.45) saturate(1.4); }
+.vitrin-slide.logo-slide .vitrin-img { padding: 26px 26px 120px; }
+@media (max-width: 768px) {
+  .vitrin-slide.logo-slide .vitrin-img { padding: 14px 14px 110px; }
+}
