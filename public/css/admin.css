@@ -605,3 +605,14 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
   font-size: 12px; font-weight: 800; color: #bfdbfe; background: rgba(59,130,246,0.15);
 }
 .st-empty { font-size: 13px; color: var(--text-3); padding: 8px 0; }
+
+/* ── Dükkan Sahipleri ─────────────────────────────────────── */
+.claims-subtitle { font-size: 15px; font-weight: 700; color: var(--text-1); margin: 24px 0 10px; }
+.claims-subtitle:first-of-type { margin-top: 8px; }
+.claim-actions { white-space: nowrap; }
+.claim-actions .btn-approve, .claim-actions .btn-reject { margin: 2px 4px 2px 0; }
+.claim-phone { color: var(--green-400); text-decoration: none; white-space: nowrap; }
+.claim-done { opacity: 0.6; }
+.claim-status { font-size: 12px; font-weight: 600; }
+.claim-status.approved { color: var(--green-400); }
+.claim-status.rejected { color: #f87171; }

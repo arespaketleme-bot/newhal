@@ -251,6 +251,13 @@ const db = {
     return data;
   },
 
+  /** Dükkanın sahibini değiştirir (null: sahipsiz) */
+  async setPinOwner(id, ownerId) {
+    const { data } = await supabase.from('pins').update({ owner_id: ownerId || null })
+      .eq('id', parseInt(id)).select().single();
+    return data;
+  },
+
   async approvePin(id) {
     const { data } = await supabase.from('pins').update({
       status: 'approved',

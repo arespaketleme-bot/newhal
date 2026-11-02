@@ -1827,3 +1827,34 @@ img.ad-media.ad-logo-media {
   color: #fde68a; background: rgba(0,0,0,0.55); border: 1px solid rgba(251,191,36,0.45);
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Onaylı dükkan & sahiplenme ───────────────────────────── */
+.verified-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; margin-left: 6px; vertical-align: 2px;
+  border-radius: 50%; background: #1d9bf0; color: #fff;
+  font-size: 11px; font-weight: 800; line-height: 1; flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(29,155,240,0.25);
+}
+.owner-box:empty { display: none; }
+.owner-box { display: flex; flex-direction: column; gap: 8px; }
+.owner-note { font-size: 13px; line-height: 1.5; padding: 10px 12px; border-radius: var(--radius); }
+.owner-note.ok   { background: rgba(29,155,240,0.08); border: 1px solid rgba(29,155,240,0.3); color: #bae6fd; }
+.owner-note.wait { background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.3); color: #fde68a; }
+.owner-note.no   { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.3); color: #fecaca; }
+.claim-btn {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: var(--radius); cursor: pointer;
+  background: rgba(29,155,240,0.12); border: 1px solid rgba(29,155,240,0.45); color: #7dd3fc;
+  font-family: var(--font-body); transition: var(--trans);
+}
+.claim-btn:hover { background: rgba(29,155,240,0.22); color: #fff; }
+.claim-intro { font-size: 12px; line-height: 1.5; color: var(--text-3); }
+.catalog-editor select {
+  width: 100%; font-size: 13px; padding: 8px 10px; border-radius: 8px;
+  background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: #fff; outline: none; font-family: var(--font-body);
+}
+.catalog-editor select option { background: #0e1626; }
+@media (max-width: 640px) {
+  .catalog-editor input[type="text"], .catalog-editor select { font-size: 16px; }
+}

@@ -95,7 +95,7 @@ async function api(path, opts = {}) {
 // ── Load All Data ──────────────────────────────────────────────
 async function loadAll() {
   api('/api/admin/ads').then(r => r && r.json()).then(ads => ads && updateAdsBadge(ads)).catch(() => {});
-  await Promise.all([loadStats(), loadPending(), loadApproved(), loadRejected(), loadCategories(), loadReports(), loadLogs()]);
+  await Promise.all([loadStats(), loadPending(), loadApproved(), loadRejected(), loadCategories(), loadReports(), loadLogs(), loadClaims()]);
 }
 
 async function loadStats() {
@@ -337,6 +337,7 @@ const sectionTitles = {
   categories:'Kategori Yönetimi',
   ads:       'İlanlar',
   reports:   'Hata Bildirimleri',
+  claims:    'Dükkan Sahipleri',
   users:     'Kullanıcılar',
   stats:     'İstatistikler',
   logs:      'Aktivite Logları'
@@ -358,6 +359,8 @@ function showSection(name) {
     loadLogs();
   } else if (name === 'users') {
     loadUsers();
+  } else if (name === 'claims') {
+    loadClaims();
   }
 }
 
@@ -815,6 +818,87 @@ async function deleteReport(id) {
   }
   showToast('✅ Bildirim kapatıldı', 'success');
   await loadReports();
+}
+
+// ── Dükkan Sahipleri ("Bu dükkan benim" istekleri) ─────────────
+const CLAIM_STATUS = { pending: '⏳ Bekliyor', approved: '✅ Onaylandı', rejected: '✕ Reddedildi' };
+
+function shortDate(iso) {
+  try { return new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+  catch { return iso || ''; }
+}
+
+async function loadClaims() {
+  const res = await api('/api/admin/claims');
+  if (!res || !res.ok) return;
+  const { requests, verified } = await res.json();
+
+  const pending = requests.filter(r => r.status === 'pending');
+  const badge = document.getElementById('claimsBadge');
+  badge.textContent = pending.length || '';
+  badge.style.display = pending.length ? '' : 'none';
+
+  const tbody = document.getElementById('claimsBody');
+  tbody.innerHTML = '';
+  // Bekleyenler üstte, sonuçlananlardan son 30 tanesi altta
+  const rows = [...pending, ...requests.filter(r => r.status !== 'pending').slice(0, 30)];
+  document.getElementById('claimsEmpty').style.display = rows.length ? 'none' : 'block';
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    if (r.status !== 'pending') tr.className = 'claim-done';
+    tr.innerHTML = `
+      <td><div style="font-weight:600;">${esc(r.pinTitle)}</div><div style="font-size:11px;color:var(--text-3);">No: ${r.pinId}</div></td>
+      <td><div>${esc(r.userName)}</div><div style="font-size:11px;color:var(--text-3);">${esc(r.userEmail)}</div></td>
+      <td><a href="tel:${esc(r.phone)}" class="claim-phone">📞 ${esc(r.phone)}</a></td>
+      <td style="min-width:160px;max-width:260px;overflow-wrap:anywhere;font-size:13px;">${esc(r.note) || '<span style="color:var(--text-3);">—</span>'}</td>
+      <td style="font-size:12px;color:var(--text-3);">${shortDate(r.createdAt)}</td>
+      <td class="claim-actions">${r.status === 'pending'
+        ? `<button class="btn-approve" onclick="approveClaim('${r.id}')">✓ Onayla</button>
+           <button class="btn-reject" onclick="rejectClaim('${r.id}')">✕ Reddet</button>`
+        : `<span class="claim-status ${r.status}">${CLAIM_STATUS[r.status]}</span>${r.reason ? `<div style="font-size:11px;color:var(--text-3);">${esc(r.reason)}</div>` : ''}`}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  const vbody = document.getElementById('verifiedBody');
+  vbody.innerHTML = '';
+  document.getElementById('verifiedEmpty').style.display = verified.length ? 'none' : 'block';
+  const titles = Object.fromEntries(requests.map(r => [r.pinId, r.pinTitle]));
+  verified.sort((a, b) => String(b.at).localeCompare(String(a.at))).forEach(v => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div style="font-weight:600;">✅ ${esc(v.title || titles[v.pinId] || 'Dükkan')}</div><div style="font-size:11px;color:var(--text-3);">No: ${v.pinId}</div></td>
+      <td><div>${esc(v.name)}</div><div style="font-size:11px;color:var(--text-3);">${esc(v.email)}</div></td>
+      <td>${v.phone ? `<a href="tel:${esc(v.phone)}" class="claim-phone">📞 ${esc(v.phone)}</a>` : '—'}</td>
+      <td style="font-size:12px;color:var(--text-3);">${shortDate(v.at)}</td>
+      <td><button class="btn-reject" onclick="revokeOwner(${v.pinId})">Sahipliği kaldır</button></td>`;
+    vbody.appendChild(tr);
+  });
+}
+
+async function approveClaim(id) {
+  if (!confirm('Bu kişiyi dükkanın sahibi olarak onaylıyor musunuz? Dükkanın bilgilerini ve ürünlerini kendisi değiştirebilecek.')) return;
+  const res = await api(`/api/admin/claims/${id}/approve`, { method: 'PATCH' });
+  const data = res ? await res.json().catch(() => ({})) : {};
+  if (!res || !res.ok) return showToast(data.error || 'Onaylanamadı', 'error');
+  showToast('✅ Dükkan sahibi onaylandı', 'success');
+  loadClaims();
+}
+
+async function rejectClaim(id) {
+  const reason = prompt('Reddetme sebebi (isteğe bağlı, kişiye gösterilir):', '');
+  if (reason === null) return;
+  const res = await api(`/api/admin/claims/${id}/reject`, { method: 'PATCH', body: JSON.stringify({ reason }) });
+  if (!res || !res.ok) return showToast('Reddedilemedi', 'error');
+  showToast('İstek reddedildi', 'success');
+  loadClaims();
+}
+
+async function revokeOwner(pinId) {
+  if (!confirm('Bu dükkanın sahipliği kaldırılsın mı? Onay rozeti gider ve sahibi artık düzenleyemez.')) return;
+  const res = await api(`/api/admin/claims/verified/${pinId}`, { method: 'DELETE' });
+  if (!res || !res.ok) return showToast('Kaldırılamadı', 'error');
+  showToast('Sahiplik kaldırıldı', 'success');
+  loadClaims();
 }
 
 // ── Admin Aktivite Logları Modülü ──────────────────────────────

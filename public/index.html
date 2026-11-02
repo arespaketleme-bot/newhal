@@ -437,6 +437,38 @@
           <div class="detail-products-title">🔎 Aradığı Ürünler</div>
           <div class="chip-list" id="detailSeeks"></div>
         </div>
+        <!-- Onaylı dükkan / sahiplenme -->
+        <div class="owner-box" id="ownerBox"></div>
+        <div class="catalog-editor" id="claimForm" style="display: none;">
+          <div class="claim-intro">Dükkanın sahibi olduğunuzu doğrulamak için sizi arayacağız. Onaydan sonra dükkanınızın bilgilerini, ürünlerini ve fotoğraflarını kendiniz güncellersiniz, dükkanınıza onay rozeti gelir.</div>
+          <label for="claimPhone">📞 Telefon numaranız</label>
+          <input type="text" id="claimPhone" inputmode="tel" maxlength="40" placeholder="05xx xxx xx xx" />
+          <label for="claimNote">📝 Not <span class="field-hint">(isteğe bağlı)</span></label>
+          <input type="text" id="claimNote" maxlength="500" placeholder="Örn: Dükkan sahibiyim, adım Ahmet Yılmaz" />
+          <div class="catalog-editor-actions">
+            <button type="button" class="btn-ghost" onclick="toggleClaimForm(false)">İptal</button>
+            <button type="button" class="btn-primary" id="claimSendBtn" onclick="submitClaim()">İsteği Gönder</button>
+          </div>
+        </div>
+        <button type="button" class="btn-outline catalog-edit-btn" id="infoEditBtn" onclick="toggleInfoEditor()">🏪 Dükkan Bilgilerini Düzenle</button>
+        <div class="catalog-editor" id="infoEditor" style="display: none;">
+          <label for="infoTitle">Dükkan adı</label>
+          <input type="text" id="infoTitle" maxlength="120" />
+          <label for="infoCategory">Kategori</label>
+          <select id="infoCategory"></select>
+          <label for="infoAddress">Adres</label>
+          <input type="text" id="infoAddress" maxlength="250" />
+          <label for="infoPhone">Telefon</label>
+          <input type="text" id="infoPhone" inputmode="tel" maxlength="40" />
+          <label for="infoWebsite">Web sitesi</label>
+          <input type="text" id="infoWebsite" maxlength="200" />
+          <label for="infoEmail">E-posta</label>
+          <input type="text" id="infoEmail" inputmode="email" maxlength="120" />
+          <div class="catalog-editor-actions">
+            <button type="button" class="btn-ghost" onclick="toggleInfoEditor()">İptal</button>
+            <button type="button" class="btn-primary" id="infoSaveBtn" onclick="saveInfo()">Kaydet</button>
+          </div>
+        </div>
         <button type="button" class="btn-outline catalog-edit-btn" id="catalogEditBtn" onclick="toggleCatalogEditor()">✏️ Ürün ve Fotoğrafları Düzenle</button>
         <div class="catalog-editor" id="catalogEditor" style="display: none;">
           <label for="catalogSells">🛒 Sattığı Ürünler</label>

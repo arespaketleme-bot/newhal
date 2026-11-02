@@ -90,6 +90,11 @@
           Hata Bildirimleri
           <span class="nav-badge" id="reportsBadge" style="background:#dc2626;">0</span>
         </button>
+        <button class="nav-item" id="navClaims" onclick="showSection('claims')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 14l2 2 4-4"/></svg>
+          Dükkan Sahipleri
+          <span class="nav-badge" id="claimsBadge" style="background:#0ea5e9;"></span>
+        </button>
         <button class="nav-item" id="navUsers" onclick="showSection('users')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Kullanıcılar
@@ -380,6 +385,34 @@
             <tbody id="reportsBody"></tbody>
           </table>
           <div class="empty-table" id="reportsEmpty">Hata bildirimi yok 🎉</div>
+        </div>
+      </section>
+
+      <!-- ── DÜKKAN SAHİPLERİ ── -->
+      <section class="section" id="sectionClaims">
+        <div class="section-head">
+          <h1>Dükkan Sahipleri</h1>
+          <p>"Bu dükkan benim" istekleri. Onaylanan kişi dükkanının bilgilerini, ürünlerini ve fotoğraflarını kendisi günceller, dükkana onay rozeti gelir. Onaylamadan önce kişiyi telefonla arayıp doğrulayın.</p>
+        </div>
+        <h3 class="claims-subtitle">Gelen istekler</h3>
+        <div class="pins-table-wrap">
+          <table class="pins-table">
+            <thead>
+              <tr><th>Dükkan</th><th>Başvuran</th><th>Telefon</th><th>Not</th><th>Tarih</th><th>İşlem</th></tr>
+            </thead>
+            <tbody id="claimsBody"></tbody>
+          </table>
+          <div class="empty-table" id="claimsEmpty">Henüz sahiplenme isteği yok</div>
+        </div>
+        <h3 class="claims-subtitle">Onaylı dükkanlar</h3>
+        <div class="pins-table-wrap">
+          <table class="pins-table">
+            <thead>
+              <tr><th>Dükkan</th><th>Sahibi</th><th>Telefon</th><th>Onay tarihi</th><th>İşlem</th></tr>
+            </thead>
+            <tbody id="verifiedBody"></tbody>
+          </table>
+          <div class="empty-table" id="verifiedEmpty">Henüz onaylı dükkan yok</div>
         </div>
       </section>
 

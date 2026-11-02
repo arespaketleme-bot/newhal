@@ -140,8 +140,8 @@ app.get('/auth/google/callback',
 const stripIp = ({ ip, ...rest }) => rest;
 
 app.get('/api/pins', async (req, res) => {
-  const pins = await db.getApprovedPins();
-  res.json(pins.map(p => ({ ...p, comments: (p.comments || []).map(stripIp) })));
+  const [pins, claims] = await Promise.all([db.getApprovedPins(), getClaims()]);
+  res.json(pins.map(p => ({ ...p, verified: !!claims.verified[p.id], comments: (p.comments || []).map(stripIp) })));
 });
 
 // ── PUBLIC: Online & ziyaretçi sayacı ─────────────────────────
@@ -377,6 +377,146 @@ app.put('/api/pins/:id/catalog', requireAuth, async (req, res) => {
   if (!updated) return res.status(500).json({ error: 'Güncellenemedi' });
   await db.deletePinImages((pin.images || []).filter(u => !images.includes(u)));
   res.json({ message: 'Ürünler ve fotoğraflar güncellendi', pin: updated });
+});
+
+// İşletme sahibi veya admin dükkan bilgilerini günceller (konum sadece admin panelinden)
+app.put('/api/pins/:id/info', requireAuth, async (req, res) => {
+  const pin = await db.getPin(req.params.id);
+  if (!pin) return res.status(404).json({ error: 'İşletme bulunamadı' });
+  const isAdmin = req.user.role === 'admin';
+  const isOwner = req.user.role === 'user' && pin.owner_id && pin.owner_id === req.user.id;
+  if (!isAdmin && !isOwner) return res.status(403).json({ error: 'Bu dükkanı sadece sahibi düzenleyebilir' });
+
+  const field = (name, max) => String(req.body[name] || '').trim().slice(0, max);
+  const title = field('title', 120), address = field('address', 250);
+  if (!title || !address) return res.status(400).json({ error: 'Dükkan adı ve adres boş olamaz' });
+  const categories = await db.getCategories();
+  const category = categories.some(c => c.name === req.body.category) ? req.body.category : pin.category;
+
+  const updated = await db.updatePin(pin.id, {
+    title, address, category,
+    phone: field('phone', 40), website: field('website', 200), email: field('email', 120),
+    lat: pin.lat, lng: pin.lng,
+  });
+  if (!updated) return res.status(500).json({ error: 'Güncellenemedi' });
+  res.json({ message: 'Dükkan bilgileri güncellendi', pin: updated });
+});
+
+// ── "Bu dükkan benim": sahiplenme istekleri ───────────────────
+// Gizli depoda tutulur (claims.json): { requests: [...], verified: { pinId: { userId, name, at } } }
+const CLAIMS_FILE = 'claims.json';
+const MAX_OPEN_CLAIMS = 3;          // bir kişinin aynı anda bekleyen isteği
+let claimsCache = null;
+
+async function getClaims() {
+  if (!claimsCache) {
+    const data = await db.getPrivateJson(CLAIMS_FILE);
+    claimsCache = {
+      requests: Array.isArray(data && data.requests) ? data.requests : [],
+      verified: (data && data.verified && typeof data.verified === 'object') ? data.verified : {},
+    };
+  }
+  return claimsCache;
+}
+
+async function saveClaims(claims) {
+  claims.requests = claims.requests.slice(-1000);
+  claimsCache = claims;
+  return db.savePrivateJson(CLAIMS_FILE, claims);
+}
+
+app.post('/api/pins/:id/claim', requireAuth, async (req, res) => {
+  if (req.user.role !== 'user') return res.status(403).json({ error: 'Sahiplenmek için Google ile giriş yapın' });
+  const pin = await db.getPin(req.params.id);
+  if (!pin || pin.status !== 'approved') return res.status(404).json({ error: 'İşletme bulunamadı' });
+
+  const phone = String(req.body.phone || '').trim().slice(0, 40);
+  const note = String(req.body.note || '').trim().slice(0, 500);
+  if (phone.replace(/\D/g, '').length < 10) return res.status(400).json({ error: 'Size ulaşabileceğimiz bir telefon numarası yazın' });
+
+  const claims = await getClaims();
+  if (claims.verified[pin.id]) {
+    return res.status(409).json({ error: claims.verified[pin.id].userId === req.user.id ? 'Bu dükkan zaten sizin' : 'Bu dükkanın onaylı bir sahibi var. Yanlışlık varsa hata bildirin.' });
+  }
+  const open = claims.requests.filter(r => r.userId === req.user.id && r.status === 'pending');
+  if (open.some(r => r.pinId === pin.id)) return res.status(409).json({ error: 'Bu dükkan için isteğiniz zaten inceleniyor' });
+  if (open.length >= MAX_OPEN_CLAIMS) return res.status(429).json({ error: 'İncelenen isteğiniz çok, önce onlar sonuçlansın' });
+
+  const request = {
+    id: crypto.randomUUID(), pinId: pin.id, pinTitle: pin.title,
+    userId: req.user.id, userName: req.user.name || '', userEmail: req.user.email || '',
+    phone, note, status: 'pending', createdAt: new Date().toISOString(),
+  };
+  claims.requests.push(request);
+  if (!await saveClaims(claims)) return res.status(500).json({ error: 'İstek kaydedilemedi, tekrar deneyin' });
+  res.status(201).json({ message: 'İsteğiniz alındı', request: { pinId: request.pinId, status: request.status } });
+
+  sendTelegram([
+    '🏷️ <b>Yeni dükkan sahiplenme isteği</b>',
+    '',
+    `🏪 ${tgEsc(pin.title)}`,
+    `👤 ${tgEsc(request.userName)} · ${tgEsc(request.userEmail)}`,
+    `📞 ${tgEsc(phone)}`,
+    note ? `📝 ${tgEsc(note)}` : null,
+    '',
+    'Onaylamak için: yönetim paneli → Dükkan Sahipleri',
+  ].filter(l => l !== null).join('\n')).catch(err => console.error('Telegram bildirimi gönderilemedi:', err.message));
+});
+
+app.get('/api/my-claims', requireAuth, async (req, res) => {
+  const claims = await getClaims();
+  res.json(claims.requests
+    .filter(r => r.userId === req.user.id)
+    .map(r => ({ pinId: r.pinId, status: r.status, reason: r.reason || '', createdAt: r.createdAt })));
+});
+
+app.get('/api/admin/claims', requireAdmin, async (req, res) => {
+  const claims = await getClaims();
+  const verified = Object.entries(claims.verified).map(([pinId, v]) => ({ pinId: Number(pinId), ...v }));
+  res.json({ requests: [...claims.requests].reverse(), verified });
+});
+
+app.patch('/api/admin/claims/:id/approve', requireAdmin, async (req, res) => {
+  const claims = await getClaims();
+  const request = claims.requests.find(r => r.id === req.params.id);
+  if (!request) return res.status(404).json({ error: 'İstek bulunamadı' });
+  if (request.status !== 'pending') return res.status(409).json({ error: 'Bu istek zaten sonuçlanmış' });
+  const pin = await db.setPinOwner(request.pinId, request.userId);
+  if (!pin) return res.status(404).json({ error: 'Dükkan sahibi atanamadı (dükkan ya da kullanıcı silinmiş olabilir)' });
+
+  const now = new Date().toISOString();
+  request.status = 'approved';
+  request.reviewedAt = now;
+  claims.verified[request.pinId] = { title: request.pinTitle, userId: request.userId, name: request.userName, email: request.userEmail, phone: request.phone, at: now };
+  for (const r of claims.requests) {
+    if (r !== request && r.pinId === request.pinId && r.status === 'pending') {
+      Object.assign(r, { status: 'rejected', reason: 'Dükkan başka bir sahibe verildi', reviewedAt: now });
+    }
+  }
+  await saveClaims(claims);
+  await db.logActivity(`'${pin.title}' dükkanı ${request.userName} adına onaylandı`, true);
+  res.json({ message: 'Dükkan sahibi onaylandı' });
+});
+
+app.patch('/api/admin/claims/:id/reject', requireAdmin, async (req, res) => {
+  const claims = await getClaims();
+  const request = claims.requests.find(r => r.id === req.params.id);
+  if (!request) return res.status(404).json({ error: 'İstek bulunamadı' });
+  if (request.status !== 'pending') return res.status(409).json({ error: 'Bu istek zaten sonuçlanmış' });
+  Object.assign(request, { status: 'rejected', reason: String(req.body.reason || '').trim().slice(0, 200), reviewedAt: new Date().toISOString() });
+  await saveClaims(claims);
+  res.json({ message: 'İstek reddedildi' });
+});
+
+// Onaylı sahipliği kaldırır: rozet gider, dükkan sahipsiz kalır
+app.delete('/api/admin/claims/verified/:pinId', requireAdmin, async (req, res) => {
+  const claims = await getClaims();
+  const pinId = Number(req.params.pinId);
+  if (!claims.verified[pinId]) return res.status(404).json({ error: 'Bu dükkanın onaylı sahibi yok' });
+  delete claims.verified[pinId];
+  await saveClaims(claims);
+  await db.setPinOwner(pinId, null);
+  res.json({ message: 'Sahiplik kaldırıldı' });
 });
 
 // ── ADMIN: Tüm iğneleri getir ─────────────────────────────────

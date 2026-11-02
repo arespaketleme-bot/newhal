@@ -277,6 +277,7 @@ function createIcon(emoji, isTemp = false) {
 
 // ── Pin Yükle ─────────────────────────────────────────────────
 async function loadPins() {
+  loadMyClaims();
   try {
     const res = await fetch('/api/pins');
     allPins = await res.json();
@@ -345,7 +346,7 @@ function renderPins(pins) {
     // Popup shows contact info optionally
     marker.bindPopup(`
       <div style="font-family:'Inter',sans-serif; min-width:200px;">
-        <div style="font-size:18px;margin-bottom:6px;">${escHtml(emoji)} <strong style="color:#f0fdf4;font-size:14px;">${escHtml(pin.title)}</strong></div>
+        <div style="font-size:18px;margin-bottom:6px;">${escHtml(emoji)} <strong style="color:#f0fdf4;font-size:14px;">${escHtml(pin.title)}</strong>${verifiedBadge(pin)}</div>
         <div style="font-size:12px;color:#6b7280;margin-bottom:4px;">📍 ${escHtml(pin.address)}</div>
         ${showContactInfo && pin.phone ? `<div style="font-size:12px;color:#86efac;">📞 <a href="tel:${escHtml(pin.phone)}" style="color:#4ade80;">${escHtml(pin.phone)}</a></div>` : ''}
         ${(pin.images || []).length ? `<img class="popup-photo" src="${escHtml(pin.images[0])}" alt="" loading="lazy" />` : ''}
@@ -381,7 +382,7 @@ function renderPins(pins) {
           <div class="pin-card-cat">${escHtml(pin.category)}</div>
         </div>
         ${(pin.images || []).length ? `<img class="pin-card-photo" src="${escHtml(pin.images[0])}" alt="" loading="lazy" />` : ''}
-        <div class="pin-card-title">${escHtml(pin.title)}</div>
+        <div class="pin-card-title">${escHtml(pin.title)}${verifiedBadge(pin)}</div>
         <div class="pin-card-addr">📍 ${escHtml(pin.address)}</div>
         ${(pin.sells || []).length ? `<div class="pin-card-products">🛒 ${escHtml(pin.sells.slice(0, 4).join(', '))}${pin.sells.length > 4 ? ` +${pin.sells.length - 4}` : ''}</div>` : ''}
         ${(pin.seeks || []).length ? `<div class="pin-card-products seeks">🔎 ${escHtml(pin.seeks.slice(0, 4).join(', '))}${pin.seeks.length > 4 ? ` +${pin.seeks.length - 4}` : ''}</div>` : ''}
@@ -470,6 +471,7 @@ function renderSearchResults() {
     text.className = 'map-search-text';
     const title = document.createElement('strong');
     title.textContent = pin.title;
+    if (pin.verified) title.insertAdjacentHTML('beforeend', verifiedBadge(pin));
     const sub = document.createElement('small');
     sub.textContent = searchMatchHint(pin, searchQuery);
     text.append(title, sub);
@@ -623,6 +625,7 @@ function showPinDetail(id) {
 
   document.getElementById('detailIcon').textContent = emoji;
   document.getElementById('detailTitle').textContent = pin.title;
+  if (pin.verified) document.getElementById('detailTitle').insertAdjacentHTML('beforeend', verifiedBadge(pin));
   document.getElementById('detailCategory').textContent = pin.category;
 
   setDetailItem('detailAddressRow', 'detailAddress', pin.address);
@@ -738,6 +741,140 @@ function renderPinCatalog(pin) {
 
   document.getElementById('catalogEditor').style.display = 'none';
   document.getElementById('catalogEditBtn').style.display = canEditCatalog(pin) ? 'inline-flex' : 'none';
+  document.getElementById('infoEditor').style.display = 'none';
+  document.getElementById('infoEditBtn').style.display = canEditCatalog(pin) ? 'inline-flex' : 'none';
+  renderOwnerBox(pin);
+}
+
+// ── "Bu dükkan benim": sahiplenme ve onay rozeti ──────────────
+let myClaims = [];
+
+function verifiedBadge(pin) {
+  return pin && pin.verified ? '<span class="verified-badge" title="Sahibi onaylı dükkan">✓</span>' : '';
+}
+
+async function loadMyClaims() {
+  const user = readToken('userToken');
+  if (!user) { myClaims = []; return; }
+  try {
+    const res = await fetch('/api/my-claims', { headers: { 'Authorization': 'Bearer ' + user.token } });
+    if (res.ok) myClaims = await res.json();
+  } catch {}
+}
+
+function renderOwnerBox(pin) {
+  const box = document.getElementById('ownerBox');
+  const user = readToken('userToken');
+  const mine = user && pin.owner_id && pin.owner_id === user.payload.id;
+  const claim = [...myClaims].reverse().find(c => c.pinId === pin.id);
+  document.getElementById('claimForm').style.display = 'none';
+
+  if (pin.verified) {
+    box.innerHTML = mine
+      ? '<div class="owner-note ok">✅ Bu dükkan sizin. Bilgilerinizi ve ürünlerinizi aşağıdan güncelleyebilirsiniz.</div>'
+      : '<div class="owner-note ok">✅ Onaylı dükkan. Bu sayfayı dükkanın sahibi yönetiyor.</div>';
+  } else if (claim && claim.status === 'pending') {
+    box.innerHTML = '<div class="owner-note wait">⏳ Sahiplenme isteğiniz alındı. Sizi arayıp doğruladıktan sonra dükkan size geçecek.</div>';
+  } else {
+    const rejected = claim && claim.status === 'rejected'
+      ? `<div class="owner-note no">Önceki isteğiniz onaylanmadı${claim.reason ? `: ${escHtml(claim.reason)}` : '.'}</div>` : '';
+    box.innerHTML = `${rejected}<button type="button" class="claim-btn" onclick="toggleClaimForm(true)">🏷️ Bu dükkan benim</button>`;
+  }
+}
+
+function toggleClaimForm(show) {
+  if (show && !readToken('userToken')) {
+    showToast('Dükkanı sahiplenmek için önce giriş yapın', 'error');
+    return openAuthModal();
+  }
+  document.getElementById('claimForm').style.display = show ? 'flex' : 'none';
+  if (show) document.getElementById('claimPhone').focus();
+}
+
+async function submitClaim() {
+  const pin = allPins.find(p => p.id === currentDetailPinId);
+  const user = readToken('userToken');
+  if (!pin) return;
+  if (!user) return openAuthModal();
+  const phone = document.getElementById('claimPhone').value.trim();
+  if (phone.replace(/\D/g, '').length < 10) return showToast('Size ulaşabileceğimiz bir telefon numarası yazın', 'error');
+
+  const btn = document.getElementById('claimSendBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/pins/${pin.id}/claim`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + user.token },
+      body: JSON.stringify({ phone, note: document.getElementById('claimNote').value }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) { openAuthModal(); throw new Error('Oturum süresi doldu, tekrar giriş yapın'); }
+    if (!res.ok) throw new Error(data.error || 'İstek gönderilemedi');
+    myClaims.push({ pinId: pin.id, status: 'pending' });
+    document.getElementById('claimPhone').value = '';
+    document.getElementById('claimNote').value = '';
+    renderOwnerBox(pin);
+    showToast('✅ İsteğiniz alındı, sizi arayacağız', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function toggleInfoEditor() {
+  const editor = document.getElementById('infoEditor');
+  const pin = allPins.find(p => p.id === currentDetailPinId);
+  if (!pin) return;
+  if (editor.style.display !== 'none') { editor.style.display = 'none'; return; }
+  const select = document.getElementById('infoCategory');
+  const names = Object.keys(CATEGORY_ICONS);
+  if (!names.includes(pin.category)) names.unshift(pin.category);
+  select.innerHTML = '';
+  names.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = `${CATEGORY_ICONS[name] || '📦'} ${name}`;
+    select.appendChild(opt);
+  });
+  select.value = pin.category;
+  document.getElementById('infoTitle').value = pin.title || '';
+  document.getElementById('infoAddress').value = pin.address || '';
+  document.getElementById('infoPhone').value = pin.phone || '';
+  document.getElementById('infoWebsite').value = pin.website || '';
+  document.getElementById('infoEmail').value = pin.email || '';
+  editor.style.display = 'flex';
+}
+
+async function saveInfo() {
+  const pin = allPins.find(p => p.id === currentDetailPinId);
+  if (!pin) return;
+  const val = id => document.getElementById(id).value.trim();
+  if (!val('infoTitle') || !val('infoAddress')) return showToast('Dükkan adı ve adres boş olamaz', 'error');
+
+  const btn = document.getElementById('infoSaveBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/pins/${pin.id}/info`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getCatalogToken(pin) },
+      body: JSON.stringify({
+        title: val('infoTitle'), category: val('infoCategory'), address: val('infoAddress'),
+        phone: val('infoPhone'), website: val('infoWebsite'), email: val('infoEmail'),
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Kaydedilemedi');
+    const { title, category, address, phone, website, email } = data.pin;
+    Object.assign(pin, { title, category, address, phone, website, email });
+    renderPins(allPins);
+    showPinDetail(pin.id);
+    showToast('✅ Dükkan bilgileri güncellendi', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function toggleCatalogEditor() {
