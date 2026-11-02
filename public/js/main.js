@@ -579,7 +579,22 @@ async function initPresence() {
   try { counted = sessionStorage.getItem('visitCounted') === '1'; } catch {}
   if (!counted) {
     try {
-      const res = await fetch('/api/visit', { method: 'POST' });
+      // Ziyaret bilgisi (yöneticiye Telegram bildirimi için): nereden geldi, hangi sayfa, cihaz
+      let isAdmin = false;
+      try { isAdmin = !!localStorage.getItem('newhal_admin_token'); } catch {}
+      const token = (() => { try { return localStorage.getItem('userToken'); } catch { return null; } })();
+      const res = await fetch('/api/visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': 'Bearer ' + token } : {}) },
+        body: JSON.stringify({
+          referrer: document.referrer || '',
+          page: location.pathname + location.search,
+          screen: `${screen.width}x${screen.height}`,
+          lang: navigator.language || '',
+          app: isStandaloneApp(),
+          admin: isAdmin,
+        }),
+      });
       if (res.ok) {
         renderPresence(await res.json());
         try { sessionStorage.setItem('visitCounted', '1'); } catch {}

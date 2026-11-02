@@ -171,8 +171,114 @@ app.post('/api/presence', async (req, res) => {
 // Tarayıcı oturumu başına bir kez çağrılır
 app.post('/api/visit', async (req, res) => {
   await db.incrementVisits();
-  res.json({ visits: await db.getVisits() });
+  const visits = await db.getVisits();
+  res.json({ visits });
+  notifyNewVisitor(req, visits).catch(err => console.error('Telegram bildirimi gönderilemedi:', err.message));
 });
+
+// ── Yeni ziyaretçi → Telegram bildirimi ────────────────────────
+// Bot bilgisi gizli depoda (telegram.json: { bot_token, chat_id }); koda ve GitHub'a yazılmaz.
+const TG_CONFIG_FILE = 'telegram.json';
+const TG_SAME_VISITOR_MS = 6 * 60 * 60 * 1000;   // aynı IP'ye 6 saatte bir bildirim
+const TG_MAX_PER_HOUR = 30;
+let tgConfig;                                     // undefined: henüz okunmadı, null: ayarlı değil
+const tgLastByIp = new Map();
+let tgHour = { at: 0, sent: 0, skipped: 0 };
+
+async function getTelegramConfig() {
+  if (tgConfig === undefined) tgConfig = await db.getPrivateJson(TG_CONFIG_FILE);
+  return tgConfig;
+}
+
+const tgEsc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+async function sendTelegram(html) {
+  const cfg = await getTelegramConfig();
+  if (!cfg || !cfg.bot_token || !cfg.chat_id) return false;
+  const r = await fetch(`https://api.telegram.org/bot${cfg.bot_token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: cfg.chat_id, text: html, parse_mode: 'HTML', disable_web_page_preview: true }),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!d.ok) throw new Error(d.description || `HTTP ${r.status}`);
+  return true;
+}
+
+// Tarayıcı bilgisinden kısa cihaz tanımı: "📱 Android · Chrome"
+function describeDevice(ua) {
+  ua = String(ua || '');
+  const os = /iPhone|iPad|iPod/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows'
+    : /Mac OS X|Macintosh/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : 'Bilinmiyor';
+  const app = /Instagram/.test(ua) ? 'Instagram içi' : /FBAN|FBAV|FB_IAB/.test(ua) ? 'Facebook içi' : /WhatsApp/.test(ua) ? 'WhatsApp içi' : null;
+  const browser = app || (/SamsungBrowser/.test(ua) ? 'Samsung İnternet' : /OPR|Opera/.test(ua) ? 'Opera' : /Edg\//.test(ua) ? 'Edge'
+    : /Firefox|FxiOS/.test(ua) ? 'Firefox' : /CriOS|Chrome/.test(ua) ? 'Chrome' : /Safari/.test(ua) ? 'Safari' : 'Diğer');
+  const kind = /iPad|Tablet/.test(ua) ? '📟 Tablet' : /Mobi|iPhone|Android/.test(ua) ? '📱 Telefon' : '💻 Bilgisayar';
+  return `${kind} · ${os} · ${browser}`;
+}
+
+function describeReferrer(ref) {
+  if (!ref) return 'Doğrudan (adres yazarak ya da yer imiyle)';
+  try {
+    const host = new URL(ref).hostname.replace(/^www\./, '');
+    if (/google\./.test(host)) return 'Google araması';
+    if (/facebook|fb\.com|m\.facebook/.test(host)) return 'Facebook';
+    if (/instagram/.test(host)) return 'Instagram';
+    if (/whatsapp|wa\.me/.test(host)) return 'WhatsApp';
+    if (/t\.co$|twitter|x\.com/.test(host)) return 'X (Twitter)';
+    if (/newhal\.onrender\.com/.test(host)) return 'Site içi';
+    return host;
+  } catch {
+    return 'Bilinmiyor';
+  }
+}
+
+async function notifyNewVisitor(req, visits) {
+  const info = (req.body && typeof req.body === 'object') ? req.body : {};
+  if (info.admin) return;                                   // yöneticinin kendi girişi
+  const ua = req.headers['user-agent'] || '';
+  if (/bot|crawl|spider|preview|facebookexternalhit|headless/i.test(ua)) return;
+  const ip = String(getIp(req)).split(',')[0].trim();
+  const now = Date.now();
+  if (now - (tgLastByIp.get(ip) || 0) < TG_SAME_VISITOR_MS) return;
+  tgLastByIp.set(ip, now);
+  if (now - tgHour.at > 60 * 60 * 1000) tgHour = { at: now, sent: 0, skipped: 0 };
+  if (tgHour.sent >= TG_MAX_PER_HOUR) { tgHour.skipped++; return; }
+
+  // Giriş yapmış kullanıcının adı (varsa)
+  let who = null;
+  const auth = req.headers.authorization;
+  if (auth) { try { who = jwt.verify(auth.split(' ')[1], JWT_SECRET).name; } catch {} }
+
+  const page = String(info.page || '/').slice(0, 200);
+  const ilan = (page.match(/[?&]ilan=([0-9a-f-]{36})/i) || [])[1];
+  let pageText = page === '/' ? 'Ana sayfa' : page;
+  if (ilan) {
+    const ad = (await db.getAds()).find(a => a.id === ilan);
+    if (ad) pageText = `İlan #${ad.no} · ${(ad.title || ad.body || '').split('\n')[0].slice(0, 50)}`;
+  }
+  const time = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+  const lines = [
+    `👋 <b>NewHal'e yeni ziyaretçi</b> · #${tgEsc(visits)}. ziyaret`,
+    '',
+    `🕒 ${tgEsc(time)}`,
+    `🌐 IP: <code>${tgEsc(ip)}</code> · <a href="https://ipinfo.io/${encodeURIComponent(ip)}">konumu gör</a>`,
+    `${tgEsc(describeDevice(ua))}${info.app ? ' · 📲 uygulamadan' : ''}`,
+    `↪️ Geldiği yer: ${tgEsc(describeReferrer(info.referrer))}`,
+    `📄 Açtığı sayfa: ${tgEsc(pageText)}`,
+  ];
+  if (info.screen) lines.push(`🖥 Ekran: ${tgEsc(String(info.screen).slice(0, 15))}${info.lang ? ` · Dil: ${tgEsc(String(info.lang).slice(0, 10))}` : ''}`);
+  if (who) lines.push(`👤 Giriş yapmış: ${tgEsc(who)}`);
+  if (tgHour.skipped) { lines.push('', `ℹ️ Son bir saatte ${tgHour.skipped} ziyaretçi daha bildirim sınırı yüzünden atlandı.`); tgHour.skipped = 0; }
+  tgHour.sent++;
+  await sendTelegram(lines.join('\n'));
+}
+
+// Eski IP kayıtlarını temizle
+setInterval(() => {
+  const cutoff = Date.now() - TG_SAME_VISITOR_MS;
+  for (const [ip, at] of tgLastByIp) if (at < cutoff) tgLastByIp.delete(ip);
+}, 60 * 60 * 1000).unref();
 
 // ── PUBLIC: Yeni iğne ekle (onay bekliyor) ───────────────────
 app.post('/api/pins', requireAuth, async (req, res) => {
