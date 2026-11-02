@@ -2190,6 +2190,13 @@ function renderVitrin(ads) {
       no.textContent = `#${ad.no}`;
       badges.appendChild(no);
     }
+    if (ad.featured_until) {
+      const timer = document.createElement('span');
+      timer.className = 'vitrin-timer';
+      timer.dataset.until = ad.featured_until;
+      timer.textContent = vitrinRemaining(ad.featured_until);
+      badges.appendChild(timer);
+    }
     overlay.appendChild(badges);
     if (ad.title) {
       const h = document.createElement('h3');
@@ -2454,3 +2461,24 @@ function buildShareBar(ad, large) {
   }
   return bar;
 }
+
+
+// ── Vitrin kalan süre sayacı ──────────────────────────────────
+function vitrinRemaining(until) {
+  const ms = Date.parse(until) - Date.now();
+  if (ms <= 0) return '⏳ Süre doldu';
+  const d = Math.floor(ms / 86400000), h = Math.floor(ms % 86400000 / 3600000), m = Math.max(1, Math.floor(ms % 3600000 / 60000));
+  if (d) return `⏳ ${d} gün${h ? ` ${h} saat` : ''} kaldı`;
+  if (h) return `⏳ ${h} saat ${m} dk kaldı`;
+  return `⏳ ${m} dk kaldı`;
+}
+
+// Her dakika güncelle; süresi dolan ilan vitrinden iner
+setInterval(() => {
+  let expired = false;
+  document.querySelectorAll('.vitrin-timer').forEach(el => {
+    el.textContent = vitrinRemaining(el.dataset.until);
+    if (Date.parse(el.dataset.until) <= Date.now()) expired = true;
+  });
+  if (expired) loadAds();
+}, 60 * 1000);

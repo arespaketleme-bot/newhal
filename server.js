@@ -464,6 +464,45 @@ function cleanAd(body, { allowVideoFile = true } = {}) {
   return { title, body: text, images, video };
 }
 
+// ── Vitrin süresi ──────────────────────────────────────────────
+const FEATURED_DEFAULT_DAYS = 7;
+const FEATURED_MAX_DAYS = 90;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const featuredDays = v => Math.min(FEATURED_MAX_DAYS, Math.max(1, Math.round(Number(v) || FEATURED_DEFAULT_DAYS)));
+
+// Süresiz vitrin ilanına varsayılan süre verir, süresi dolanı vitrinden indirir; değişiklik olduysa kaydeder
+async function getAdsWithFeaturedExpiry() {
+  const ads = await db.getAds();
+  const now = Date.now();
+  let changed = false;
+  for (const ad of ads) {
+    if (ad.featured && !ad.featured_until) {
+      ad.featured_until = new Date(now + FEATURED_DEFAULT_DAYS * DAY_MS).toISOString();
+      changed = true;
+    }
+    if (ad.featured && Date.parse(ad.featured_until) <= now) {
+      ad.featured = false;
+      ad.featured_ended_at = ad.featured_until;
+      delete ad.featured_until;
+      changed = true;
+    }
+  }
+  if (changed) await db.saveAds(ads);
+  return ads;
+}
+
+// Vitrine koy ya da süresini uzat: bitiş, (şimdi ya da mevcut bitiş) + gün
+function setFeatured(ad, on, days) {
+  if (!on) {
+    ad.featured = false;
+    delete ad.featured_until;
+    return;
+  }
+  const from = ad.featured && ad.featured_until ? Math.max(Date.now(), Date.parse(ad.featured_until)) : Date.now();
+  ad.featured = true;
+  ad.featured_until = new Date(from + featuredDays(days) * DAY_MS).toISOString();
+}
+
 const adMedia = ad => [...(ad.images || []), ad.video && ad.video.type === 'file' ? ad.video.url : null];
 
 // İlanın resim/video dosyalarını hangi depodaysa oradan siler
@@ -477,7 +516,7 @@ async function deleteAdFiles(ad) {
 const publicAd = ({ owner, ...ad }) => (owner ? { ...ad, owner_name: owner.name } : ad);
 
 app.get('/api/ads', async (req, res) => {
-  const ads = (await db.getAds()).filter(a => a.active !== false && !a.pending);
+  const ads = (await getAdsWithFeaturedExpiry()).filter(a => a.active !== false && !a.pending);
   res.json(ads.sort((a, b) => b.created_at.localeCompare(a.created_at)).map(publicAd));
 });
 
@@ -525,7 +564,7 @@ app.delete('/api/my-ads/:id', requireAuth, async (req, res) => {
 });
 
 app.get('/api/admin/ads', requireAdmin, async (req, res) => {
-  const ads = await db.getAds();
+  const ads = await getAdsWithFeaturedExpiry();
   res.json([...ads].sort((a, b) => b.created_at.localeCompare(a.created_at)));
 });
 
@@ -551,7 +590,8 @@ app.post('/api/admin/ads', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'YouTube bağlantısı anlaşılamadı' });
   }
   const ads = await db.getAds();
-  const created = { id: crypto.randomUUID(), ...ad, featured: !!req.body.featured, active: true, created_at: new Date().toISOString() };
+  const created = { id: crypto.randomUUID(), ...ad, featured: false, active: true, created_at: new Date().toISOString() };
+  if (req.body.featured) setFeatured(created, true, req.body.featured_days);
   if (!(await db.saveAds([created, ...ads]))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
   res.status(201).json(created);
 });
@@ -569,7 +609,9 @@ app.put('/api/admin/ads/:id', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'YouTube bağlantısı anlaşılamadı' });
   }
   const before = adMedia(ad).filter(Boolean);
-  Object.assign(ad, next, { featured: !!req.body.featured, updated_at: new Date().toISOString() });
+  Object.assign(ad, next, { updated_at: new Date().toISOString() });
+  if (!req.body.featured) setFeatured(ad, false);
+  else if (!ad.featured) setFeatured(ad, true, req.body.featured_days);
   if (!(await db.saveAds(ads))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
   // Artık kullanılmayan resim/video dosyalarını depodan sil
   const now = new Set(adMedia(ad).filter(Boolean));
@@ -585,7 +627,7 @@ app.patch('/api/admin/ads/:id', requireAdmin, async (req, res) => {
   // Yayında/gizli ve vitrin durumu ayrı ayrı değiştirilebilir
   if ('active' in req.body) ad.active = !!req.body.active;
   if (ad.active) delete ad.pending;   // yayına alınan kullanıcı ilanı artık onaylıdır
-  if ('featured' in req.body) ad.featured = !!req.body.featured;
+  if ('featured' in req.body) setFeatured(ad, !!req.body.featured, req.body.featured_days);
   if (req.body.whatsapp_sent) ad.whatsapp_sent_at = new Date().toISOString();
   if (!(await db.saveAds(ads))) return res.status(500).json({ error: 'Kaydedilemedi' });
   res.json(ad);

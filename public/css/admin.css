@@ -560,3 +560,14 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 .ad-edit-banner strong { flex: 1; }
 .ad-item-actions .btn-sm.btn-edit-ad { color: #93c5fd; border-color: rgba(96,165,250,0.4); }
 .ad-item-actions .btn-sm.btn-edit-ad:hover { background: rgba(96,165,250,0.14); color: #fff; }
+
+.ad-featured-row { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; }
+.ad-featured-row .ad-featured-check { flex: 1 1 360px; }
+.ad-featured-days {
+  display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 12px; font-size: 13px; color: #fde68a;
+  border: 1px solid rgba(251,191,36,0.35); background: rgba(251,191,36,0.06);
+}
+.ad-featured-days select {
+  padding: 8px 10px; border-radius: 8px; font: inherit; color: var(--text-1);
+  background: rgba(0,0,0,0.3); border: 1px solid rgba(251,191,36,0.35);
+}

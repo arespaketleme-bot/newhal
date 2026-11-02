@@ -338,10 +338,21 @@
               <input type="url" id="adYoutube" placeholder="https://www.youtube.com/watch?v=..." />
             </div>
           </div>
-          <label class="ad-featured-check">
-            <input type="checkbox" id="adFeatured" />
-            <span>⭐ <strong>Vitrin ilanı</strong> · Ana sayfada en üstte, büyük ve öne çıkan şekilde gösterilir</span>
-          </label>
+          <div class="ad-featured-row">
+            <label class="ad-featured-check">
+              <input type="checkbox" id="adFeatured" />
+              <span>⭐ <strong>Vitrin ilanı</strong> · Ana sayfada en üstte, büyük ve öne çıkan şekilde gösterilir</span>
+            </label>
+            <label class="ad-featured-days">Süre
+              <select id="adFeaturedDays">
+                <option value="1">1 gün</option>
+                <option value="3">3 gün</option>
+                <option value="7" selected>7 gün</option>
+                <option value="15">15 gün</option>
+                <option value="30">30 gün</option>
+              </select>
+            </label>
+          </div>
           <div class="ad-actions">
             <button type="button" class="btn-ghost-sm" onclick="resetAdForm()">Temizle</button>
             <button type="submit" class="btn-publish" id="adSubmitBtn">📢 İlanı Yayınla</button>

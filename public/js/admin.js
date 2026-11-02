@@ -1169,6 +1169,7 @@ async function submitAd(e) {
         images: adPhotoUrls,
         video,
         featured: document.getElementById('adFeatured').checked,
+        featured_days: Number(document.getElementById('adFeaturedDays').value),
       }),
     });
     if (!res) return;
@@ -1205,7 +1206,7 @@ function renderAdList(ads) {
       <div class="ad-thumb">${media}</div>
       <div class="ad-info">
         <div class="ad-item-title">${ad.no ? `<span class="ad-item-no">#${ad.no}</span> ` : ''}${ad.title ? esc(ad.title) : '<span class="ad-untitled">(Başlıksız ilan)</span>'}</div>
-        <div class="ad-item-meta">${ad.featured ? '<span class="ad-vitrin-badge">⭐ Vitrin</span> ' : ''}${ad.pending ? '<span class="ad-pending-badge">⏳ Onay bekliyor</span>' : ad.active === false ? '🙈 Gizli' : '🟢 Yayında'}${ad.owner ? ` · 👤 ${esc(ad.owner.name)}` : ''} · ${esc(new Date(ad.created_at).toLocaleDateString('tr-TR'))}${tags ? ' · ' + tags : ''}</div>
+        <div class="ad-item-meta">${ad.featured ? `<span class="ad-vitrin-badge">⭐ Vitrin · ${esc(featuredRemainingText(ad.featured_until))}</span> ` : ''}${ad.pending ? '<span class="ad-pending-badge">⏳ Onay bekliyor</span>' : ad.active === false ? '🙈 Gizli' : '🟢 Yayında'}${ad.owner ? ` · 👤 ${esc(ad.owner.name)}` : ''} · ${esc(new Date(ad.created_at).toLocaleDateString('tr-TR'))}${tags ? ' · ' + tags : ''}</div>
         ${ad.whatsapp_sent_at ? `<div class="ad-wa-done">💬 WhatsApp'tan gönderildi · ${esc(new Date(ad.whatsapp_sent_at).toLocaleDateString('tr-TR'))}</div>` : ''}
         ${ad.facebook ? `<a class="ad-fb-done" href="${esc(ad.facebook.url)}" target="_blank" rel="noopener">📘 Facebook'ta paylaşıldı · ${esc(new Date(ad.facebook.shared_at).toLocaleDateString('tr-TR'))}</a>` : ''}
         ${ad.body ? `<div class="ad-item-body">${esc(ad.body)}</div>` : ''}
@@ -1215,6 +1216,7 @@ function renderAdList(ads) {
         ${adWhatsappNumber(ad) ? `<button type="button" class="btn-sm btn-wa" data-act="whatsapp">💬 WhatsApp'tan Gönder</button>` : ''}
         <button type="button" class="btn-sm btn-fb" data-act="facebook" ${fbConnected ? '' : 'disabled title="Önce Facebook sayfasını bağlayın"'}>📘 Facebook'a Gönder</button>
         <button type="button" class="btn-sm btn-vitrin" data-act="featured">${ad.featured ? '☆ Vitrinden Çıkar' : '⭐ Vitrine Ekle'}</button>
+        ${ad.featured ? '<button type="button" class="btn-sm btn-vitrin" data-act="extend">⏳ Süre Uzat</button>' : ''}
         <button type="button" class="btn-sm${ad.pending ? ' btn-approve-ad' : ''}" data-act="toggle">${ad.pending ? '✅ Onayla' : ad.active === false ? '👁 Yayınla' : '🙈 Gizle'}</button>
         <button type="button" class="btn-sm btn-delete" data-act="delete">🗑 Sil</button>
       </div>`;
@@ -1223,17 +1225,38 @@ function renderAdList(ads) {
     const waBtn = card.querySelector('[data-act="whatsapp"]');
     if (waBtn) waBtn.onclick = () => sendAdWhatsapp(ad);
     card.querySelector('[data-act="featured"]').onclick = () => setAdFeatured(ad.id, !ad.featured);
+    const extendBtn = card.querySelector('[data-act="extend"]');
+    if (extendBtn) extendBtn.onclick = () => setAdFeatured(ad.id, true, true);
     card.querySelector('[data-act="toggle"]').onclick = () => toggleAd(ad.id, ad.active === false);
     card.querySelector('[data-act="delete"]').onclick = () => deleteAd(ad.id, ad.title || 'Başlıksız');
     list.appendChild(card);
   });
 }
 
-async function setAdFeatured(id, featured) {
-  const res = await api(`/api/admin/ads/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ featured }) });
+// Vitrine ekle ya da süre uzat: kaç gün olacağını sorar
+async function setAdFeatured(id, featured, extend) {
+  let days;
+  if (featured) {
+    const answer = prompt(extend ? 'Vitrin süresi kaç gün uzatılsın? (1-90)' : 'Kaç gün vitrinde kalsın? (1-90)', '7');
+    if (answer === null) return;
+    days = Math.round(Number(answer));
+    if (!(days >= 1 && days <= 90)) return showToast('1 ile 90 arasında bir gün sayısı yazın', 'error');
+  }
+  const res = await api(`/api/admin/ads/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ featured, featured_days: days }) });
   if (!res || !res.ok) return showToast('İlan güncellenemedi', 'error');
-  showToast(featured ? '⭐ İlan vitrine eklendi' : 'İlan vitrinden çıkarıldı', 'success');
+  showToast(!featured ? 'İlan vitrinden çıkarıldı' : extend ? `⏳ Vitrin süresi ${days} gün uzatıldı` : `⭐ İlan ${days} günlüğüne vitrine eklendi`, 'success');
   loadAds();
+}
+
+// "3 gün 4 saat kaldı · bitiş 12 Kas 14:00"
+function featuredRemainingText(until) {
+  if (!until) return 'süre yok';
+  const ms = Date.parse(until) - Date.now();
+  if (ms <= 0) return 'süresi doldu';
+  const d = Math.floor(ms / 86400000), h = Math.floor(ms % 86400000 / 3600000), m = Math.max(1, Math.floor(ms % 3600000 / 60000));
+  const left = d ? `${d} gün${h ? ` ${h} saat` : ''}` : h ? `${h} saat ${m} dk` : `${m} dk`;
+  const end = new Date(until).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return `${left} kaldı · bitiş ${end}`;
 }
 
 async function toggleAd(id, active) {
