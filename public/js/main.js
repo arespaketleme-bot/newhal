@@ -109,6 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadChatMessages();
   setInterval(loadChatMessages, 3000);
   initDraggableChat();
+  initChatAutoCollapse();
 
   // Emoji picker init
   initUserEmojiPicker();
@@ -168,6 +169,29 @@ function initMap() {
   });
 }
 
+// ── Harita tam ekran ──────────────────────────────────────────
+function isMapFullscreen() {
+  return document.getElementById('mapPanel').classList.contains('map-fullscreen');
+}
+
+function toggleMapFullscreen(force) {
+  const panel = document.getElementById('mapPanel');
+  const on = typeof force === 'boolean' ? force : !isMapFullscreen();
+  panel.classList.toggle('map-fullscreen', on);
+  document.body.classList.toggle('map-fs-open', on);
+  const btn = document.getElementById('mapFsBtn');
+  document.getElementById('mapFsLabel').textContent = on ? 'Küçült' : 'Tam Ekran';
+  btn.setAttribute('aria-label', on ? 'Haritayı eski haline döndür' : 'Haritayı tam ekran yap');
+  if (on) setChatOpen(false);
+  // Leaflet yeni boyutu ölçsün, harita aynı yeri göstermeye devam etsin
+  const center = map.getCenter();
+  setTimeout(() => { map.invalidateSize(); map.setView(center, map.getZoom(), { animate: false }); }, 50);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && isMapFullscreen()) toggleMapFullscreen(false);
+});
+
 function setMapLayer(type) {
   if (!layers[type]) return;
   if (currentLayer) map.removeLayer(currentLayer);
@@ -196,6 +220,7 @@ function startLocationPick() {
 }
 
 function finishLocationPick() {
+  if (isMapFullscreen()) toggleMapFullscreen(false);
   document.getElementById('addPinModal').classList.remove('picking');
   document.body.classList.remove('location-picking');
 }
@@ -859,6 +884,31 @@ function toggleChatWidget(e) {
     setTimeout(() => { msgsEl.scrollTop = msgsEl.scrollHeight; }, 100);
   }
   updateBottomNav();
+  scheduleChatCollapse();
+}
+
+// ── Sohbet: 30 sn kullanılmazsa kendiliğinden küçülür ─────────
+const CHAT_AUTO_COLLAPSE_MS = 30000;
+let chatCollapseTimer = null;
+
+function scheduleChatCollapse() {
+  clearTimeout(chatCollapseTimer);
+  if (!isChatOpen()) return;
+  chatCollapseTimer = setTimeout(() => {
+    // Yazı yazılıyorsa küçültme, süreyi baştan başlat
+    const input = document.getElementById('chatMsg');
+    if (input && (document.activeElement === input || input.value.trim())) return scheduleChatCollapse();
+    setChatOpen(false);
+  }, CHAT_AUTO_COLLAPSE_MS);
+}
+
+function initChatAutoCollapse() {
+  const widget = document.getElementById('chatWidget');
+  // Sohbetin içindeki her hareket süreyi baştan başlatır
+  ['pointerdown', 'keydown', 'wheel', 'touchstart', 'focusin', 'input'].forEach(evt => {
+    widget.addEventListener(evt, () => { if (isChatOpen()) scheduleChatCollapse(); }, { passive: true });
+  });
+  scheduleChatCollapse();
 }
 
 // ── Telefon Alt Menüsü ────────────────────────────────────────
@@ -878,6 +928,7 @@ function setChatOpen(open) {
     setTimeout(() => { msgsEl.scrollTop = msgsEl.scrollHeight; }, 100);
   }
   updateBottomNav();
+  scheduleChatCollapse();
 }
 
 function bottomNavGo(tab) {

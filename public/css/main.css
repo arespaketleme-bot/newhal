@@ -1367,3 +1367,34 @@ button, a { cursor: pointer; text-decoration: none; border: none; background: no
   border: 3px solid rgba(255,255,255,0.85);
   box-shadow: 0 0 0 6px rgba(16,185,129,0.25), 0 6px 16px rgba(0,0,0,0.35);
 }
+
+/* ── Harita tam ekran ──────────────────────────────────────── */
+.map-fs-btn {
+  position: absolute; right: 16px; bottom: 36px; z-index: 1000;
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 40px; padding: 0 14px; border-radius: 999px; cursor: pointer;
+  background: rgba(10, 15, 13, 0.88); backdrop-filter: blur(10px);
+  border: 1px solid var(--border-g); color: var(--green-400);
+  font-size: 13px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  transition: var(--trans);
+}
+.map-fs-btn:hover { background: rgba(16,185,129,0.18); color: #fff; }
+.map-fs-btn .fs-exit { display: none; }
+.map-fullscreen .map-fs-btn .fs-enter { display: none; }
+.map-fullscreen .map-fs-btn .fs-exit { display: inline; }
+
+.map-panel.map-fullscreen {
+  position: fixed; inset: 0; z-index: 190;
+  width: 100vw; height: 100vh; height: 100dvh; max-height: none; min-height: 0;
+  border-radius: 0; border: none;
+}
+.map-panel.map-fullscreen #map { border-radius: 0; }
+.map-panel.map-fullscreen .map-layer-selector { top: calc(16px + env(safe-area-inset-top)); }
+.map-panel.map-fullscreen .map-fs-btn { bottom: calc(36px + env(safe-area-inset-bottom)); }
+body.map-fs-open { overflow: hidden; }
+
+@media (max-width: 768px) {
+  .map-fs-btn { right: 10px; bottom: 30px; min-height: 40px; padding: 0 12px; }
+  .map-tip { display: none; }
+  .map-panel.map-fullscreen { max-height: none; min-height: 0; }
+}
