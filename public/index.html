@@ -247,6 +247,18 @@
         <button type="button" id="adsSearchClear" onclick="clearAdsSearch()" aria-label="Aramayı temizle" hidden>✕</button>
       </div>
     </div>
+    <!-- Vitrin: öne çıkan ilanlar -->
+    <div class="vitrin" id="vitrin" hidden>
+      <div class="vitrin-head">
+        <span class="vitrin-title">⭐ Vitrin</span>
+        <div class="vitrin-controls">
+          <button type="button" class="vitrin-arrow" onclick="vitrinStep(-1)" aria-label="Önceki vitrin ilanı">‹</button>
+          <button type="button" class="vitrin-arrow" onclick="vitrinStep(1)" aria-label="Sonraki vitrin ilanı">›</button>
+        </div>
+      </div>
+      <div class="vitrin-track" id="vitrinTrack"></div>
+      <div class="vitrin-dots" id="vitrinDots"></div>
+    </div>
     <div class="ads-search-info" id="adsSearchInfo" hidden></div>
     <div class="ads-grid" id="adsGrid"></div>
   </section>

@@ -1780,7 +1780,12 @@ function renderAdsGrid() {
   const grid = document.getElementById('adsGrid');
   const info = document.getElementById('adsSearchInfo');
   grid.innerHTML = '';
-  const list = adsQuery ? allAds.filter(ad => adMatchesSearch(ad, adsQuery)) : allAds;
+  // Arama yokken vitrin ilanları üstteki vitrinde, altta tekrar edilmez
+  const featured = allAds.filter(ad => ad.featured);
+  renderVitrin(adsQuery ? [] : featured);
+  const list = adsQuery
+    ? allAds.filter(ad => adMatchesSearch(ad, adsQuery)).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
+    : allAds.filter(ad => !ad.featured);
   list.forEach(ad => grid.appendChild(buildAdCard(ad)));
   info.hidden = !adsQuery;
   info.textContent = list.length
@@ -1881,6 +1886,13 @@ function buildAdCard(ad) {
   body.appendChild(date);
   card.appendChild(body);
   if (!images.length && !ad.video) card.classList.add('text-only');
+  if (ad.featured) {
+    card.classList.add('is-featured');
+    const badge = document.createElement('span');
+    badge.className = 'vitrin-badge';
+    badge.textContent = '⭐ Vitrin';
+    card.prepend(badge);
+  }
 
   card.tabIndex = 0;
   card.setAttribute('role', 'button');
@@ -2059,3 +2071,129 @@ document.addEventListener('keydown', (e) => {
 }, true);
 
 window.addEventListener('popstate', () => { if (adViewer) closeAdViewer(true); });
+
+
+// ── Vitrin (öne çıkan ilanlar) ────────────────────────────────
+const VITRIN_AUTOPLAY_MS = 5000;
+let vitrinIndex = 0;
+let vitrinTimer = null;
+
+function renderVitrin(ads) {
+  const box = document.getElementById('vitrin');
+  const track = document.getElementById('vitrinTrack');
+  const dots = document.getElementById('vitrinDots');
+  clearInterval(vitrinTimer);
+  track.innerHTML = '';
+  dots.innerHTML = '';
+  box.hidden = !ads.length;
+  if (!ads.length) return;
+  box.classList.toggle('single', ads.length === 1);
+
+  ads.forEach((ad, i) => {
+    const slide = document.createElement('article');
+    slide.className = 'vitrin-slide';
+    slide.tabIndex = 0;
+    slide.setAttribute('role', 'button');
+    slide.setAttribute('aria-label', `${ad.title || 'Vitrin ilanı'}: büyüt`);
+    const cover = (ad.images || [])[0]
+      || (ad.video && ad.video.type === 'youtube' ? `https://i.ytimg.com/vi/${encodeURIComponent(ad.video.id)}/hqdefault.jpg` : null);
+    if (cover) {
+      const bg = document.createElement('div');
+      bg.className = 'vitrin-bg';
+      bg.style.backgroundImage = `url("${cover.replace(/"/g, '%22')}")`;
+      const img = document.createElement('img');
+      img.className = 'vitrin-img';
+      img.src = cover;
+      img.alt = ad.title || 'Vitrin ilanı';
+      img.loading = i === 0 ? 'eager' : 'lazy';
+      slide.append(bg, img);
+    } else if (ad.video && ad.video.type === 'file') {
+      const v = document.createElement('video');
+      v.className = 'vitrin-img';
+      v.src = ad.video.url;
+      v.muted = true;
+      v.playsInline = true;
+      v.preload = 'metadata';
+      slide.appendChild(v);
+    } else {
+      slide.classList.add('text-only');
+    }
+    if (ad.video) {
+      const play = document.createElement('span');
+      play.className = 'vitrin-play';
+      play.textContent = '▶';
+      slide.appendChild(play);
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'vitrin-overlay';
+    const badge = document.createElement('span');
+    badge.className = 'vitrin-badge';
+    badge.textContent = '⭐ Vitrin';
+    overlay.appendChild(badge);
+    if (ad.title) {
+      const h = document.createElement('h3');
+      h.textContent = ad.title;
+      overlay.appendChild(h);
+    }
+    if (ad.body) {
+      const p = document.createElement('p');
+      appendTextWithPhoneLinks(p, ad.body);
+      overlay.appendChild(p);
+    }
+    const more = document.createElement('span');
+    more.className = 'vitrin-more';
+    more.textContent = 'İlanı incele →';
+    overlay.appendChild(more);
+    slide.appendChild(overlay);
+
+    slide.addEventListener('click', () => openAdViewer(ad, 0));
+    slide.addEventListener('keydown', (e) => { if (e.key === 'Enter') openAdViewer(ad, 0); });
+    track.appendChild(slide);
+
+    const dot = document.createElement('button');
+    dot.type = 'button';
+    dot.className = 'vitrin-dot';
+    dot.setAttribute('aria-label', `${i + 1}. vitrin ilanı`);
+    dot.onclick = () => { vitrinGo(i); restartVitrinTimer(); };
+    dots.appendChild(dot);
+  });
+
+  // Elle kaydırınca göstergeyi güncelle
+  track.onscroll = () => {
+    const i = Math.round(track.scrollLeft / track.clientWidth);
+    if (i !== vitrinIndex) { vitrinIndex = i; updateVitrinDots(); }
+  };
+  ['pointerdown', 'touchstart', 'mouseenter', 'focusin'].forEach(evt =>
+    track.addEventListener(evt, () => clearInterval(vitrinTimer), { passive: true }));
+  track.addEventListener('mouseleave', restartVitrinTimer);
+
+  vitrinIndex = 0;
+  updateVitrinDots();
+  restartVitrinTimer();
+}
+
+function vitrinGo(i) {
+  const track = document.getElementById('vitrinTrack');
+  const n = track.children.length;
+  if (!n) return;
+  vitrinIndex = (i + n) % n;
+  track.scrollTo({ left: vitrinIndex * track.clientWidth, behavior: 'smooth' });
+  updateVitrinDots();
+}
+
+function vitrinStep(dir) {
+  vitrinGo(vitrinIndex + dir);
+  restartVitrinTimer();
+}
+
+function updateVitrinDots() {
+  document.querySelectorAll('.vitrin-dot').forEach((d, i) => d.classList.toggle('active', i === vitrinIndex));
+}
+
+function restartVitrinTimer() {
+  clearInterval(vitrinTimer);
+  const n = document.getElementById('vitrinTrack').children.length;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (n > 1 && !reduce) vitrinTimer = setInterval(() => { if (!adViewer) vitrinGo(vitrinIndex + 1); }, VITRIN_AUTOPLAY_MS);
+}

@@ -1149,6 +1149,7 @@ async function submitAd(e) {
         body: document.getElementById('adBody').value,
         images: adPhotoUrls,
         video,
+        featured: document.getElementById('adFeatured').checked,
       }),
     });
     if (!res) return;
@@ -1173,7 +1174,7 @@ function renderAdList(ads) {
   }
   ads.forEach(ad => {
     const card = document.createElement('div');
-    card.className = 'ad-item' + (ad.active === false ? ' hidden-ad' : '');
+    card.className = 'ad-item' + (ad.active === false ? ' hidden-ad' : '') + (ad.featured ? ' featured-ad' : '');
     const media = (ad.images || []).length
       ? `<img src="${esc(ad.images[0])}" alt="" />`
       : ad.video ? `<div class="ad-thumb-icon">🎬</div>` : `<div class="ad-thumb-icon">📝</div>`;
@@ -1185,20 +1186,29 @@ function renderAdList(ads) {
       <div class="ad-thumb">${media}</div>
       <div class="ad-info">
         <div class="ad-item-title">${ad.title ? esc(ad.title) : '<span class="ad-untitled">(Başlıksız ilan)</span>'}</div>
-        <div class="ad-item-meta">${ad.active === false ? '🙈 Gizli' : '🟢 Yayında'} · ${esc(new Date(ad.created_at).toLocaleDateString('tr-TR'))}${tags ? ' · ' + tags : ''}</div>
+        <div class="ad-item-meta">${ad.featured ? '<span class="ad-vitrin-badge">⭐ Vitrin</span> ' : ''}${ad.active === false ? '🙈 Gizli' : '🟢 Yayında'} · ${esc(new Date(ad.created_at).toLocaleDateString('tr-TR'))}${tags ? ' · ' + tags : ''}</div>
         ${ad.facebook ? `<a class="ad-fb-done" href="${esc(ad.facebook.url)}" target="_blank" rel="noopener">📘 Facebook'ta paylaşıldı · ${esc(new Date(ad.facebook.shared_at).toLocaleDateString('tr-TR'))}</a>` : ''}
         ${ad.body ? `<div class="ad-item-body">${esc(ad.body)}</div>` : ''}
       </div>
       <div class="ad-item-actions">
         <button type="button" class="btn-sm btn-fb" data-act="facebook" ${fbConnected ? '' : 'disabled title="Önce Facebook sayfasını bağlayın"'}>📘 Facebook'a Gönder</button>
+        <button type="button" class="btn-sm btn-vitrin" data-act="featured">${ad.featured ? '☆ Vitrinden Çıkar' : '⭐ Vitrine Ekle'}</button>
         <button type="button" class="btn-sm" data-act="toggle">${ad.active === false ? '👁 Yayınla' : '🙈 Gizle'}</button>
         <button type="button" class="btn-sm btn-delete" data-act="delete">🗑 Sil</button>
       </div>`;
     card.querySelector('[data-act="facebook"]').onclick = (e) => shareAdToFacebook(ad, e.currentTarget);
+    card.querySelector('[data-act="featured"]').onclick = () => setAdFeatured(ad.id, !ad.featured);
     card.querySelector('[data-act="toggle"]').onclick = () => toggleAd(ad.id, ad.active === false);
     card.querySelector('[data-act="delete"]').onclick = () => deleteAd(ad.id, ad.title || 'Başlıksız');
     list.appendChild(card);
   });
+}
+
+async function setAdFeatured(id, featured) {
+  const res = await api(`/api/admin/ads/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ featured }) });
+  if (!res || !res.ok) return showToast('İlan güncellenemedi', 'error');
+  showToast(featured ? '⭐ İlan vitrine eklendi' : 'İlan vitrinden çıkarıldı', 'success');
+  loadAds();
 }
 
 async function toggleAd(id, active) {

@@ -467,7 +467,7 @@ app.post('/api/admin/ads', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'YouTube bağlantısı anlaşılamadı' });
   }
   const ads = await db.getAds();
-  const created = { id: crypto.randomUUID(), ...ad, active: true, created_at: new Date().toISOString() };
+  const created = { id: crypto.randomUUID(), ...ad, featured: !!req.body.featured, active: true, created_at: new Date().toISOString() };
   if (!(await db.saveAds([created, ...ads]))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
   res.status(201).json(created);
 });
@@ -477,7 +477,9 @@ app.patch('/api/admin/ads/:id', requireAdmin, async (req, res) => {
   const ads = await db.getAds();
   const ad = ads.find(a => a.id === req.params.id);
   if (!ad) return res.status(404).json({ error: 'İlan bulunamadı' });
-  ad.active = !!req.body.active;
+  // Yayında/gizli ve vitrin durumu ayrı ayrı değiştirilebilir
+  if ('active' in req.body) ad.active = !!req.body.active;
+  if ('featured' in req.body) ad.featured = !!req.body.featured;
   if (!(await db.saveAds(ads))) return res.status(500).json({ error: 'Kaydedilemedi' });
   res.json(ad);
 });
