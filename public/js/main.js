@@ -798,7 +798,7 @@ async function submitPin(e) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Hata oluştu');
     closeAddPinModal();
-    showToast('✅ İğne gönderildi! Admin onayı bekleniyor.', 'success');
+    showToast('✅ İşletme gönderildi! Yönetici onayından sonra yayınlanacak.', 'success');
     logActivity(`'${payload.title}' için iğne ekleme talebi gönderdiniz`, true);
   } catch (err) {
     showToast(err.message, 'error');
