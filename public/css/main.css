@@ -1790,3 +1790,34 @@ img.ad-media.ad-logo-media {
   .nav { gap: 4px; }
   .nav .btn-ghost { padding-left: 10px; padding-right: 10px; }
 }
+
+
+/* ── WhatsApp grubu daveti ─────────────────────────────────── */
+.wa-group-cta {
+  display: flex; align-items: center; gap: 14px; margin: 0 0 22px; padding: 14px 16px; border-radius: 18px;
+  text-decoration: none; color: inherit;
+  background: linear-gradient(135deg, rgba(37,211,102,0.18), rgba(18,140,126,0.12));
+  border: 1px solid rgba(37,211,102,0.45); box-shadow: 0 12px 30px rgba(18,140,126,0.18);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.wa-group-cta:hover { transform: translateY(-2px); box-shadow: 0 16px 36px rgba(18,140,126,0.28); }
+.wa-group-icon {
+  width: 46px; height: 46px; flex-shrink: 0; border-radius: 50%; background: #25d366; color: #fff;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 16px rgba(37,211,102,0.45);
+}
+.wa-group-icon svg { width: 26px; height: 26px; }
+.wa-group-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.wa-group-text strong { font-size: 16px; color: #fff; }
+.wa-group-text span { font-size: 13px; color: #bbf7d0; }
+.wa-group-btn {
+  flex-shrink: 0; padding: 10px 18px; border-radius: 999px; font-weight: 700; font-size: 14px; white-space: nowrap;
+  color: #052e16; background: #25d366;
+}
+.wa-group-menu { color: #4ade80 !important; font-weight: 600; }
+.wa-group-footer { color: #4ade80 !important; font-weight: 600; }
+.footer-links { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+@media (max-width: 768px) {
+  .wa-group-cta { flex-wrap: wrap; gap: 12px; padding: 14px; }
+  .wa-group-btn { flex: 1 1 100%; text-align: center; padding: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .wa-group-cta { transition: none; } }
