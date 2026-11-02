@@ -639,6 +639,10 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
+app.get('/gizlilik', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'gizlilik.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`\n✅ NewHal sunucusu çalışıyor!`);
   console.log(`🌐 Ana site   : http://localhost:${PORT}`);
