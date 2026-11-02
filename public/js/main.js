@@ -92,6 +92,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   initMap();
+  initSearch();
   // Site haritayla, tam ekran açılır; "Küçült" ile sayfanın geri kalanına geçilir
   toggleMapFullscreen(true);
   await loadCategories();
@@ -328,10 +329,15 @@ function renderPins(pins) {
     filtered = filtered.filter(p => p.id > 6);
   }
 
+  // Arama kutusundaki kelimeler
+  if (searchQuery) filtered = searchPins(filtered, searchQuery);
+
   // Haritaya ekle
+  pinMarkers = {};
   filtered.forEach(pin => {
     const emoji = CATEGORY_ICONS[pin.category] || '📦';
     const marker = L.marker([pin.lat, pin.lng], { icon: createIcon(emoji), title: pin.title });
+    pinMarkers[pin.id] = marker;
     if (cluster) cluster.addLayer(marker); else marker.addTo(map);
     
     // Popup shows contact info optionally
@@ -389,11 +395,138 @@ function renderPins(pins) {
   }
 }
 
+// ── İşletme Arama ─────────────────────────────────────────────
+let searchQuery = '';
+let pinMarkers = {};
+const MAX_SEARCH_RESULTS = 8;
+
+// Türkçe harf ve büyük/küçük harf farkını yok sayar: "ÇİÇEK" = "cicek"
+function normalizeSearch(text) {
+  return String(text || '').toLocaleLowerCase('tr-TR')
+    .replace(/ı/g, 'i').replace(/ğ/g, 'g').replace(/ü/g, 'u')
+    .replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ç/g, 'c')
+    .replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+// Önce ad, ürün ve kategoride aranır; adres (hepsinde "Akdeniz/Mersin" geçer) sadece yedektir
+function pinMainText(pin) {
+  return normalizeSearch([pin.title, pin.category, pin.phone, ...(pin.sells || []), ...(pin.seeks || [])].join(' '));
+}
+
+function matchesAll(text, query) {
+  return normalizeSearch(query).split(' ').every(word => text.includes(word));
+}
+
+// Aramaya uyan işletmeler: ad/ürün eşleşmesi varsa sadece onlar, yoksa adres eşleşmeleri
+function searchPins(list, query) {
+  const main = list.filter(p => matchesAll(pinMainText(p), query));
+  if (main.length) return main;
+  return list.filter(p => matchesAll(pinMainText(p) + ' ' + normalizeSearch(p.address), query));
+}
+
+// Sonuç satırında neden eşleştiğini göster: ürün eşleştiyse ürünü yaz
+function searchMatchHint(pin, query) {
+  const words = normalizeSearch(query).split(' ');
+  const product = (list, label) => {
+    const hit = (list || []).find(item => words.some(w => normalizeSearch(item).includes(w)));
+    return hit ? `${label} ${hit}` : '';
+  };
+  return product(pin.sells, '🛒') || product(pin.seeks, '🔎') || pin.category;
+}
+
+function onSearchInput(value) {
+  searchQuery = value.trim();
+  document.getElementById('mapSearchClear').hidden = !searchQuery;
+  renderPins(allPins);
+  renderSearchResults();
+}
+
+function renderSearchResults() {
+  const box = document.getElementById('mapSearchResults');
+  box.innerHTML = '';
+  if (!searchQuery) { box.hidden = true; return; }
+
+  const matches = searchPins(activeFilter === 'all' ? allPins : allPins.filter(p => p.category === activeFilter), searchQuery);
+  // Adı aramayla başlayanlar önce
+  const q = normalizeSearch(searchQuery);
+  const starts = p => normalizeSearch(p.title).startsWith(q) ? 1 : 0;
+  matches.sort((a, b) => starts(b) - starts(a));
+
+  const head = document.createElement('div');
+  head.className = 'map-search-count';
+  head.textContent = matches.length ? `${matches.length} işletme bulundu` : 'Sonuç bulunamadı';
+  box.appendChild(head);
+
+  matches.slice(0, MAX_SEARCH_RESULTS).forEach(pin => {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'map-search-item';
+    const icon = document.createElement('span');
+    icon.className = 'map-search-icon';
+    icon.textContent = CATEGORY_ICONS[pin.category] || '📦';
+    const text = document.createElement('span');
+    text.className = 'map-search-text';
+    const title = document.createElement('strong');
+    title.textContent = pin.title;
+    const sub = document.createElement('small');
+    sub.textContent = searchMatchHint(pin, searchQuery);
+    text.append(title, sub);
+    row.append(icon, text);
+    row.onclick = () => focusPin(pin.id);
+    box.appendChild(row);
+  });
+  box.hidden = false;
+}
+
+// Haritada işletmeye git ve penceresini aç
+function focusPin(id) {
+  const marker = pinMarkers[id];
+  document.getElementById('mapSearchResults').hidden = true;
+  document.getElementById('mapSearch').blur();
+  if (!marker) return showPinDetail(id);
+  if (!isMapFullscreen()) document.getElementById('mapSection').scrollIntoView({ behavior: 'smooth' });
+  const open = () => marker.openPopup();
+  if (pinCluster && pinCluster.hasLayer(marker)) pinCluster.zoomToShowLayer(marker, open);
+  else { map.setView(marker.getLatLng(), 18); open(); }
+}
+
+function clearSearch() {
+  const input = document.getElementById('mapSearch');
+  input.value = '';
+  onSearchInput('');
+  input.focus();
+}
+
+function initSearch() {
+  const wrap = document.querySelector('.map-search');
+  const input = document.getElementById('mapSearch');
+  const box = document.getElementById('mapSearchResults');
+  input.addEventListener('input', () => onSearchInput(input.value));
+  input.addEventListener('focus', () => { if (searchQuery) renderSearchResults(); });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const first = box.querySelector('.map-search-item');
+      if (first) first.click();
+    } else if (e.key === 'Escape') {
+      e.stopPropagation();
+      if (input.value) clearSearch(); else input.blur();
+    }
+  });
+  // Arama alanı dışına dokununca sonuç listesini kapat
+  document.addEventListener('pointerdown', (e) => {
+    if (!e.target.closest('.map-search')) box.hidden = true;
+  });
+  // Arama kutusuna dokunmak haritaya tıklamak (işletme ekleme) sayılmasın
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+}
+
 function filterPins(cat, btn) {
   activeFilter = cat;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderPins(allPins);
+  if (searchQuery) renderSearchResults();
 
   logActivity(`Kategoriyi '${cat === 'all' ? 'Tümü' : cat}' olarak filtrelediniz`, true);
 }

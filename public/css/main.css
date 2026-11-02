@@ -1398,3 +1398,58 @@ body.map-fs-open { overflow: hidden; }
   .map-tip { display: none; }
   .map-panel.map-fullscreen { max-height: none; min-height: 0; }
 }
+
+/* ── Harita üstünde işletme arama ──────────────────────────── */
+.map-search {
+  position: absolute; top: 14px; left: 58px; right: 16px; z-index: 1001; max-width: 460px;
+}
+.map-search input {
+  width: 100%; height: 46px; padding: 0 44px 0 42px; border-radius: 999px;
+  background: rgba(10, 15, 13, 0.92); backdrop-filter: blur(12px);
+  border: 1px solid var(--border-g); color: #fff; font-size: 15px; font-family: var(--font-body);
+  outline: none; box-shadow: 0 8px 28px rgba(0,0,0,0.45); -webkit-appearance: none; appearance: none;
+}
+.map-search input::placeholder { color: var(--text-3); }
+.map-search input:focus { border-color: var(--green-400); box-shadow: 0 0 0 3px rgba(0,255,135,0.15), 0 8px 28px rgba(0,0,0,0.45); }
+.map-search input::-webkit-search-cancel-button { display: none; }
+.map-search-glass { position: absolute; left: 15px; top: 14px; color: var(--green-400); pointer-events: none; }
+.map-search-clear {
+  position: absolute; right: 6px; top: 6px; width: 34px; height: 34px; border-radius: 50%;
+  border: none; background: rgba(255,255,255,0.08); color: var(--text-2); font-size: 13px; cursor: pointer;
+}
+.map-search-clear[hidden] { display: none; }
+.map-search-clear:hover { background: rgba(255,255,255,0.16); color: #fff; }
+.map-search-results {
+  margin-top: 8px; max-height: min(60vh, 420px); overflow-y: auto; padding: 6px;
+  background: rgba(10, 15, 13, 0.97); backdrop-filter: blur(14px);
+  border: 1px solid var(--border-g); border-radius: 16px; box-shadow: 0 16px 40px rgba(0,0,0,0.55);
+}
+.map-search-results[hidden] { display: none; }
+.map-search-count { font-size: 11px; color: var(--text-3); padding: 6px 10px 4px; }
+.map-search-item {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 9px 10px; min-height: 52px;
+  border: none; border-radius: 12px; background: none; color: var(--text-1); cursor: pointer; text-align: left;
+}
+.map-search-item:hover, .map-search-item:focus-visible { background: rgba(0,255,135,0.08); outline: none; }
+.map-search-icon {
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px; font-size: 18px;
+  display: flex; align-items: center; justify-content: center; background: rgba(0,255,135,0.06); border: 1px solid var(--border);
+}
+.map-search-text { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.map-search-text strong { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-search-text small { font-size: 12px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Katman seçici aramanın altına iner */
+.map-layer-selector { top: 70px; }
+.map-panel.map-fullscreen .map-search { top: calc(14px + env(safe-area-inset-top)); }
+.map-panel.map-fullscreen .map-layer-selector { top: calc(70px + env(safe-area-inset-top)); }
+
+@media (max-width: 768px) {
+  .map-search { top: 10px; left: 54px; right: 10px; max-width: none; }
+  .map-search input { height: 44px; }
+  .map-search-glass { top: 13px; }
+  .map-search-clear { top: 5px; }
+  .map-layer-selector { top: 62px; right: 10px; }
+  .map-panel.map-fullscreen .map-search { top: calc(10px + env(safe-area-inset-top)); }
+  .map-panel.map-fullscreen .map-layer-selector { top: calc(62px + env(safe-area-inset-top)); }
+}

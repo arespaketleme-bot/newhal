@@ -161,6 +161,14 @@
       <div class="map-panel" id="mapPanel">
         <div id="map"></div>
         
+        <!-- İşletme arama -->
+        <div class="map-search" role="search">
+          <svg class="map-search-glass" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="search" id="mapSearch" placeholder="İşletme, ürün ya da adres ara..." autocomplete="off" enterkeyhint="search" aria-label="İşletme ara" />
+          <button type="button" class="map-search-clear" id="mapSearchClear" onclick="clearSearch()" aria-label="Aramayı temizle" hidden>✕</button>
+          <div class="map-search-results" id="mapSearchResults" hidden></div>
+        </div>
+
         <!-- Map Layer Selector floating overlay -->
         <div class="map-layer-selector">
           <button class="layer-btn" id="layerBtnSatellite" onclick="setMapLayer('satellite')">🛰 Uydu</button>
