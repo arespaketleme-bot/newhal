@@ -2305,12 +2305,11 @@ async function submitUserAd(e) {
   if (userAdPhotos.isBusy()) return showToast('Resimler yükleniyor, lütfen bekleyin', 'error');
   const youtube = document.getElementById('userAdYoutube').value.trim();
   const payload = {
-    title: document.getElementById('userAdTitle').value,
     body: document.getElementById('userAdBody').value,
     images: userAdPhotos.getUrls(),
     video: youtube ? { type: 'youtube', url: youtube } : null,
   };
-  if (!payload.title.trim() && !payload.body.trim() && !payload.images.length && !payload.video) {
+  if (!payload.body.trim() && !payload.images.length && !payload.video) {
     return showToast('İlana yazı ya da resim ekleyin', 'error');
   }
   const btn = document.getElementById('userAdSubmitBtn');

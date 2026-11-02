@@ -566,14 +566,8 @@
       <form class="modal-form" id="userAdForm" onsubmit="submitUserAd(event)">
         <div class="form-row">
           <div class="form-group full">
-            <label for="userAdTitle">Başlık <span class="field-hint">(isteğe bağlı)</span></label>
-            <input type="text" id="userAdTitle" maxlength="120" placeholder="Örn: Toptan domates, araç üstü teslim" />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group full">
-            <label for="userAdBody">İlan metni</label>
-            <textarea id="userAdBody" rows="4" maxlength="2000" placeholder="Ürün, miktar, fiyat, yer ve telefon numaranızı yazın..."></textarea>
+            <label for="userAdBody">İlan metni <span class="field-hint">(ilk satır başlık olur)</span></label>
+            <textarea id="userAdBody" rows="5" maxlength="2120" placeholder="Toptan domates, araç üstü teslim&#10;Günlük 5 ton, kg fiyatı 12 TL. Yer: Mersin Hal&#10;0532 000 00 00"></textarea>
           </div>
         </div>
         <div class="form-row">

@@ -552,9 +552,19 @@ function youtubeId(url) {
   return m ? m[1] : null;
 }
 
+// İlan metninin ilk dolu satırı başlık, kalanı metin olur
+function splitAdText(title, body) {
+  const lines = [String(title || ''), String(body || '')].join('\n').replace(/\r/g, '').split('\n');
+  const first = lines.findIndex(l => /[\p{L}\p{N}]/u.test(l));   // süs çizgileri başlık olmaz
+  if (first === -1) return { title: '', body: '' };
+  return {
+    title: lines[first].trim().slice(0, AD_TITLE_MAX),
+    body: lines.slice(first + 1).join('\n').replace(/^\s*\n/, '').trim().slice(0, AD_BODY_MAX),
+  };
+}
+
 function cleanAd(body, { allowVideoFile = true } = {}) {
-  const title = String(body.title || '').trim().slice(0, AD_TITLE_MAX);
-  const text  = String(body.body || '').trim().slice(0, AD_BODY_MAX);
+  const { title, body: text } = splitAdText(body.title, body.body);
   const prefix = db.adMediaUrlPrefix();
   const prefixes = [prefix, db.pinImageUrlPrefix()];
   const images = (Array.isArray(body.images) ? body.images : [])

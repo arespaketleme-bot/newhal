@@ -1168,7 +1168,6 @@ async function submitAd(e) {
     const res = await api(editing ? `/api/admin/ads/${encodeURIComponent(editing)}` : '/api/admin/ads', {
       method: editing ? 'PUT' : 'POST',
       body: JSON.stringify({
-        title: document.getElementById('adTitle').value,
         body: document.getElementById('adBody').value,
         images: adPhotoUrls,
         video,
@@ -1371,8 +1370,7 @@ function resetWaTemplate() {
 function editAd(ad) {
   resetAdForm();
   editingAdId = ad.id;
-  document.getElementById('adTitle').value = ad.title || '';
-  document.getElementById('adBody').value = ad.body || '';
+  document.getElementById('adBody').value = [ad.title, ad.body].filter(Boolean).join('\n');
   document.getElementById('adFeatured').checked = !!ad.featured;
   adPhotoUrls = [...(ad.images || [])];
   renderAdPhotos();
@@ -1397,7 +1395,7 @@ function editAd(ad) {
   document.getElementById('adForm').classList.add('editing');
   document.getElementById('adSubmitBtn').textContent = '💾 Değişiklikleri Kaydet';
   document.getElementById('adForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  document.getElementById('adTitle').focus({ preventScroll: true });
+  document.getElementById('adBody').focus({ preventScroll: true });
 }
 
 
