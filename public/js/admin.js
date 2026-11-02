@@ -338,6 +338,7 @@ const sectionTitles = {
   ads:       'İlanlar',
   reports:   'Hata Bildirimleri',
   users:     'Kullanıcılar',
+  stats:     'İstatistikler',
   logs:      'Aktivite Logları'
 };
 
@@ -348,7 +349,9 @@ function showSection(name) {
   document.getElementById(`nav${cap(name)}`).classList.add('active');
   document.getElementById('topbarTitle').textContent = sectionTitles[name];
   
-  if (name === 'ads') {
+  if (name === 'stats') {
+    loadStatsOverview();
+  } else if (name === 'ads') {
     loadAds();
   } else if (name === 'logs') {
     loadLogs();
@@ -866,6 +869,7 @@ let adVideoBusy = false;
 async function loadAds() {
   loadFacebookStatus();
   loadWaTemplate();
+  await loadAdStats();
   const res = await api('/api/admin/ads');
   if (!res) return;
   const ads = await res.json();
@@ -1207,6 +1211,7 @@ function renderAdList(ads) {
       <div class="ad-info">
         <div class="ad-item-title">${ad.no ? `<span class="ad-item-no">#${ad.no}</span> ` : ''}${ad.title ? esc(ad.title) : '<span class="ad-untitled">(Başlıksız ilan)</span>'}</div>
         <div class="ad-item-meta">${ad.featured ? `<span class="ad-vitrin-badge">⭐ Vitrin · ${esc(featuredRemainingText(ad.featured_until))}</span> ` : ''}${ad.pending ? '<span class="ad-pending-badge">⏳ Onay bekliyor</span>' : ad.active === false ? '🙈 Gizli' : '🟢 Yayında'}${ad.owner ? ` · 👤 ${esc(ad.owner.name)}` : ''} · ${esc(new Date(ad.created_at).toLocaleDateString('tr-TR'))}${tags ? ' · ' + tags : ''}</div>
+        <div class="ad-stat-line">${adStatLine(ad)}</div>
         ${ad.whatsapp_sent_at ? `<div class="ad-wa-done">💬 WhatsApp'tan gönderildi · ${esc(new Date(ad.whatsapp_sent_at).toLocaleDateString('tr-TR'))}</div>` : ''}
         ${ad.facebook ? `<a class="ad-fb-done" href="${esc(ad.facebook.url)}" target="_blank" rel="noopener">📘 Facebook'ta paylaşıldı · ${esc(new Date(ad.facebook.shared_at).toLocaleDateString('tr-TR'))}</a>` : ''}
         ${ad.body ? `<div class="ad-item-body">${esc(ad.body)}</div>` : ''}
@@ -1321,6 +1326,7 @@ function adSummary(ad) {
 function buildWaMessage(ad) {
   return waTemplate
     .split('{no}').join(ad.no ? String(ad.no) : '')
+    .split('{goruntulenme}').join(String((adStats[ad.id] || {}).views || 0))
     .split('{baslik}').join(adSummary(ad))
     .split('{link}').join(`${SITE_URL}/?ilan=${encodeURIComponent(ad.id)}`)
     .split('{site}').join(SITE_URL);
@@ -1392,4 +1398,56 @@ function editAd(ad) {
   document.getElementById('adSubmitBtn').textContent = '💾 Değişiklikleri Kaydet';
   document.getElementById('adForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
   document.getElementById('adTitle').focus({ preventScroll: true });
+}
+
+
+// ── İstatistikler ─────────────────────────────────────────────
+let adStats = {};
+const SHARE_LABELS = { whatsapp: 'WhatsApp', facebook: 'Facebook', x: 'X', telegram: 'Telegram', copy: 'Bağlantı', more: 'Diğer' };
+const fmt = n => Number(n || 0).toLocaleString('tr-TR');
+
+async function loadAdStats() {
+  const res = await api('/api/admin/stats/ads');
+  if (res && res.ok) adStats = await res.json();
+}
+
+function adStatLine(ad) {
+  const s = adStats[ad.id] || { views: 0, opens: 0, shares: {} };
+  const shares = Object.values(s.shares || {}).reduce((a, b) => a + b, 0);
+  const detail = Object.entries(s.shares || {}).map(([k, v]) => `${SHARE_LABELS[k] || k}: ${v}`).join(', ');
+  return `👁 ${fmt(s.views)} görüntülenme · 🔍 ${fmt(s.opens)} açılma · <span title="${esc(detail)}">📤 ${fmt(shares)} paylaşım</span>`;
+}
+
+async function loadStatsOverview() {
+  const res = await api('/api/admin/stats/overview');
+  if (!res) return;
+  const d = await res.json();
+  document.getElementById('stTotals').innerHTML = [
+    ['👁', 'İlan görüntülenme', d.totals.views],
+    ['🔍', 'İlan açılma', d.totals.opens],
+    ['📤', 'Paylaşım', d.totals.shares],
+    ['🔎', 'Farklı arama', d.searches.length],
+  ].map(([i, l, v]) => `<div class="st-total"><span class="st-icon">${i}</span><strong>${fmt(v)}</strong><span>${l}</span></div>`).join('');
+
+  const maxViews = Math.max(1, ...d.topAds.map(a => a.views));
+  document.getElementById('stTopAds').innerHTML = d.topAds.length ? d.topAds.map(a => `
+    <div class="st-row">
+      ${a.image ? `<img src="${esc(a.image)}" alt="" />` : '<div class="st-noimg">📝</div>'}
+      <div class="st-row-main">
+        <div class="st-row-title"><span class="ad-item-no">#${a.no}</span> ${a.featured ? '⭐ ' : ''}${esc(a.title || '(Başlıksız ilan)')}</div>
+        <div class="st-bar"><span style="width:${Math.round(a.views / maxViews * 100)}%"></span></div>
+        <div class="st-row-meta">👁 ${fmt(a.views)} · 🔍 ${fmt(a.opens)} · 📤 ${fmt(a.shares)}</div>
+      </div>
+    </div>`).join('') : '<div class="st-empty">Henüz veri yok. Ziyaretçiler ilanlara baktıkça burada görünecek.</div>';
+
+  const maxCount = Math.max(1, ...d.searches.map(s => s.count));
+  document.getElementById('stSearches').innerHTML = d.searches.length ? d.searches.map((s, i) => `
+    <div class="st-row st-search">
+      <span class="st-rank">${i + 1}</span>
+      <div class="st-row-main">
+        <div class="st-row-title">${esc(s.term)}</div>
+        <div class="st-bar search"><span style="width:${Math.round(s.count / maxCount * 100)}%"></span></div>
+        <div class="st-row-meta">${fmt(s.count)} arama · haritada ${fmt(s.map)}, ilanlarda ${fmt(s.ads)} · son: ${esc(new Date(s.last).toLocaleDateString('tr-TR'))}</div>
+      </div>
+    </div>`).join('') : '<div class="st-empty">Henüz arama yapılmadı.</div>';
 }

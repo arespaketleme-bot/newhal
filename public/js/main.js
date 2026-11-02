@@ -482,6 +482,7 @@ function renderSearchResults() {
 
 // Haritada işletmeye git ve penceresini aç
 function focusPin(id) {
+  trackSearch('map', searchQuery, true);
   const marker = pinMarkers[id];
   document.getElementById('mapSearchResults').hidden = true;
   document.getElementById('mapSearch').blur();
@@ -503,7 +504,7 @@ function initSearch() {
   const wrap = document.querySelector('.map-search');
   const input = document.getElementById('mapSearch');
   const box = document.getElementById('mapSearchResults');
-  input.addEventListener('input', () => onSearchInput(input.value));
+  input.addEventListener('input', () => { onSearchInput(input.value); trackSearch('map', input.value); });
   input.addEventListener('focus', () => { if (searchQuery) renderSearchResults(); });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -1849,6 +1850,7 @@ function initAdsSearch() {
     adsQuery = input.value.trim();
     document.getElementById('adsSearchClear').hidden = !adsQuery;
     renderAdsGrid();
+    trackSearch('ads', adsQuery);
   });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && input.value) { e.stopPropagation(); clearAdsSearch(); }
@@ -1943,6 +1945,7 @@ function buildAdCard(ad) {
   card.tabIndex = 0;
   card.setAttribute('role', 'button');
   card.setAttribute('aria-label', `${ad.title || 'İlan'}: büyüt`);
+  observeAdView(card, ad);
   card.addEventListener('click', (e) => {
     if (e.target.closest('video')) return;
     openAdViewer(ad, 0);
@@ -2037,6 +2040,7 @@ function ensureAdViewerDom() {
 }
 
 function openAdViewer(ad, index) {
+  trackOnce('open', ad.id);
   const el = ensureAdViewerDom();
   const firstOpen = !adViewer;
   adViewer = { ad, items: adViewerItems(ad), index: index || 0 };
@@ -2214,6 +2218,7 @@ function renderVitrin(ads) {
     overlay.appendChild(more);
     slide.appendChild(overlay);
 
+    observeAdView(slide, ad);
     slide.addEventListener('click', () => openAdViewer(ad, 0));
     slide.addEventListener('keydown', (e) => { if (e.key === 'Enter') openAdViewer(ad, 0); });
     track.appendChild(slide);
@@ -2429,6 +2434,7 @@ function buildShareBar(ad, large) {
     a.title = `${name}'ta paylaş`;
     a.setAttribute('aria-label', `${name}'ta paylaş`);
     a.innerHTML = SHARE_ICONS[key];
+    a.addEventListener('click', () => track({ type: 'share', adId: ad.id, channel: key }));
     bar.appendChild(a);
   });
 
@@ -2439,6 +2445,7 @@ function buildShareBar(ad, large) {
   copy.setAttribute('aria-label', 'Bağlantıyı kopyala');
   copy.innerHTML = SHARE_ICONS.copy;
   copy.onclick = async () => {
+    track({ type: 'share', adId: ad.id, channel: 'copy' });
     try {
       await navigator.clipboard.writeText(url);
       showToast('🔗 İlan bağlantısı kopyalandı', 'success');
@@ -2456,7 +2463,10 @@ function buildShareBar(ad, large) {
     more.title = 'Diğer uygulamalar';
     more.setAttribute('aria-label', 'Diğer uygulamalarda paylaş');
     more.innerHTML = SHARE_ICONS.more;
-    more.onclick = () => navigator.share({ title: text, text, url }).catch(() => {});
+    more.onclick = () => {
+      track({ type: 'share', adId: ad.id, channel: 'more' });
+      navigator.share({ title: text, text, url }).catch(() => {});
+    };
     bar.appendChild(more);
   }
   return bar;
@@ -2482,3 +2492,65 @@ setInterval(() => {
   });
   if (expired) loadAds();
 }, 60 * 1000);
+
+
+// ── İstatistik: görüntülenme, açılma, paylaşım ve aramalar (kimlik gönderilmez) ──
+const statQueue = [];
+const STAT_FLUSH_MS = 5000;
+
+function track(ev) {
+  statQueue.push(ev);
+  if (statQueue.length >= 20) flushStats();
+}
+
+function flushStats(onLeave) {
+  if (!statQueue.length) return;
+  const body = JSON.stringify({ events: statQueue.splice(0, 50) });
+  if (onLeave && navigator.sendBeacon) {
+    navigator.sendBeacon('/api/stats', new Blob([body], { type: 'application/json' }));
+  } else {
+    fetch('/api/stats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+  }
+}
+setInterval(flushStats, STAT_FLUSH_MS);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushStats(true); });
+
+// Aynı ziyarette aynı ilan bir kez sayılır
+function trackOnce(kind, adId) {
+  const key = `stat:${kind}:${adId}`;
+  try {
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+  } catch {}
+  track({ type: kind, adId });
+}
+
+// Ekranda en az yarısı görünen ilan kartı / vitrin = 1 görüntülenme
+const adViewObserver = 'IntersectionObserver' in window ? new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting && e.target.dataset.adId) {
+      trackOnce('view', e.target.dataset.adId);
+      adViewObserver.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.5 }) : null;
+
+function observeAdView(el, ad) {
+  if (!adViewObserver || !ad || !ad.id) return;
+  el.dataset.adId = ad.id;
+  adViewObserver.observe(el);
+}
+
+// Arama: yazmayı 1,5 sn bırakınca ya da sonuç seçilince bir kez kaydedilir
+const lastTrackedSearch = {};
+const searchTimers = {};
+function trackSearch(source, q, immediate) {
+  clearTimeout(searchTimers[source]);
+  const run = () => {
+    const term = String(q || '').trim();
+    if (term.length < 2 || lastTrackedSearch[source] === term.toLocaleLowerCase('tr-TR')) return;
+    lastTrackedSearch[source] = term.toLocaleLowerCase('tr-TR');
+    track({ type: 'search', q: term, source });
+  };
+  if (immediate) run(); else searchTimers[source] = setTimeout(run, 1500);
+}

@@ -571,3 +571,31 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
   padding: 8px 10px; border-radius: 8px; font: inherit; color: var(--text-1);
   background: rgba(0,0,0,0.3); border: 1px solid rgba(251,191,36,0.35);
 }
+
+/* ── İstatistikler ─────────────────────────────────────────── */
+.ad-stat-line { margin-top: 4px; font-size: 12px; color: #cbd5e1; }
+.st-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 20px 0; }
+.st-total {
+  display: flex; flex-direction: column; gap: 4px; padding: 16px; border-radius: 14px;
+  border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+}
+.st-icon { font-size: 20px; }
+.st-total strong { font-size: 26px; color: var(--text-1); font-variant-numeric: tabular-nums; }
+.st-total span:last-child { font-size: 12px; color: var(--text-3); }
+.st-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.st-card { padding: 16px; border-radius: 16px; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+.st-card h2 { font-size: 15px; color: var(--text-1); margin-bottom: 12px; }
+.st-list { display: flex; flex-direction: column; gap: 10px; }
+.st-row { display: flex; align-items: center; gap: 12px; }
+.st-row img, .st-noimg { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; }
+.st-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.st-row-title { font-size: 13px; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-row-meta { font-size: 11px; color: var(--text-3); }
+.st-bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.06); overflow: hidden; }
+.st-bar span { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #22c55e, #4ade80); }
+.st-bar.search span { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+.st-rank {
+  width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; color: #bfdbfe; background: rgba(59,130,246,0.15);
+}
+.st-empty { font-size: 13px; color: var(--text-3); padding: 8px 0; }

@@ -762,6 +762,99 @@ app.post('/api/admin/facebook/connect', requireAdmin, async (req, res) => {
   }
 });
 
+// ── İstatistikler: ilan görüntülenme/açılma/paylaşım ve aramalar (kimlik tutulmaz) ──
+const STATS_FILE = 'stats.json';
+const STATS_FLUSH_MS = 30 * 1000;
+const SHARE_CHANNELS = ['whatsapp', 'facebook', 'x', 'telegram', 'copy', 'more'];
+const SEARCH_SOURCES = ['map', 'ads'];
+const STATS_EVENTS_PER_MIN = 300;
+let stats = null;          // { ads: { id: { views, opens, shares: {kanal: n} } }, searches: { terim: { count, last, map, ads } } }
+let statsDirty = false;
+const statsRate = new Map(); // ip → { at, n }
+
+async function loadStats() {
+  if (!stats) stats = (await db.getPrivateJson(STATS_FILE)) || { ads: {}, searches: {} };
+  stats.ads = stats.ads || {};
+  stats.searches = stats.searches || {};
+  return stats;
+}
+
+setInterval(async () => {
+  if (!statsDirty || !stats) return;
+  statsDirty = false;
+  if (!(await db.savePrivateJson(STATS_FILE, stats))) statsDirty = true;
+}, STATS_FLUSH_MS).unref();
+
+// Arama terimi: küçük harf, fazla boşluksuz, telefon numarası ya da çok uzun metin değil
+function cleanSearchTerm(q) {
+  const t = String(q || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim();
+  if (t.length < 2 || t.length > 40) return null;
+  if ((t.match(/\d/g) || []).length >= 6) return null;
+  return t;
+}
+
+app.post('/api/stats', async (req, res) => {
+  const events = Array.isArray(req.body && req.body.events) ? req.body.events.slice(0, 50) : [];
+  const ip = getIp(req);
+  const now = Date.now();
+  const rate = statsRate.get(ip);
+  const bucket = rate && now - rate.at < 60000 ? rate : { at: now, n: 0 };
+  bucket.n += events.length;
+  statsRate.set(ip, bucket);
+  if (bucket.n > STATS_EVENTS_PER_MIN) return res.status(429).end();
+
+  const s = await loadStats();
+  for (const ev of events) {
+    if (!ev || typeof ev !== 'object') continue;
+    if (['view', 'open', 'share'].includes(ev.type)) {
+      const id = String(ev.adId || '');
+      if (!/^[0-9a-f-]{36}$/i.test(id)) continue;
+      const a = s.ads[id] || (s.ads[id] = { views: 0, opens: 0, shares: {} });
+      if (ev.type === 'view') a.views++;
+      else if (ev.type === 'open') a.opens++;
+      else if (SHARE_CHANNELS.includes(ev.channel)) a.shares[ev.channel] = (a.shares[ev.channel] || 0) + 1;
+      statsDirty = true;
+    } else if (ev.type === 'search') {
+      const term = cleanSearchTerm(ev.q);
+      if (!term) continue;
+      const t = s.searches[term] || (s.searches[term] = { count: 0, last: null });
+      t.count++;
+      t.last = new Date().toISOString();
+      if (SEARCH_SOURCES.includes(ev.source)) t[ev.source] = (t[ev.source] || 0) + 1;
+      statsDirty = true;
+    }
+  }
+  res.status(204).end();
+});
+
+// Saatlik temizlik: bir saatten eski hız sınırı kayıtları
+setInterval(() => {
+  const cutoff = Date.now() - 60 * 60 * 1000;
+  for (const [ip, r] of statsRate) if (r.at < cutoff) statsRate.delete(ip);
+}, 60 * 60 * 1000).unref();
+
+const totalShares = a => Object.values(a.shares || {}).reduce((x, y) => x + y, 0);
+
+app.get('/api/admin/stats/ads', requireAdmin, async (req, res) => {
+  const s = await loadStats();
+  res.json(s.ads);
+});
+
+app.get('/api/admin/stats/overview', requireAdmin, async (req, res) => {
+  const s = await loadStats();
+  const ads = await getAdsWithFeaturedExpiry();
+  const rows = ads.map(ad => {
+    const a = s.ads[ad.id] || { views: 0, opens: 0, shares: {} };
+    return { id: ad.id, no: ad.no, title: ad.title || (ad.body || '').split('\n')[0].slice(0, 80), image: (ad.images || [])[0] || null,
+      featured: !!ad.featured, views: a.views, opens: a.opens, shares: totalShares(a), share_detail: a.shares };
+  });
+  const totals = rows.reduce((t, r) => ({ views: t.views + r.views, opens: t.opens + r.opens, shares: t.shares + r.shares }), { views: 0, opens: 0, shares: 0 });
+  const searches = Object.entries(s.searches)
+    .map(([term, v]) => ({ term, count: v.count, last: v.last, map: v.map || 0, ads: v.ads || 0 }))
+    .sort((a, b) => b.count - a.count).slice(0, 30);
+  res.json({ totals, topAds: rows.sort((a, b) => b.views - a.views).slice(0, 15), searches });
+});
+
 // ── WhatsApp mesaj şablonu (yönetici panelinden düzenlenir) ───
 const WA_TEMPLATE_FILE = 'whatsapp.json';
 const WA_TEMPLATE_MAX = 1500;
