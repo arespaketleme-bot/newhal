@@ -1982,3 +1982,6 @@ body.story-open { overflow: hidden; }
   .map-panel.has-stories .map-layer-selector { top: 150px; }
   .map-panel.map-fullscreen.has-stories .map-layer-selector { top: calc(150px + env(safe-area-inset-top)); }
 }
+
+.address-hint { display: block; margin-top: 6px; font-size: 12px; color: var(--green-400); }
+.address-hint[hidden] { display: none; }

@@ -280,6 +280,73 @@ setInterval(() => {
   for (const [ip, at] of tgLastByIp) if (at < cutoff) tgLastByIp.delete(ip);
 }, 60 * 60 * 1000).unref();
 
+// ── Konumdan adres bulma (OpenStreetMap Nominatim) ────────────
+// Nominatim kuralları: saniyede en fazla 1 istek, uygulama adı belirtilir, sonuçlar saklanır.
+const GEO_CACHE_MAX = 1000;
+const GEO_PER_IP_MIN = 20;
+const geoCache = new Map();          // "36.82940,34.65724" → adres
+const geoByIp = new Map();           // IP → son bir dakikadaki istek zamanları
+let geoQueue = Promise.resolve();
+let geoLastAt = 0;
+
+function formatOsmAddress(d) {
+  const a = (d && d.address) || {};
+  const street = a.road ? `${a.road}${a.house_number ? ` No:${a.house_number}` : ''}` : '';
+  const place = d.name && d.name !== a.road ? d.name : '';
+  const area = a.neighbourhood || a.suburb || a.quarter || a.village || '';
+  const district = a.town || a.county || a.city_district || '';
+  const province = a.province || a.city || a.state || '';
+  const tail = [a.postcode, [district, province].filter((v, i, arr) => v && arr.indexOf(v) === i).join('/')].filter(Boolean).join(' ');
+  const parts = [place, street, area, tail].filter(Boolean);
+  return parts.filter((p, i) => parts.indexOf(p) === i).join(', ').slice(0, 250);
+}
+
+function osmReverse(lat, lng) {
+  // İstekler sıraya girer, aralarında en az 1,1 saniye olur
+  const run = geoQueue.then(async () => {
+    const wait = 1100 - (Date.now() - geoLastAt);
+    if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    geoLastAt = Date.now();
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=tr`;
+    const r = await fetch(url, { headers: { 'User-Agent': 'NewHal/1.0 (https://newhal.onrender.com)' }, signal: AbortSignal.timeout(8000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  });
+  geoQueue = run.catch(() => {});
+  return run;
+}
+
+app.get('/api/geocode/reverse', async (req, res) => {
+  const lat = Number(req.query.lat), lng = Number(req.query.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+    return res.status(400).json({ error: 'Geçersiz konum' });
+  }
+  const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+  if (geoCache.has(key)) return res.json({ address: geoCache.get(key) });
+
+  const ip = String(getIp(req)).split(',')[0].trim();
+  const minuteAgo = Date.now() - 60 * 1000;
+  const recent = (geoByIp.get(ip) || []).filter(t => t > minuteAgo);
+  if (recent.length >= GEO_PER_IP_MIN) return res.status(429).json({ error: 'Çok sık istek, biraz bekleyin' });
+  recent.push(Date.now());
+  geoByIp.set(ip, recent);
+
+  try {
+    const address = formatOsmAddress(await osmReverse(lat.toFixed(6), lng.toFixed(6)));
+    if (geoCache.size >= GEO_CACHE_MAX) geoCache.delete(geoCache.keys().next().value);
+    geoCache.set(key, address);
+    res.json({ address });
+  } catch (err) {
+    console.error('Adres bulunamadı:', err.message);
+    res.status(502).json({ error: 'Adres bulunamadı' });
+  }
+});
+
+setInterval(() => {
+  const minuteAgo = Date.now() - 60 * 1000;
+  for (const [ip, times] of geoByIp) if (!times.some(t => t > minuteAgo)) geoByIp.delete(ip);
+}, 10 * 60 * 1000).unref();
+
 // ── PUBLIC: Yeni iğne ekle (onay bekliyor) ───────────────────
 app.post('/api/pins', requireAuth, async (req, res) => {
   const { title, address, phone, website, email, lat, lng, category } = req.body;

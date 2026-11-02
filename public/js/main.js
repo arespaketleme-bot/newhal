@@ -241,6 +241,7 @@ function selectLocation(lat, lng) {
   display.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
     ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   display.classList.add('selected');
+  fillAddressFromLocation(lat, lng);
 
   if (tempMarker) {
     tempMarker.setLatLng([lat, lng]);
@@ -1055,6 +1056,40 @@ function closePinDetail() {
   document.getElementById('pinDetailModal').classList.remove('open');
 }
 
+// ── Konumdan adres: seçilen noktanın adresi forma kendiliğinden yazılır ──
+let addressAuto = '';      // en son kendiliğinden yazılan adres (kişi değiştirdiyse dokunulmaz)
+let addressSeq = 0;
+let addressTimer = null;
+
+function setAddressHint(text) {
+  const hint = document.getElementById('pinAddressHint');
+  hint.textContent = text || '';
+  hint.hidden = !text;
+}
+
+function fillAddressFromLocation(lat, lng) {
+  const input = document.getElementById('pinAddress');
+  // Kişi adresi kendisi yazdıysa üzerine yazma
+  if (input.value.trim() && input.value !== addressAuto) return setAddressHint('');
+  const seq = ++addressSeq;
+  clearTimeout(addressTimer);
+  setAddressHint('📍 Adres konumdan bulunuyor...');
+  addressTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`);
+      const data = await res.json().catch(() => ({}));
+      if (seq !== addressSeq) return;                      // bu arada başka bir nokta seçildi
+      if (!res.ok || !data.address) throw new Error();
+      if (input.value.trim() && input.value !== addressAuto) return setAddressHint('');
+      input.value = data.address;
+      addressAuto = data.address;
+      setAddressHint('📍 Adres konumdan yazıldı. Blok ve dükkan numarasını ekleyebilirsiniz.');
+    } catch {
+      if (seq === addressSeq) setAddressHint('Adres bulunamadı, lütfen kendiniz yazın.');
+    }
+  }, 400);
+}
+
 // ── Pin Ekle Modal ────────────────────────────────────────────
 function openAddPinModal() {
   if (!checkAuthAndRun()) return;
@@ -1064,6 +1099,9 @@ function openAddPinModal() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     Haritaya tıklayarak konum seçin`;
   document.getElementById('locationDisplay').classList.remove('selected');
+  addressAuto = '';
+  addressSeq++;
+  setAddressHint('');
   pendingLat = null; pendingLng = null;
   if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
   addPinPhotos.setUrls([]);
