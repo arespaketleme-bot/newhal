@@ -1858,3 +1858,127 @@ img.ad-media.ad-logo-media {
 @media (max-width: 640px) {
   .catalog-editor input[type="text"], .catalog-editor select { font-size: 16px; }
 }
+
+/* ── Dükkan hikayeleri ────────────────────────────────────── */
+.story-marker {
+  width: 52px; height: 52px; border-radius: 50%; padding: 3px; cursor: pointer;
+  background: conic-gradient(from 210deg, #f59e0b, #ef4444, #d946ef, #8b5cf6, #f59e0b);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+}
+.story-marker.new { animation: storyPulse 2.2s ease-in-out infinite; }
+.story-marker.seen { background: #64748b; }
+.story-marker-inner {
+  width: 100%; height: 100%; border-radius: 50%; border: 3px solid #0b1220;
+  background: #0e1626; display: flex; align-items: center; justify-content: center; font-size: 21px;
+}
+@keyframes storyPulse {
+  0%, 100% { box-shadow: 0 6px 20px rgba(0,0,0,0.45), 0 0 0 0 rgba(217,70,239,0.55); }
+  50% { box-shadow: 0 6px 20px rgba(0,0,0,0.45), 0 0 0 9px rgba(217,70,239,0); }
+}
+.popup-story-btn {
+  background: linear-gradient(135deg, #f59e0b, #d946ef); color: #fff; border: none;
+  padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 700;
+}
+
+/* Haritanın üstündeki hikaye şeridi */
+.story-bar {
+  position: absolute; top: 70px; left: 58px; right: 16px; z-index: 1000; max-width: 460px;
+  display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 6px; scrollbar-width: none;
+}
+.story-bar::-webkit-scrollbar { display: none; }
+.story-bar[hidden] { display: none; }
+.story-chip {
+  flex: 0 0 auto; width: 66px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: none; border: none; padding: 0; cursor: pointer; font-family: var(--font-body);
+}
+.story-ring {
+  width: 58px; height: 58px; border-radius: 50%; padding: 3px;
+  background: conic-gradient(from 210deg, #f59e0b, #ef4444, #d946ef, #8b5cf6, #f59e0b);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+}
+.story-chip.seen .story-ring { background: #64748b; }
+.story-ring-inner {
+  width: 100%; height: 100%; border-radius: 50%; overflow: hidden; border: 3px solid #0b1220;
+  background: #0e1626; display: flex; align-items: center; justify-content: center; font-size: 22px;
+}
+.story-ring-inner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.story-chip-name {
+  max-width: 66px; font-size: 11px; font-weight: 600; color: #fff; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7);
+}
+.story-chip:hover .story-ring { transform: scale(1.05); }
+.story-ring { transition: transform 0.2s ease; }
+
+/* Tam ekran görüntüleyici */
+body.story-open { overflow: hidden; }
+.story-viewer {
+  position: fixed; inset: 0; z-index: 3000; background: rgba(0,0,0,0.92);
+  display: flex; align-items: center; justify-content: center; animation: storyIn 0.22s ease-out;
+}
+.story-viewer[hidden] { display: none; }
+@keyframes storyIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
+.story-frame {
+  position: relative; width: min(100vw, calc(92vh * 9 / 16)); height: min(92vh, calc(100vw * 16 / 9));
+  max-width: 460px; border-radius: 18px; overflow: hidden; background: #000;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6); user-select: none; -webkit-user-select: none;
+}
+.story-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.story-stage img, .story-stage video { position: relative; max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: contain; }
+.story-stage iframe { width: 100%; aspect-ratio: 16 / 9; border: 0; }
+.story-blur { position: absolute; inset: -20px; background-size: cover; background-position: center; filter: blur(24px) brightness(0.55); }
+.story-stage.text-card { background: radial-gradient(circle at 20% 15%, #7c3aed 0%, transparent 55%), radial-gradient(circle at 85% 90%, #db2777 0%, transparent 55%), linear-gradient(160deg, #1e1b4b, #0f172a); }
+.story-shade { position: absolute; left: 0; right: 0; pointer-events: none; }
+.story-shade.top { top: 0; height: 120px; background: linear-gradient(rgba(0,0,0,0.65), transparent); }
+.story-shade.bottom { bottom: 0; height: 45%; background: linear-gradient(transparent, rgba(0,0,0,0.8)); }
+.story-bars { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; gap: 4px; z-index: 3; }
+.story-bar-track { flex: 1; height: 3px; border-radius: 3px; background: rgba(255,255,255,0.35); overflow: hidden; }
+.story-bar-fill { display: block; height: 100%; background: #fff; border-radius: 3px; }
+.story-head { position: absolute; top: 22px; left: 10px; right: 6px; display: flex; align-items: center; gap: 8px; z-index: 4; }
+.story-who { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; background: none; border: none; padding: 4px; cursor: pointer; text-align: left; color: #fff; font-family: var(--font-body); }
+.story-avatar {
+  width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%; overflow: hidden; border: 2px solid #fff;
+  background: #0e1626; display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+.story-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.story-who-text { display: flex; flex-direction: column; min-width: 0; }
+.story-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+.story-name .verified-badge { width: 15px; height: 15px; font-size: 10px; }
+.story-time { font-size: 12px; color: rgba(255,255,255,0.75); }
+.story-close { width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(0,0,0,0.35); color: #fff; font-size: 18px; cursor: pointer; flex-shrink: 0; }
+.story-tap { position: absolute; top: 80px; bottom: 120px; width: 50%; z-index: 2; background: none; border: none; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.story-tap.prev { left: 0; width: 35%; }
+.story-tap.next { right: 0; width: 65%; }
+.story-caption { position: absolute; left: 16px; right: 16px; bottom: 76px; z-index: 3; color: #fff; pointer-events: none; text-shadow: 0 1px 6px rgba(0,0,0,0.7); }
+.story-caption strong { display: block; font-family: var(--font-head); font-size: 19px; line-height: 1.25; margin-bottom: 4px; }
+.story-caption p { margin: 0; font-size: 14px; line-height: 1.45; white-space: pre-line; color: rgba(255,255,255,0.92); }
+.story-caption.big { top: 90px; bottom: 90px; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+.story-caption.big strong { font-size: 26px; margin-bottom: 12px; }
+.story-caption.big p { font-size: 17px; }
+.story-actions { position: absolute; left: 12px; right: 12px; bottom: 14px; z-index: 4; display: flex; gap: 8px; }
+.story-action {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 10px;
+  border-radius: 999px; border: 1px solid rgba(255,255,255,0.35); background: rgba(0,0,0,0.35); backdrop-filter: blur(8px);
+  color: #fff; font-size: 14px; font-weight: 700; text-decoration: none; cursor: pointer; font-family: var(--font-body);
+}
+.story-action.primary { background: #fff; color: #0f172a; border-color: #fff; }
+@media (max-width: 768px) {
+  .story-bar { top: 66px; left: 10px; right: 10px; max-width: none; }
+  .story-frame { width: 100vw; height: 100%; max-width: none; border-radius: 0; }
+  .story-viewer { background: #000; }
+  .story-bars { top: calc(10px + env(safe-area-inset-top)); }
+  .story-head { top: calc(22px + env(safe-area-inset-top)); }
+  .story-actions { bottom: calc(14px + env(safe-area-inset-bottom)); }
+  .story-caption { bottom: calc(76px + env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) { .story-marker.new, .story-viewer { animation: none; } }
+/* Hikaye şeridi varken katman seçici şeridin altına iner */
+.map-panel.map-fullscreen .story-bar { top: calc(70px + env(safe-area-inset-top)); }
+.map-panel.has-stories .map-layer-selector { top: 160px; }
+.map-panel.map-fullscreen.has-stories .map-layer-selector { top: calc(160px + env(safe-area-inset-top)); }
+@media (max-width: 768px) {
+  .story-bar { left: 54px; }
+  .map-panel.map-fullscreen .story-bar { top: calc(62px + env(safe-area-inset-top)); }
+  .map-panel.has-stories .map-layer-selector { top: 150px; }
+  .map-panel.map-fullscreen.has-stories .map-layer-selector { top: calc(150px + env(safe-area-inset-top)); }
+}

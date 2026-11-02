@@ -257,7 +257,16 @@ function selectLocation(lat, lng) {
   }
 }
 
-function createIcon(emoji, isTemp = false) {
+function createIcon(emoji, isTemp = false, story = null) {
+  if (story) {
+    return L.divIcon({
+      className: '',
+      html: `<div class="story-marker ${story}"><div class="story-marker-inner">${escHtml(emoji)}</div></div>`,
+      iconSize: [52, 52],
+      iconAnchor: [26, 26],
+      popupAnchor: [0, -28],
+    });
+  }
   return L.divIcon({
     className: '',
     html: `<div style="
@@ -282,6 +291,7 @@ async function loadPins() {
     const res = await fetch('/api/pins');
     allPins = await res.json();
     renderPins(allPins);
+    renderStoryBar();
     updateStats();
     await updateHeroStats();
   } catch (err) {
@@ -339,9 +349,13 @@ function renderPins(pins) {
   pinMarkers = {};
   filtered.forEach(pin => {
     const emoji = CATEGORY_ICONS[pin.category] || '📦';
-    const marker = L.marker([pin.lat, pin.lng], { icon: createIcon(emoji), title: pin.title });
+    const storyMark = storyState(pin.id);
+    const marker = L.marker([pin.lat, pin.lng], { icon: createIcon(emoji, false, storyMark), title: pin.title, zIndexOffset: storyMark ? 500 : 0 });
+    // İzlenmemiş hikayesi olan dükkana dokununca hikaye açılır
+    if (storyMark === 'new') marker.on('click', () => { setTimeout(() => marker.closePopup(), 0); openStories(pin.id); });
     pinMarkers[pin.id] = marker;
-    if (cluster) cluster.addLayer(marker); else marker.addTo(map);
+    // Hikayesi olan dükkan gruba girmez, uzaktan da görünsün
+    if (cluster && !storyMark) cluster.addLayer(marker); else marker.addTo(map);
     
     // Popup shows contact info optionally
     marker.bindPopup(`
@@ -352,7 +366,8 @@ function renderPins(pins) {
         ${(pin.images || []).length ? `<img class="popup-photo" src="${escHtml(pin.images[0])}" alt="" loading="lazy" />` : ''}
         ${popupProducts('🛒 Satıyor', pin.sells)}
         ${popupProducts('🔎 Arıyor', pin.seeks)}
-        <div style="margin-top:8px;">
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+          ${storyMark ? `<button onclick="openStories(${pin.id})" class="popup-story-btn">▶ Hikayeyi izle</button>` : ''}
           <button onclick="showPinDetail(${pin.id})" style="
             background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;
             padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;font-weight:600;
@@ -1950,6 +1965,7 @@ let adsQuery = '';
 
 function renderAds(ads) {
   allAds = ads;
+  refreshStories();
   // Alan hep görünür: ilan yokken de kullanıcılar "İlan Ver" diyebilsin
   document.getElementById('adsSection').hidden = false;
   document.querySelectorAll('.ads-nav-link').forEach(el => { el.hidden = false; });
@@ -2278,6 +2294,366 @@ document.addEventListener('keydown', (e) => {
 window.addEventListener('popstate', () => { if (adViewer) closeAdViewer(true); });
 
 
+// ── Dükkan hikayeleri: işletmenin ilanı 24 saat haritada dükkanın üzerinde görünür ──
+const STORY_IMAGE_MS = 6000;
+const STORY_YOUTUBE_MS = 15000;
+const STORY_MAX_VIDEO_MS = 60000;
+const STORY_SEEN_KEY = 'seenStories';
+let story = null;   // açık görüntüleyici: { queue, pinIndex, adIndex, ... }
+
+function readSeenStories() {
+  try { return new Set(JSON.parse(localStorage.getItem(STORY_SEEN_KEY) || '[]')); } catch { return new Set(); }
+}
+
+function markStorySeen(adId) {
+  const seen = readSeenStories();
+  if (seen.has(adId)) return;
+  seen.add(adId);
+  try { localStorage.setItem(STORY_SEEN_KEY, JSON.stringify([...seen].slice(-300))); } catch {}
+}
+
+// Dükkan → süresi dolmamış hikaye ilanları (eskiden yeniye)
+function storyAdsByPin() {
+  const now = Date.now();
+  const map = {};
+  allAds.filter(ad => ad.pinId && Date.parse(ad.story_until) > now).forEach(ad => {
+    (map[ad.pinId] = map[ad.pinId] || []).push(ad);
+  });
+  Object.values(map).forEach(list => list.sort((a, b) => a.created_at.localeCompare(b.created_at)));
+  return map;
+}
+
+// 'new': izlenmemiş hikaye var, 'seen': hepsi izlendi, null: hikaye yok
+function storyState(pinId) {
+  const list = storyAdsByPin()[pinId];
+  if (!list) return null;
+  const seen = readSeenStories();
+  return list.some(ad => !seen.has(ad.id)) ? 'new' : 'seen';
+}
+
+// Hikayesi olan dükkanlar: izlenmemişler önce, sonra en yeni ilan
+function storyQueue() {
+  const map = storyAdsByPin();
+  const seen = readSeenStories();
+  return Object.keys(map).map(Number)
+    .map(id => ({ pin: allPins.find(p => p.id === id), ads: map[id] }))
+    .filter(s => s.pin)
+    .map(s => ({ ...s, fresh: s.ads.some(ad => !seen.has(ad.id)) }))
+    .sort((a, b) => (b.fresh - a.fresh) || b.ads[b.ads.length - 1].created_at.localeCompare(a.ads[a.ads.length - 1].created_at));
+}
+
+function storyThumb(entry) {
+  const ad = entry.ads[entry.ads.length - 1];
+  return (ad.images && ad.images[0]) || (ad.video && ad.video.type === 'youtube' ? `https://i.ytimg.com/vi/${ad.video.id}/mqdefault.jpg` : null)
+    || (entry.pin.images && entry.pin.images[0]) || null;
+}
+
+function renderStoryBar() {
+  const bar = document.getElementById('storyBar');
+  if (!bar) return;
+  const queue = storyQueue();
+  bar.innerHTML = '';
+  bar.hidden = !queue.length;
+  document.getElementById('mapPanel').classList.toggle('has-stories', queue.length > 0);
+  queue.forEach(entry => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `story-chip ${entry.fresh ? 'fresh' : 'seen'}`;
+    btn.setAttribute('aria-label', `${entry.pin.title} hikayesi`);
+    const ring = document.createElement('span');
+    ring.className = 'story-ring';
+    const inner = document.createElement('span');
+    inner.className = 'story-ring-inner';
+    const thumb = storyThumb(entry);
+    if (thumb) {
+      const img = document.createElement('img');
+      img.src = thumb;
+      img.alt = '';
+      img.loading = 'lazy';
+      inner.appendChild(img);
+    } else {
+      inner.textContent = CATEGORY_ICONS[entry.pin.category] || '🏪';
+    }
+    ring.appendChild(inner);
+    const name = document.createElement('span');
+    name.className = 'story-chip-name';
+    name.textContent = entry.pin.title;
+    btn.append(ring, name);
+    btn.onclick = () => openStories(entry.pin.id);
+    bar.appendChild(btn);
+  });
+}
+
+function refreshStories() {
+  if (allPins.length) renderPins(allPins);
+  renderStoryBar();
+}
+
+function ensureStoryDom() {
+  let el = document.getElementById('storyViewer');
+  if (el) return el;
+  el = document.createElement('div');
+  el.id = 'storyViewer';
+  el.className = 'story-viewer';
+  el.hidden = true;
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  el.innerHTML = `
+    <div class="story-frame">
+      <div class="story-stage"></div>
+      <div class="story-shade top"></div>
+      <div class="story-shade bottom"></div>
+      <div class="story-bars"></div>
+      <div class="story-head">
+        <button type="button" class="story-who">
+          <span class="story-avatar"></span>
+          <span class="story-who-text"><strong class="story-name"></strong><small class="story-time"></small></span>
+        </button>
+        <button type="button" class="story-close" aria-label="Kapat">✕</button>
+      </div>
+      <button type="button" class="story-tap prev" aria-label="Önceki"></button>
+      <button type="button" class="story-tap next" aria-label="Sonraki"></button>
+      <div class="story-caption"></div>
+      <div class="story-actions"></div>
+    </div>`;
+  document.body.appendChild(el);
+
+  el.querySelector('.story-close').onclick = () => closeStories();
+  el.querySelector('.story-who').onclick = () => {
+    const pinId = story && story.queue[story.pinIndex].pin.id;
+    closeStories(() => showPinDetail(pinId));
+  };
+  // Dokun: sağ ileri, sol geri; basılı tut: dur
+  ['prev', 'next'].forEach(side => {
+    const tap = el.querySelector(`.story-tap.${side}`);
+    tap.addEventListener('pointerdown', () => { if (story) { story.holdAt = Date.now(); pauseStory(true); } });
+    tap.addEventListener('pointerup', () => {
+      if (!story) return;
+      const held = Date.now() - (story.holdAt || 0) > 300;
+      pauseStory(false);
+      if (!held) side === 'next' ? stepStory(1) : stepStory(-1);
+    });
+    tap.addEventListener('pointerleave', () => { if (story && story.paused) pauseStory(false); });
+    tap.addEventListener('contextmenu', e => e.preventDefault());
+  });
+  // Aşağı kaydır: kapat
+  let startY = null;
+  el.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true });
+  el.addEventListener('touchend', e => {
+    if (startY !== null && e.changedTouches[0].clientY - startY > 90) closeStories();
+    startY = null;
+  });
+  document.addEventListener('keydown', e => {
+    if (!story) return;
+    if (e.key === 'Escape') closeStories();
+    else if (e.key === 'ArrowRight') stepStory(1);
+    else if (e.key === 'ArrowLeft') stepStory(-1);
+  });
+  document.addEventListener('visibilitychange', () => { if (story) pauseStory(document.hidden); });
+  return el;
+}
+
+function openStories(pinId) {
+  // Seçilen dükkan önce, ardından izlenmemiş diğer dükkanlar
+  const all = storyQueue();
+  const start = all.find(s => s.pin.id === pinId);
+  if (!start) return;
+  const queue = [start, ...all.filter(s => s !== start && s.fresh)];
+  const pinIndex = 0;
+  const el = ensureStoryDom();
+  const seen = readSeenStories();
+  const firstNew = queue[pinIndex].ads.findIndex(ad => !seen.has(ad.id));
+  story = { queue, pinIndex, adIndex: Math.max(0, firstNew), elapsed: 0, paused: false, pushed: false };
+  el.hidden = false;
+  document.body.classList.add('story-open');
+  // Telefonun geri tuşu hikayeyi kapatsın
+  history.pushState({ story: true }, '');
+  story.pushed = true;
+  showStoryItem();
+}
+
+function currentStoryAd() {
+  return story && story.queue[story.pinIndex].ads[story.adIndex];
+}
+
+function storyAgo(iso) {
+  const min = Math.max(1, Math.round((Date.now() - Date.parse(iso)) / 60000));
+  return min < 60 ? `${min} dk önce` : `${Math.round(min / 60)} saat önce`;
+}
+
+function showStoryItem() {
+  const el = ensureStoryDom();
+  const entry = story.queue[story.pinIndex];
+  const ad = currentStoryAd();
+  const pin = entry.pin;
+  markStorySeen(ad.id);
+  trackOnce('view', ad.id);
+
+  // Üstteki ilerleme çubukları
+  const bars = el.querySelector('.story-bars');
+  bars.innerHTML = entry.ads.map((_, i) =>
+    `<span class="story-bar-track"><span class="story-bar-fill" style="width:${i < story.adIndex ? 100 : 0}%"></span></span>`).join('');
+
+  const avatar = el.querySelector('.story-avatar');
+  avatar.innerHTML = '';
+  if (pin.images && pin.images[0]) {
+    const img = document.createElement('img');
+    img.src = pin.images[0];
+    img.alt = '';
+    avatar.appendChild(img);
+  } else {
+    avatar.textContent = CATEGORY_ICONS[pin.category] || '🏪';
+  }
+  el.querySelector('.story-name').innerHTML = escHtml(pin.title) + verifiedBadge(pin);
+  el.querySelector('.story-time').textContent = storyAgo(ad.created_at);
+
+  // Medya: resim, video, YouTube ya da yazı kartı
+  const stage = el.querySelector('.story-stage');
+  stage.innerHTML = '';
+  stage.className = 'story-stage';
+  story.duration = STORY_IMAGE_MS;
+  story.video = null;
+  const caption = el.querySelector('.story-caption');
+  const textOnly = !(ad.images && ad.images.length) && !ad.video;
+
+  if (ad.video && ad.video.type === 'file') {
+    const v = document.createElement('video');
+    v.src = ad.video.url;
+    v.playsInline = true;
+    v.autoplay = true;
+    v.muted = false;
+    v.preload = 'auto';
+    v.onloadedmetadata = () => { if (story && story.video === v) story.duration = Math.min(STORY_MAX_VIDEO_MS, (v.duration || 6) * 1000); };
+    v.onended = () => { if (story && story.video === v) stepStory(1); };
+    v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });   // sesli başlamazsa sessiz oynat
+    stage.appendChild(v);
+    story.video = v;
+    story.duration = STORY_MAX_VIDEO_MS;
+  } else if (ad.video && ad.video.type === 'youtube') {
+    const f = document.createElement('iframe');
+    f.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(ad.video.id)}?autoplay=1&playsinline=1&controls=0&rel=0`;
+    f.allow = 'autoplay; encrypted-media';
+    f.title = ad.title || 'Video';
+    stage.appendChild(f);
+    story.duration = STORY_YOUTUBE_MS;
+  } else if (!textOnly) {
+    const img = document.createElement('img');
+    img.src = ad.images[0];
+    img.alt = ad.title || '';
+    const blur = document.createElement('div');
+    blur.className = 'story-blur';
+    blur.style.backgroundImage = `url("${ad.images[0].replace(/"/g, '%22')}")`;
+    stage.append(blur, img);
+  } else {
+    stage.classList.add('text-card');
+  }
+
+  caption.className = `story-caption${textOnly ? ' big' : ''}`;
+  const body = String(ad.body || '');
+  caption.innerHTML = `${ad.title ? `<strong>${escHtml(ad.title)}</strong>` : ''}${body ? `<p>${escHtml(textOnly ? body.slice(0, 400) : body.slice(0, 160))}${body.length > (textOnly ? 400 : 160) ? '…' : ''}</p>` : ''}`;
+
+  // Alttaki tuşlar: ilanı aç, ara, dükkan
+  const actions = el.querySelector('.story-actions');
+  actions.innerHTML = '';
+  const openBtn = document.createElement('button');
+  openBtn.type = 'button';
+  openBtn.className = 'story-action primary';
+  openBtn.textContent = '📄 İlanı Aç';
+  openBtn.onclick = () => { const a = currentStoryAd(); closeStories(() => openAdViewer(a, 0)); };
+  actions.appendChild(openBtn);
+  const phone = (showContactInfo && pin.phone) || (String(ad.body || '').match(/(\+?90\s?)?0?\s?5\d{2}[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}/) || [])[0];
+  if (phone) {
+    const call = document.createElement('a');
+    call.className = 'story-action';
+    call.href = `tel:${phone.replace(/[^\d+]/g, '')}`;
+    call.textContent = '📞 Ara';
+    call.onclick = () => pauseStory(true);
+    actions.appendChild(call);
+  }
+  const shopBtn = document.createElement('button');
+  shopBtn.type = 'button';
+  shopBtn.className = 'story-action';
+  shopBtn.textContent = '🏪 Dükkan';
+  shopBtn.onclick = () => closeStories(() => showPinDetail(pin.id));
+  actions.appendChild(shopBtn);
+
+  story.elapsed = 0;
+  story.startedAt = performance.now();
+  story.paused = false;
+  cancelAnimationFrame(story.raf);
+  story.raf = requestAnimationFrame(tickStory);
+}
+
+function tickStory(now) {
+  if (!story) return;
+  if (!story.paused) {
+    const elapsed = story.video && story.duration !== STORY_MAX_VIDEO_MS
+      ? story.video.currentTime * 1000
+      : story.elapsed + (now - story.startedAt);
+    const fill = document.querySelectorAll('#storyViewer .story-bar-fill')[story.adIndex];
+    if (fill) fill.style.width = `${Math.min(100, elapsed / story.duration * 100)}%`;
+    if (elapsed >= story.duration) return stepStory(1);
+  }
+  story.raf = requestAnimationFrame(tickStory);
+}
+
+function pauseStory(on) {
+  if (!story || story.paused === on) return;
+  if (on) story.elapsed += performance.now() - story.startedAt;
+  else story.startedAt = performance.now();
+  story.paused = on;
+  if (story.video) on ? story.video.pause() : story.video.play().catch(() => {});
+}
+
+function stepStory(dir) {
+  if (!story) return;
+  const entry = story.queue[story.pinIndex];
+  let { pinIndex, adIndex } = story;
+  adIndex += dir;
+  if (adIndex >= entry.ads.length) { pinIndex++; adIndex = 0; }
+  else if (adIndex < 0) { pinIndex--; adIndex = 0; }
+  if (pinIndex < 0) { adIndex = 0; pinIndex = 0; }
+  if (pinIndex >= story.queue.length) return closeStories();
+  story.pinIndex = pinIndex;
+  story.adIndex = adIndex;
+  showStoryItem();
+}
+
+// Kapatır; "then" verilirse kapandıktan sonra çalışır (ilanı ya da dükkanı açmak için)
+function closeStories(then) {
+  if (!story) return;
+  const pushed = story.pushed;
+  hideStoryViewer();
+  if (pushed && history.state && history.state.story) {
+    storyAfterClose = then || null;
+    history.back();
+  } else if (then) {
+    then();
+  }
+}
+
+let storyAfterClose = null;
+
+function hideStoryViewer() {
+  if (!story) return;
+  cancelAnimationFrame(story.raf);
+  if (story.video) story.video.pause();
+  story = null;
+  const el = document.getElementById('storyViewer');
+  el.hidden = true;
+  el.querySelector('.story-stage').innerHTML = '';
+  document.body.classList.remove('story-open');
+  refreshStories();
+}
+
+window.addEventListener('popstate', () => {
+  if (story) hideStoryViewer();
+  const then = storyAfterClose;
+  storyAfterClose = null;
+  if (then) setTimeout(then, 0);
+});
+
+
 // ── Vitrin (öne çıkan ilanlar) ────────────────────────────────
 const VITRIN_AUTOPLAY_MS = 5000;
 let vitrinIndex = 0;
@@ -2431,6 +2807,30 @@ function openUserAdModal() {
   if (!userAdPhotos) userAdPhotos = createPhotoEditor('userAdPhotos');
   document.getElementById('userAdModal').classList.add('open');
   loadMyAds();
+  loadMyShops();
+}
+
+// Dükkan sahibiyse ilanı hangi dükkanı adına vereceğini seçer
+async function loadMyShops() {
+  const row = document.getElementById('userAdShopRow');
+  const select = document.getElementById('userAdShop');
+  try {
+    const res = await fetch('/api/my-shops', { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('userToken') } });
+    const shops = res.ok ? await res.json() : [];
+    const prev = select.value;
+    select.innerHTML = '';
+    shops.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = `${CATEGORY_ICONS[s.category] || '🏪'} ${s.title}`;
+      select.appendChild(opt);
+    });
+    if (shops.length) select.appendChild(new Option('Hikaye olmasın', 'none'));
+    if (prev && [...select.options].some(o => o.value === prev)) select.value = prev;
+    row.hidden = !shops.length;
+  } catch {
+    row.hidden = true;
+  }
 }
 
 function closeUserAdModal() {
@@ -2443,6 +2843,7 @@ async function submitUserAd(e) {
   const youtube = document.getElementById('userAdYoutube').value.trim();
   const payload = {
     body: document.getElementById('userAdBody').value,
+    pinId: document.getElementById('userAdShopRow').hidden ? undefined : document.getElementById('userAdShop').value,
     images: userAdPhotos.getUrls(),
     video: youtube ? { type: 'youtube', url: youtube } : null,
   };
@@ -2460,8 +2861,10 @@ async function submitUserAd(e) {
     const data = await res.json();
     if (res.status === 401) { closeUserAdModal(); openAuthModal(); throw new Error('Oturum süresi doldu, tekrar giriş yapın'); }
     if (!res.ok) throw new Error(data.error || 'İlan gönderilemedi');
-    showToast('✅ İlanınız yayınlandı', 'success');
+    showToast(data.story ? '✅ İlanınız yayınlandı, 24 saat haritada dükkanınızda görünecek' : '✅ İlanınız yayınlandı', 'success');
+    const shop = document.getElementById('userAdShop').value;
     document.getElementById('userAdForm').reset();
+    document.getElementById('userAdShop').value = shop;
     userAdPhotos.setUrls([]);
     loadMyAds();
     loadAds();

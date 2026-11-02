@@ -759,6 +759,35 @@ function setFeatured(ad, on, days) {
   ad.featured_until = new Date(from + featuredDays(days) * DAY_MS).toISOString();
 }
 
+// ── Dükkan hikayesi: işletmenin ilanı 24 saat haritada dükkanın üzerinde görünür ──
+const STORY_MS = DAY_MS;
+
+// İlanı dükkana bağlar (ya da bağı kaldırır); dükkan değiştiyse 24 saat yeniden başlar
+function setAdStory(ad, pin) {
+  if (!pin) {
+    delete ad.pinId;
+    delete ad.story_until;
+    return;
+  }
+  if (ad.pinId === pin.id && ad.story_until) return;
+  ad.pinId = pin.id;
+  ad.story_until = new Date(Date.now() + STORY_MS).toISOString();
+}
+
+// Kullanıcı yalnız kendi dükkanını seçebilir; seçmediyse ilk dükkanı kullanılır
+async function userStoryPin(userId, requested) {
+  if (requested === 0 || requested === '0' || requested === 'none') return null;
+  const mine = await db.getPinsByOwner(userId);
+  if (!mine.length) return null;
+  return mine.find(p => p.id === Number(requested)) || mine[0];
+}
+
+async function adminStoryPin(requested) {
+  if (!requested) return null;
+  const pin = await db.getPin(requested);
+  return pin && pin.status === 'approved' ? pin : null;
+}
+
 const adMedia = ad => [...(ad.images || []), ad.video && ad.video.type === 'file' ? ad.video.url : null];
 
 // İlanın resim/video dosyalarını hangi depodaysa oradan siler
@@ -798,8 +827,15 @@ app.post('/api/ads', requireAuth, async (req, res) => {
     id: crypto.randomUUID(), ...ad, featured: false, active: true,
     owner: { id: req.user.id, name: req.user.name || 'Kullanıcı' }, created_at: new Date().toISOString(),
   };
+  setAdStory(created, await userStoryPin(req.user.id, req.body.pinId));
   if (!(await db.saveAds([created, ...ads]))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
-  res.status(201).json({ id: created.id, message: 'İlanınız yayınlandı' });
+  res.status(201).json({ id: created.id, story: !!created.pinId, message: 'İlanınız yayınlandı' });
+});
+
+// Kullanıcının sahibi olduğu dükkanlar (ilanı hangi dükkan adına vereceğini seçer)
+app.get('/api/my-shops', requireAuth, async (req, res) => {
+  if (req.user.role !== 'user') return res.json([]);
+  res.json(await db.getPinsByOwner(req.user.id));
 });
 
 app.get('/api/my-ads', requireAuth, async (req, res) => {
@@ -848,6 +884,7 @@ app.post('/api/admin/ads', requireAdmin, async (req, res) => {
   const ads = await db.getAds();
   const created = { id: crypto.randomUUID(), ...ad, featured: false, active: true, created_at: new Date().toISOString() };
   if (req.body.featured) setFeatured(created, true, req.body.featured_days);
+  setAdStory(created, await adminStoryPin(req.body.pinId));
   if (!(await db.saveAds([created, ...ads]))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
   res.status(201).json(created);
 });
@@ -868,6 +905,7 @@ app.put('/api/admin/ads/:id', requireAdmin, async (req, res) => {
   Object.assign(ad, next, { updated_at: new Date().toISOString() });
   if (!req.body.featured) setFeatured(ad, false);
   else if (!ad.featured) setFeatured(ad, true, req.body.featured_days);
+  if ('pinId' in req.body) setAdStory(ad, await adminStoryPin(req.body.pinId));
   if (!(await db.saveAds(ads))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
   // Artık kullanılmayan resim/video dosyalarını depodan sil
   const now = new Set(adMedia(ad).filter(Boolean));

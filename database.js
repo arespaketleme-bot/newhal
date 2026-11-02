@@ -251,6 +251,13 @@ const db = {
     return data;
   },
 
+  /** Kişinin sahibi olduğu yayındaki dükkanlar */
+  async getPinsByOwner(ownerId) {
+    const { data } = await supabase.from('pins').select('id, title, category')
+      .eq('owner_id', ownerId).eq('status', 'approved').order('title');
+    return data || [];
+  },
+
   /** Dükkanın sahibini değiştirir (null: sahipsiz) */
   async setPinOwner(id, ownerId) {
     const { data } = await supabase.from('pins').update({ owner_id: ownerId || null })

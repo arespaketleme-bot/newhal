@@ -973,7 +973,23 @@ let adPhotoBusy = 0;
 let adVideoUrl = null;
 let adVideoBusy = false;
 
+// Hikaye için dükkan listesi (onaylı dükkanlar, ada göre)
+function fillAdPinSelect(selected) {
+  const select = document.getElementById('adPin');
+  const pins = Object.values(allPinsCache).filter(p => p.status === 'approved')
+    .sort((a, b) => a.title.localeCompare(b.title, 'tr'));
+  select.innerHTML = '<option value="">Hikaye olmasın</option>';
+  pins.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.title;
+    select.appendChild(opt);
+  });
+  select.value = selected ? String(selected) : '';
+}
+
 async function loadAds() {
+  fillAdPinSelect(document.getElementById('adPin').value);
   loadFacebookStatus();
   loadWaTemplate();
   await loadAdStats();
@@ -1276,6 +1292,7 @@ async function submitAd(e) {
       method: editing ? 'PUT' : 'POST',
       body: JSON.stringify({
         body: document.getElementById('adBody').value,
+        pinId: Number(document.getElementById('adPin').value) || null,
         images: adPhotoUrls,
         video,
         featured: document.getElementById('adFeatured').checked,
@@ -1316,7 +1333,7 @@ function renderAdList(ads) {
       <div class="ad-thumb">${media}</div>
       <div class="ad-info">
         <div class="ad-item-title">${ad.no ? `<span class="ad-item-no">#${ad.no}</span> ` : ''}${ad.title ? esc(ad.title) : '<span class="ad-untitled">(Başlıksız ilan)</span>'}</div>
-        <div class="ad-item-meta">${ad.featured ? `<span class="ad-vitrin-badge">⭐ Vitrin · ${esc(featuredRemainingText(ad.featured_until))}</span> ` : ''}${ad.pending ? '<span class="ad-pending-badge">⏳ Onay bekliyor</span>' : ad.active === false ? '🙈 Gizli' : '🟢 Yayında'}${ad.owner ? ` · 👤 ${esc(ad.owner.name)}` : ''} · ${esc(new Date(ad.created_at).toLocaleDateString('tr-TR'))}${tags ? ' · ' + tags : ''}</div>
+        <div class="ad-item-meta">${ad.featured ? `<span class="ad-vitrin-badge">⭐ Vitrin · ${esc(featuredRemainingText(ad.featured_until))}</span> ` : ''}${ad.pending ? '<span class="ad-pending-badge">⏳ Onay bekliyor</span>' : ad.active === false ? '🙈 Gizli' : '🟢 Yayında'}${ad.owner ? ` · 👤 ${esc(ad.owner.name)}` : ''}${ad.pinId && ad.story_until && Date.parse(ad.story_until) > Date.now() ? ` · 🟣 Hikaye: ${esc((allPinsCache[ad.pinId] || {}).title || 'dükkan')}, ${esc(featuredRemainingText(ad.story_until))}` : ''} · ${esc(new Date(ad.created_at).toLocaleDateString('tr-TR'))}${tags ? ' · ' + tags : ''}</div>
         <div class="ad-stat-line">${adStatLine(ad)}</div>
         ${ad.whatsapp_sent_at ? `<div class="ad-wa-done">💬 WhatsApp'tan gönderildi · ${esc(new Date(ad.whatsapp_sent_at).toLocaleDateString('tr-TR'))}</div>` : ''}
         ${ad.facebook ? `<a class="ad-fb-done" href="${esc(ad.facebook.url)}" target="_blank" rel="noopener">📘 Facebook'ta paylaşıldı · ${esc(new Date(ad.facebook.shared_at).toLocaleDateString('tr-TR'))}</a>` : ''}
@@ -1478,6 +1495,7 @@ function editAd(ad) {
   resetAdForm();
   editingAdId = ad.id;
   document.getElementById('adBody').value = [ad.title, ad.body].filter(Boolean).join('\n');
+  fillAdPinSelect(ad.pinId);
   document.getElementById('adFeatured').checked = !!ad.featured;
   adPhotoUrls = [...(ad.images || [])];
   renderAdPhotos();

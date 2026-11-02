@@ -616,3 +616,10 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 .claim-status { font-size: 12px; font-weight: 600; }
 .claim-status.approved { color: var(--green-400); }
 .claim-status.rejected { color: #f87171; }
+
+.ad-field select {
+  width: 100%; padding: 10px 12px; border-radius: var(--radius); font: inherit; font-size: 14px;
+  background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: var(--text-1); outline: none;
+}
+.ad-field select option { background: #0e1626; }
+@media (max-width: 640px) { .ad-field select { font-size: 16px; } }

@@ -174,6 +174,9 @@
           <div class="map-search-results" id="mapSearchResults" hidden></div>
         </div>
 
+        <!-- Dükkan hikayeleri (son 24 saatte ilan veren işletmeler) -->
+        <div class="story-bar" id="storyBar" hidden></div>
+
         <!-- Map Layer Selector floating overlay -->
         <div class="map-layer-selector">
           <button class="layer-btn" id="layerBtnSatellite" onclick="setMapLayer('satellite')">🛰 Uydu</button>
@@ -600,6 +603,13 @@
           <div class="form-group full">
             <label for="userAdBody">İlan metni <span class="field-hint">(ilk satır başlık olur)</span></label>
             <textarea id="userAdBody" rows="5" maxlength="2120" placeholder="Toptan domates, araç üstü teslim&#10;Günlük 5 ton, kg fiyatı 12 TL. Yer: Mersin Hal&#10;0532 000 00 00"></textarea>
+          </div>
+        </div>
+        <div class="form-row" id="userAdShopRow" hidden>
+          <div class="form-group full">
+            <label for="userAdShop">🟣 Dükkanınızın hikayesi</label>
+            <select id="userAdShop"></select>
+            <span class="field-hint">İlanınız 24 saat boyunca haritada dükkanınızın üzerinde renkli halkayla görünür.</span>
           </div>
         </div>
         <div class="form-row">
