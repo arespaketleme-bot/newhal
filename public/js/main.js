@@ -1744,9 +1744,24 @@ async function loadAds() {
     const res = await fetch('/api/ads');
     if (!res.ok) return;
     renderAds(await res.json());
+    openAdFromLink();
   } catch (err) {
     console.error('İlanlar yüklenemedi:', err);
   }
+}
+
+// WhatsApp/Facebook'ta paylaşılan "?ilan=..." bağlantısı: ilana kaydır ve büyük pencerede aç
+let adLinkHandled = false;
+function openAdFromLink() {
+  if (adLinkHandled) return;
+  adLinkHandled = true;
+  const id = new URLSearchParams(location.search).get('ilan');
+  if (!id) return;
+  const ad = allAds.find(a => a.id === id);
+  if (isMapFullscreen()) toggleMapFullscreen(false);
+  document.getElementById('adsSection').scrollIntoView();
+  if (ad) openAdViewer(ad, 0);
+  else showToast('Bu ilan artık yayında değil', 'error');
 }
 
 function showAds() {

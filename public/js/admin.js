@@ -865,6 +865,7 @@ let adVideoBusy = false;
 
 async function loadAds() {
   loadFacebookStatus();
+  loadWaTemplate();
   const res = await api('/api/admin/ads');
   if (!res) return;
   const ads = await res.json();
@@ -1198,16 +1199,20 @@ function renderAdList(ads) {
       <div class="ad-info">
         <div class="ad-item-title">${ad.title ? esc(ad.title) : '<span class="ad-untitled">(Başlıksız ilan)</span>'}</div>
         <div class="ad-item-meta">${ad.featured ? '<span class="ad-vitrin-badge">⭐ Vitrin</span> ' : ''}${ad.pending ? '<span class="ad-pending-badge">⏳ Onay bekliyor</span>' : ad.active === false ? '🙈 Gizli' : '🟢 Yayında'}${ad.owner ? ` · 👤 ${esc(ad.owner.name)}` : ''} · ${esc(new Date(ad.created_at).toLocaleDateString('tr-TR'))}${tags ? ' · ' + tags : ''}</div>
+        ${ad.whatsapp_sent_at ? `<div class="ad-wa-done">💬 WhatsApp'tan gönderildi · ${esc(new Date(ad.whatsapp_sent_at).toLocaleDateString('tr-TR'))}</div>` : ''}
         ${ad.facebook ? `<a class="ad-fb-done" href="${esc(ad.facebook.url)}" target="_blank" rel="noopener">📘 Facebook'ta paylaşıldı · ${esc(new Date(ad.facebook.shared_at).toLocaleDateString('tr-TR'))}</a>` : ''}
         ${ad.body ? `<div class="ad-item-body">${esc(ad.body)}</div>` : ''}
       </div>
       <div class="ad-item-actions">
+        ${adWhatsappNumber(ad) ? `<button type="button" class="btn-sm btn-wa" data-act="whatsapp">💬 WhatsApp'tan Gönder</button>` : ''}
         <button type="button" class="btn-sm btn-fb" data-act="facebook" ${fbConnected ? '' : 'disabled title="Önce Facebook sayfasını bağlayın"'}>📘 Facebook'a Gönder</button>
         <button type="button" class="btn-sm btn-vitrin" data-act="featured">${ad.featured ? '☆ Vitrinden Çıkar' : '⭐ Vitrine Ekle'}</button>
         <button type="button" class="btn-sm${ad.pending ? ' btn-approve-ad' : ''}" data-act="toggle">${ad.pending ? '✅ Onayla' : ad.active === false ? '👁 Yayınla' : '🙈 Gizle'}</button>
         <button type="button" class="btn-sm btn-delete" data-act="delete">🗑 Sil</button>
       </div>`;
     card.querySelector('[data-act="facebook"]').onclick = (e) => shareAdToFacebook(ad, e.currentTarget);
+    const waBtn = card.querySelector('[data-act="whatsapp"]');
+    if (waBtn) waBtn.onclick = () => sendAdWhatsapp(ad);
     card.querySelector('[data-act="featured"]').onclick = () => setAdFeatured(ad.id, !ad.featured);
     card.querySelector('[data-act="toggle"]').onclick = () => toggleAd(ad.id, ad.active === false);
     card.querySelector('[data-act="delete"]').onclick = () => deleteAd(ad.id, ad.title || 'Başlıksız');
@@ -1235,4 +1240,89 @@ async function deleteAd(id, title) {
   if (!res || !res.ok) return showToast('İlan silinemedi', 'error');
   showToast('İlan silindi', 'success');
   loadAds();
+}
+
+
+// ── WhatsApp'tan ilan sahibine mesaj ──────────────────────────
+// Mesaj, bu bilgisayarda açık olan WhatsApp'ta (Mersin Manşet numarası) hazır açılır; gönder tuşuna yönetici basar.
+const SITE_URL = 'https://newhal.onrender.com';
+const DEFAULT_WA_TEMPLATE = [
+  'Merhaba 👋',
+  '',
+  'Mersin Manşet olarak yazıyoruz. İlanınız NewHal · Mersin Hal Kompleksi Rehberi\'nde yayında 🎉',
+  '',
+  '📌 {baslik}',
+  '🔗 {link}',
+  '',
+  '✅ NewHal\'de ilanlarınızı *ücretsiz* yayınlayabilir, işletmenizi hal haritasına ekleyebilirsiniz.',
+  '👉 {site}',
+  '',
+  'İyi çalışmalar dileriz 🌱',
+].join('\n');
+let waTemplate = DEFAULT_WA_TEMPLATE;
+
+// İlan metnindeki ilk cep telefonu (WhatsApp için 5xx ile başlayan numara), +90 biçiminde rakamlar
+function adWhatsappNumber(ad) {
+  const text = `${ad.title || ''} ${ad.body || ''}`;
+  const re = /(?:\+?90[\s.-]?)?\(?0?\s?5\d{2}\)?[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}(?!\d)/g;
+  for (const m of text.matchAll(re)) {
+    let d = m[0].replace(/\D/g, '');
+    if (d.startsWith('90') && d.length === 12) d = d.slice(2);
+    else if (d.startsWith('0') && d.length === 11) d = d.slice(1);
+    if (d.length === 10 && d.startsWith('5')) return '90' + d;
+  }
+  return null;
+}
+
+// İlanı anlatan kısa satır: telefon numaraları, "~İsim" ve "@kullanıcı" satırları çıkarılır
+function adSummary(ad) {
+  const phone = /(?:\+?90[\s.-]?)?\(?0?\s?[2-5]\d{2}\)?[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}(?!\d)/g;
+  const lines = `${ad.title || ''}\n${ad.body || ''}`.split('\n')
+    .map(l => l.replace(phone, '').trim())
+    .filter(l => !/^[~@]/.test(l))
+    .map(l => l.replace(/^[\s\-–:.,📞]+|[\s\-–:.,]+$/gu, '').trim())
+    .filter(l => l.length >= 3);
+  const s = lines[0] || 'Hal ilanınız';
+  return s.length > 80 ? s.slice(0, 77) + '...' : s;
+}
+
+function buildWaMessage(ad) {
+  return waTemplate
+    .split('{baslik}').join(adSummary(ad))
+    .split('{link}').join(`${SITE_URL}/?ilan=${encodeURIComponent(ad.id)}`)
+    .split('{site}').join(SITE_URL);
+}
+
+async function sendAdWhatsapp(ad) {
+  const phone = adWhatsappNumber(ad);
+  if (!phone) return showToast('Bu ilanda cep telefonu numarası bulunamadı', 'error');
+  if (ad.whatsapp_sent_at && !confirm('Bu ilan sahibine daha önce WhatsApp mesajı gönderildi. Tekrar açılsın mı?')) return;
+  const url = `https://wa.me/${phone}?text=${encodeURIComponent(buildWaMessage(ad))}`;
+  window.open(url, '_blank', 'noopener');
+  // "Gönderildi" olarak işaretle (mesajın gönder tuşuna WhatsApp'ta yönetici basar)
+  const res = await api(`/api/admin/ads/${encodeURIComponent(ad.id)}`, { method: 'PATCH', body: JSON.stringify({ whatsapp_sent: true }) });
+  if (res && res.ok) loadAds();
+}
+
+async function loadWaTemplate() {
+  const res = await api('/api/admin/whatsapp-template');
+  if (!res) return;
+  const d = await res.json();
+  waTemplate = d.template || DEFAULT_WA_TEMPLATE;
+  const box = document.getElementById('waTemplate');
+  if (box && document.activeElement !== box) box.value = waTemplate;
+}
+
+async function saveWaTemplate() {
+  const template = document.getElementById('waTemplate').value.trim();
+  if (!template) return showToast('Şablon boş olamaz', 'error');
+  const res = await api('/api/admin/whatsapp-template', { method: 'PUT', body: JSON.stringify({ template }) });
+  if (!res || !res.ok) return showToast('Şablon kaydedilemedi', 'error');
+  waTemplate = template;
+  showToast('💬 WhatsApp şablonu kaydedildi', 'success');
+}
+
+function resetWaTemplate() {
+  document.getElementById('waTemplate').value = DEFAULT_WA_TEMPLATE;
+  showToast('Varsayılan şablon yüklendi, kaydetmeyi unutmayın', 'success');
 }

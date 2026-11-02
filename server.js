@@ -535,6 +535,7 @@ app.patch('/api/admin/ads/:id', requireAdmin, async (req, res) => {
   if ('active' in req.body) ad.active = !!req.body.active;
   if (ad.active) delete ad.pending;   // yayına alınan kullanıcı ilanı artık onaylıdır
   if ('featured' in req.body) ad.featured = !!req.body.featured;
+  if (req.body.whatsapp_sent) ad.whatsapp_sent_at = new Date().toISOString();
   if (!(await db.saveAds(ads))) return res.status(500).json({ error: 'Kaydedilemedi' });
   res.json(ad);
 });
@@ -666,6 +667,24 @@ app.post('/api/admin/facebook/connect', requireAdmin, async (req, res) => {
   } catch (err) {
     res.status(400).json({ error: 'Facebook: ' + err.message });
   }
+});
+
+// ── WhatsApp mesaj şablonu (yönetici panelinden düzenlenir) ───
+const WA_TEMPLATE_FILE = 'whatsapp.json';
+const WA_TEMPLATE_MAX = 1500;
+
+app.get('/api/admin/whatsapp-template', requireAdmin, async (req, res) => {
+  const saved = await db.getPrivateJson(WA_TEMPLATE_FILE);
+  res.json({ template: saved && saved.template ? saved.template : null });
+});
+
+app.put('/api/admin/whatsapp-template', requireAdmin, async (req, res) => {
+  const template = String(req.body.template || '').trim().slice(0, WA_TEMPLATE_MAX);
+  if (!template) return res.status(400).json({ error: 'Şablon boş olamaz' });
+  if (!(await db.savePrivateJson(WA_TEMPLATE_FILE, { template, updated_at: new Date().toISOString() }))) {
+    return res.status(500).json({ error: 'Şablon kaydedilemedi' });
+  }
+  res.json({ template });
 });
 
 app.delete('/api/admin/facebook', requireAdmin, async (req, res) => {

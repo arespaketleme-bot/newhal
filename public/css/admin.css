@@ -519,3 +519,29 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 }
 .ad-item-actions .btn-sm.btn-approve-ad { color: #052e16; background: var(--green-400); border-color: transparent; font-weight: 700; }
 .nav-badge:empty { display: none; }
+
+/* ── WhatsApp ──────────────────────────────────────────────── */
+.wa-card {
+  margin-top: 14px; max-width: 760px; border-radius: 14px;
+  border: 1px solid rgba(37,211,102,0.35); background: rgba(37,211,102,0.05);
+}
+.wa-card summary { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; list-style: none; }
+.wa-card summary::-webkit-details-marker { display: none; }
+.wa-logo {
+  width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%; background: #25d366;
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+.wa-card-text { display: flex; flex-direction: column; gap: 2px; }
+.wa-card-text strong { color: var(--text-1); font-size: 14px; }
+.wa-card-text span { color: var(--text-3); font-size: 12px; }
+.wa-body { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+.wa-body textarea {
+  width: 100%; padding: 12px; border-radius: 10px; font: 14px/1.5 inherit; resize: vertical;
+  background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: var(--text-1); outline: none;
+}
+.wa-body code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px; color: #86efac; }
+.wa-btn { background: #25d366 !important; color: #052e16 !important; }
+.ad-item-actions .btn-sm.btn-wa { color: #4ade80; border-color: rgba(37,211,102,0.45); }
+.ad-item-actions .btn-sm.btn-wa:hover { background: rgba(37,211,102,0.14); color: #fff; }
+.ad-wa-done { margin-top: 4px; font-size: 12px; color: #4ade80; }
+@media (max-width: 640px) { .wa-body textarea { font-size: 16px; } }

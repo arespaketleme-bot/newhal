@@ -284,6 +284,22 @@
           </form>
         </div>
 
+        <!-- WhatsApp mesaj şablonu -->
+        <details class="wa-card" id="waCard">
+          <summary>
+            <span class="wa-logo">💬</span>
+            <span class="wa-card-text"><strong>WhatsApp mesaj şablonu</strong><span>Telefon numarası olan ilanlara "WhatsApp'tan Gönder" ile bu mesaj hazırlanır</span></span>
+          </summary>
+          <div class="wa-body">
+            <textarea id="waTemplate" rows="9" maxlength="1500"></textarea>
+            <p class="ad-hint">Yer tutucular: <code>{baslik}</code> ilanın başlığı ya da ilk satırı · <code>{link}</code> ilanın NewHal bağlantısı · <code>{site}</code> NewHal ana sayfası</p>
+            <div class="ad-actions">
+              <button type="button" class="btn-ghost-sm" onclick="resetWaTemplate()">Varsayılana dön</button>
+              <button type="button" class="btn-publish wa-btn" onclick="saveWaTemplate()">Şablonu Kaydet</button>
+            </div>
+          </div>
+        </details>
+
         <form class="ad-form" id="adForm" onsubmit="submitAd(event)">
           <div class="ad-field">
             <label for="adTitle">Başlık <span class="ad-hint">(isteğe bağlı)</span></label>
