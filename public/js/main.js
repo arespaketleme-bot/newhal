@@ -97,6 +97,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   toggleMapFullscreen(true);
   await loadCategories();
   loadPins();
+  initAdsSearch();
   loadAds();
   initScrollEffect();
 
@@ -1753,14 +1754,59 @@ function showAds() {
   document.getElementById('adsSection').scrollIntoView({ behavior: 'smooth' });
 }
 
+let allAds = [];
+let adsQuery = '';
+
 function renderAds(ads) {
-  const section = document.getElementById('adsSection');
-  const grid = document.getElementById('adsGrid');
-  grid.innerHTML = '';
+  allAds = ads;
   const hasAds = ads.length > 0;
-  section.hidden = !hasAds;
+  document.getElementById('adsSection').hidden = !hasAds;
   document.querySelectorAll('.ads-nav-link').forEach(el => { el.hidden = !hasAds; });
-  ads.forEach(ad => grid.appendChild(buildAdCard(ad)));
+  renderAdsGrid();
+}
+
+// Başlık ve metinde arar; telefon numarası rakamlarla da bulunur ("0537 032" = "+90 537 032")
+function adMatchesSearch(ad, query) {
+  const text = normalizeSearch(`${ad.title || ''} ${ad.body || ''}`);
+  const digits = `${ad.title || ''} ${ad.body || ''}`.replace(/\D/g, '');
+  return normalizeSearch(query).split(' ').every(word => {
+    if (text.includes(word)) return true;
+    const d = word.replace(/\D/g, '').replace(/^0/, '');
+    return d.length >= 3 && word.replace(/\d/g, '') === '' && digits.includes(d);
+  });
+}
+
+function renderAdsGrid() {
+  const grid = document.getElementById('adsGrid');
+  const info = document.getElementById('adsSearchInfo');
+  grid.innerHTML = '';
+  const list = adsQuery ? allAds.filter(ad => adMatchesSearch(ad, adsQuery)) : allAds;
+  list.forEach(ad => grid.appendChild(buildAdCard(ad)));
+  info.hidden = !adsQuery;
+  info.textContent = list.length
+    ? `"${adsQuery}" için ${list.length} ilan bulundu`
+    : `"${adsQuery}" için ilan bulunamadı`;
+}
+
+function clearAdsSearch() {
+  const input = document.getElementById('adsSearch');
+  input.value = '';
+  adsQuery = '';
+  document.getElementById('adsSearchClear').hidden = true;
+  renderAdsGrid();
+  input.focus();
+}
+
+function initAdsSearch() {
+  const input = document.getElementById('adsSearch');
+  input.addEventListener('input', () => {
+    adsQuery = input.value.trim();
+    document.getElementById('adsSearchClear').hidden = !adsQuery;
+    renderAdsGrid();
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && input.value) { e.stopPropagation(); clearAdsSearch(); }
+  });
 }
 
 function buildAdCard(ad) {

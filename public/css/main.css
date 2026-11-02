@@ -1570,3 +1570,26 @@ body.ad-viewer-open { overflow: hidden; }
 }
 .ad-phone:hover { filter: brightness(1.1); }
 .ad-viewer-info .ad-phone { font-size: 16px; padding: 6px 14px; }
+
+/* ── İlanlarda arama ───────────────────────────────────────── */
+.ads-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.ads-search { position: relative; flex: 0 1 380px; min-width: 240px; }
+.ads-search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--green-400); pointer-events: none; }
+.ads-search input {
+  width: 100%; height: 44px; padding: 0 42px 0 40px; border-radius: 999px; outline: none;
+  background: var(--bg-card); border: 1px solid var(--border-g); color: var(--text-1);
+  font-size: 15px; font-family: var(--font-body); -webkit-appearance: none; appearance: none;
+}
+.ads-search input::placeholder { color: var(--text-3); }
+.ads-search input:focus { border-color: var(--green-400); box-shadow: 0 0 0 3px rgba(0,255,135,0.12); }
+.ads-search input::-webkit-search-cancel-button { display: none; }
+.ads-search button {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px;
+  border-radius: 50%; border: none; cursor: pointer; background: rgba(255,255,255,0.08); color: var(--text-2);
+}
+.ads-search button[hidden] { display: none; }
+.ads-search-info { margin: -6px 0 14px; font-size: 13px; color: var(--text-3); }
+.ads-search-info[hidden] { display: none; }
+@media (max-width: 768px) {
+  .ads-search { flex: 1 1 100%; min-width: 0; }
+}
