@@ -52,6 +52,8 @@ app.use(async (req, res, next) => {
     setMeta('og:description', desc); setMeta('twitter:description', desc);
     setMeta('og:image', image); setMeta('twitter:image', image);
     html = html.replace(/<title>[^<]*<\/title>/, `<title>${escAttr(title)}</title>`);
+    html = html.replace(/(<meta name="description" content=")[^"]*(")/, `$1${escAttr(desc)}$2`);
+    html = html.replace(/(<link rel="canonical" href=")[^"]*(")/, `$1${escAttr(url)}$2`);
     res.set('Cache-Control', 'no-cache').type('html').send(html);
   } catch (err) {
     next();
@@ -1281,6 +1283,9 @@ app.delete('/api/admin/chat', requireAdmin, async (req, res) => {
   await db.clearChat();
   res.json({ message: 'Sohbet geçmişi temizlendi' });
 });
+
+// ── Arama motoru sayfaları (işletme sayfaları, site haritası) ──
+require('./seo')(app, { db, getClaims, siteUrl: SITE_URL });
 
 // ── Sayfa yönlendirme ─────────────────────────────────────────
 app.get('/admin', (req, res) => {

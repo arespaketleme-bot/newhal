@@ -294,11 +294,24 @@ async function loadPins() {
     allPins = await res.json();
     renderPins(allPins);
     renderStoryBar();
+    openPinFromLink();
     updateStats();
     await updateHeroStats();
   } catch (err) {
     console.error('Pinler yüklenemedi:', err);
   }
+}
+
+// İşletme sayfasından gelen "?isletme=12" bağlantısı: o işletmeyi haritada açar
+let pinLinkHandled = false;
+function openPinFromLink() {
+  if (pinLinkHandled) return;
+  pinLinkHandled = true;
+  const id = Number(new URLSearchParams(location.search).get('isletme'));
+  if (!id || !allPins.some(p => p.id === id)) return;
+  if (!isMapFullscreen()) document.getElementById('mapSection').scrollIntoView();
+  focusPin(id);
+  setTimeout(() => showPinDetail(id), 600);
 }
 
 // Yakın iğneleri sayılı yuvarlaklarda gruplar; yaklaştıkça tek tek açılır
