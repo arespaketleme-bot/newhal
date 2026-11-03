@@ -2013,3 +2013,34 @@ body.story-open { overflow: hidden; }
   .map-panel.map-fullscreen .map-layer-selector { bottom: calc(36px + env(safe-area-inset-bottom)); }
   .layer-btn { padding: 5px 9px; font-size: 11px; min-height: 0; }
 }
+
+/* ── İlanlar haritada ─────────────────────────────────────── */
+.ad-marker {
+  position: relative; width: 40px; height: 40px; border-radius: 11px; cursor: pointer;
+  border: 2px solid #fbbf24; background: #0e1626; box-shadow: 0 6px 16px rgba(0,0,0,0.45);
+  transition: transform 0.15s ease;
+}
+.ad-marker:hover { transform: scale(1.12); }
+.ad-marker.featured { border-color: #f472b6; box-shadow: 0 0 0 3px rgba(244,114,182,0.35), 0 6px 16px rgba(0,0,0,0.45); }
+.ad-marker img { width: 100%; height: 100%; object-fit: cover; border-radius: 9px; display: block; }
+.ad-marker-badge {
+  position: absolute; right: -7px; top: -7px; width: 20px; height: 20px; border-radius: 50%;
+  background: #fbbf24; display: flex; align-items: center; justify-content: center; font-size: 11px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+.map-ads-chip {
+  flex: 0 0 auto; height: 32px; padding: 0 12px; border-radius: 999px; cursor: pointer;
+  background: rgba(10, 15, 13, 0.88); backdrop-filter: blur(10px); border: 1px solid var(--border);
+  color: var(--text-1); font-size: 12.5px; font-weight: 600; font-family: var(--font-body); white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35); transition: var(--trans);
+}
+.map-ads-chip.active { background: #fbbf24; border-color: #fbbf24; color: #1f1300; }
+@media (max-width: 768px) { .map-ads-chip { height: 34px; font-size: 13px; } }
+
+/* İlan formundaki küçük harita */
+.ad-loc-map { height: 190px; border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; cursor: crosshair; }
+.ad-loc-actions { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.ad-loc-actions .field-hint { flex: 1; min-width: 160px; }
+.ad-loc-btn { font-size: 12px; padding: 6px 12px; cursor: pointer; }
+/* Gizli işaretli satır ve tuşlar görünmesin */
+.form-row[hidden], .ad-loc-btn[hidden] { display: none; }

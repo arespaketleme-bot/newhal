@@ -623,3 +623,6 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 }
 .ad-field select option { background: #0e1626; }
 @media (max-width: 640px) { .ad-field select { font-size: 16px; } }
+
+.ad-loc-map { height: 200px; border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; cursor: crosshair; }
+.ad-loc-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; flex-wrap: wrap; }

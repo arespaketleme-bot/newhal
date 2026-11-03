@@ -973,6 +973,43 @@ let adPhotoBusy = 0;
 let adVideoUrl = null;
 let adVideoBusy = false;
 
+// Küçük haritada yer seçici (ilan formları için)
+function createLocationPicker(mapId, textId, clearId, emptyText) {
+  let map = null, marker = null, loc = null;
+  const text = () => document.getElementById(textId);
+  const render = () => {
+    text().textContent = loc ? `📍 Seçildi: ${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}` : emptyText;
+    document.getElementById(clearId).hidden = !loc;
+    if (!map) return;
+    if (loc && !marker) {
+      marker = L.marker([loc.lat, loc.lng], { draggable: true }).addTo(map);
+      marker.on('dragend', () => { const p = marker.getLatLng(); loc = { lat: p.lat, lng: p.lng }; render(); });
+    } else if (loc) {
+      marker.setLatLng([loc.lat, loc.lng]);
+    } else if (marker) {
+      map.removeLayer(marker);
+      marker = null;
+    }
+  };
+  return {
+    // Form görünür olduktan sonra çağrılır (harita boyutunu ölçebilsin)
+    show() {
+      if (!map) {
+        map = L.map(mapId, { center: [36.8278, 34.6560], zoom: 16, attributionControl: false });
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 20 }).addTo(map);
+        map.on('click', e => { loc = { lat: e.latlng.lat, lng: e.latlng.lng }; render(); });
+      }
+      setTimeout(() => { map.invalidateSize(); if (loc) map.setView([loc.lat, loc.lng], Math.max(map.getZoom(), 16)); }, 60);
+      render();
+    },
+    get: () => loc,
+    set(value) { loc = value && Number.isFinite(value.lat) ? { lat: value.lat, lng: value.lng } : null; render(); if (map && loc) map.setView([loc.lat, loc.lng], 17); },
+    clear() { loc = null; render(); },
+  };
+}
+
+const adLoc = createLocationPicker('adLocMap', 'adLocText', 'adLocClear', 'Yer seçilmedi');
+
 // Hikaye için dükkan listesi (onaylı dükkanlar, ada göre)
 function fillAdPinSelect(selected) {
   const select = document.getElementById('adPin');
@@ -990,6 +1027,7 @@ function fillAdPinSelect(selected) {
 
 async function loadAds() {
   fillAdPinSelect(document.getElementById('adPin').value);
+  adLoc.show();
   loadFacebookStatus();
   loadWaTemplate();
   await loadAdStats();
@@ -1263,6 +1301,7 @@ function resetAdForm() {
   document.getElementById('adSubmitBtn').textContent = '📢 İlanı Yayınla';
   adPhotoUrls = [];
   adVideoUrl = null;
+  adLoc.clear();
   setAdVideoType('none');
   document.getElementById('adVideoProgress').hidden = true;
   const preview = document.getElementById('adVideoPreview');
@@ -1293,6 +1332,7 @@ async function submitAd(e) {
       body: JSON.stringify({
         body: document.getElementById('adBody').value,
         pinId: Number(document.getElementById('adPin').value) || null,
+        location: adLoc.get(),
         images: adPhotoUrls,
         video,
         featured: document.getElementById('adFeatured').checked,
@@ -1496,6 +1536,7 @@ function editAd(ad) {
   editingAdId = ad.id;
   document.getElementById('adBody').value = [ad.title, ad.body].filter(Boolean).join('\n');
   fillAdPinSelect(ad.pinId);
+  adLoc.set(ad.location);
   document.getElementById('adFeatured').checked = !!ad.featured;
   adPhotoUrls = [...(ad.images || [])];
   renderAdPhotos();

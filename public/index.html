@@ -609,6 +609,17 @@
             <textarea id="userAdBody" rows="5" maxlength="2120" placeholder="Toptan domates, araç üstü teslim&#10;Günlük 5 ton, kg fiyatı 12 TL. Yer: Mersin Hal&#10;0532 000 00 00"></textarea>
           </div>
         </div>
+        <div class="form-row">
+          <div class="form-group full">
+            <label>📍 Haritadaki yeri <span class="field-hint">(isteğe bağlı)</span></label>
+            <div class="ad-loc-map" id="userAdLocMap"></div>
+            <div class="ad-loc-actions">
+              <span class="field-hint" id="userAdLocText">Haritaya dokunarak ilanınızın yerini seçin.</span>
+              <button type="button" class="btn-ghost ad-loc-btn" onclick="useMyLocationForAd()">📡 Konumum</button>
+              <button type="button" class="btn-ghost ad-loc-btn" id="userAdLocClear" onclick="userAdLoc.clear()" hidden>✕ Kaldır</button>
+            </div>
+          </div>
+        </div>
         <div class="form-row" id="userAdShopRow" hidden>
           <div class="form-group full">
             <label for="userAdShop">🟣 Dükkanınızın hikayesi</label>
