@@ -2045,3 +2045,8 @@ body.story-open { overflow: hidden; }
   .map-panel.map-fullscreen .map-layer-selector { bottom: 30px; }
   .map-panel.map-fullscreen .map-fs-btn { bottom: 30px; }
 }
+
+/* Üstteki logo: tıklanınca sayfa baştan yüklenir */
+a.logo { text-decoration: none; color: inherit; cursor: pointer; }
+img.logo-icon { border-radius: 11px; object-fit: cover; box-shadow: 0 0 14px rgba(0,255,135,0.35); transition: transform 0.2s ease; }
+a.logo:hover img.logo-icon { transform: scale(1.06); }
