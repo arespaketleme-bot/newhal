@@ -2424,9 +2424,9 @@ function storyQueue() {
     .filter(s => s.pin)
     .map(s => ({ ...s, fresh: s.ads.some(ad => !seen.has(ad.id)) }))
     .sort((a, b) => (b.fresh - a.fresh) || b.ads[b.ads.length - 1].created_at.localeCompare(a.ads[a.ads.length - 1].created_at));
-  // Facebook sayfasının hikayeleri hep en başta
+  // Facebook sayfasının hikayeleri hep en sonda (şeridin en sağında)
   if (!fbStories.ads.length) return shops;
-  return [{ pin: FB_STORY_PIN, ads: fbStories.ads, fb: true, fresh: fbStories.ads.some(ad => !seen.has(ad.id)) }, ...shops];
+  return [...shops, { pin: FB_STORY_PIN, ads: fbStories.ads, fb: true, fresh: fbStories.ads.some(ad => !seen.has(ad.id)) }];
 }
 
 // ── Facebook sayfasının hikayeleri (halkompleksi33) ──
