@@ -2050,3 +2050,17 @@ body.story-open { overflow: hidden; }
 a.logo { text-decoration: none; color: inherit; cursor: pointer; }
 img.logo-icon { border-radius: 11px; object-fit: cover; box-shadow: 0 0 14px rgba(0,255,135,0.35); transition: transform 0.2s ease; }
 a.logo:hover img.logo-icon { transform: scale(1.06); }
+
+/* WhatsApp grubu: İlan Ver'in solunda küçük tuş */
+.ads-btn-row { display: flex; align-items: center; gap: 8px; }
+.ads-wa-btn {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 999px;
+  background: #25D366; color: #053b1d; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(37, 211, 102, 0.3); transition: var(--trans);
+}
+.ads-wa-btn:hover { background: #20bd5a; transform: translateY(-1px); }
+.ads-wa-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+@media (max-width: 768px) {
+  .ads-btn-row { flex: 1 1 100%; }
+  .ads-btn-row .ads-post-btn { flex: 1 1 auto; }
+}
