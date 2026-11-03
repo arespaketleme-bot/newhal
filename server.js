@@ -1251,6 +1251,54 @@ app.delete('/api/admin/facebook', requireAdmin, async (req, res) => {
   res.json({ connected: false });
 });
 
+// ── Facebook sayfasının hikayeleri sitede ─────────────────────
+// Son 24 saatin hikayeleri; Facebook'un video adresleri süreli olduğu için 5 dakikada bir yenilenir
+const FB_STORY_CACHE_MS = 5 * 60 * 1000;
+const FB_STORY_MAX = 20;
+let fbStoryCache = { at: 0, data: { stories: [] } };
+let fbStoryLoading = null;
+
+async function loadFacebookStories() {
+  const fb = await db.getPrivateJson(FB_CONFIG_FILE);
+  if (!fb || !fb.page_id || !fb.page_token) return { stories: [] };
+  const token = encodeURIComponent(fb.page_token);
+  const list = await (await fetch(`${FB_GRAPH}/${fb.page_id}/stories?access_token=${token}`, { signal: AbortSignal.timeout(10000) })).json();
+  if (list.error) throw new Error(list.error.message);
+  const dayAgo = Date.now() / 1000 - 24 * 60 * 60;
+  const recent = (list.data || [])
+    .filter(s => s.status === 'published' && Number(s.creation_time) > dayAgo && s.media_id)
+    .slice(0, FB_STORY_MAX);
+  const stories = (await Promise.all(recent.map(async s => {
+    try {
+      const isVideo = s.media_type === 'video';
+      const fields = isVideo ? 'source,picture,length' : 'images,picture';
+      const m = await (await fetch(`${FB_GRAPH}/${s.media_id}?fields=${fields}&access_token=${token}`, { signal: AbortSignal.timeout(10000) })).json();
+      if (m.error) return null;
+      const src = isVideo ? m.source : ((m.images || [])[0] || {}).source || m.picture;
+      if (!src) return null;
+      return {
+        id: `fb_${s.post_id || s.media_id}`,
+        type: isVideo ? 'video' : 'photo',
+        src, thumb: m.picture || null, duration: m.length || null,
+        url: s.url || null,
+        created_at: new Date(Number(s.creation_time) * 1000).toISOString(),
+      };
+    } catch { return null; }
+  }))).filter(Boolean).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  return { page: { name: fb.page_name, url: `https://www.facebook.com/${fb.page_username || fb.page_id}` }, stories };
+}
+
+app.get('/api/fb-stories', async (req, res) => {
+  if (Date.now() - fbStoryCache.at > FB_STORY_CACHE_MS) {
+    fbStoryLoading = fbStoryLoading || loadFacebookStories()
+      .then(data => { fbStoryCache = { at: Date.now(), data }; })
+      .catch(err => { console.error('Facebook hikayeleri alınamadı:', err.message); fbStoryCache.at = Date.now() - FB_STORY_CACHE_MS + 60 * 1000; })
+      .finally(() => { fbStoryLoading = null; });
+    await fbStoryLoading;
+  }
+  res.set('Cache-Control', 'public, max-age=60').json(fbStoryCache.data);
+});
+
 app.post('/api/admin/ads/:id/facebook', requireAdmin, async (req, res) => {
   const fb = await db.getPrivateJson(FB_CONFIG_FILE);
   if (!fb) return res.status(400).json({ error: 'Önce Facebook sayfasını bağlayın' });

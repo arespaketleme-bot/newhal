@@ -99,6 +99,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadPins();
   initAdsSearch();
   loadAds();
+  loadFbStories();
+  setInterval(loadFbStories, 5 * 60 * 1000);
   initScrollEffect();
 
   // Online & ziyaretçi sayacı
@@ -2417,14 +2419,40 @@ function storyState(pinId) {
 function storyQueue() {
   const map = storyAdsByPin();
   const seen = readSeenStories();
-  return Object.keys(map).map(Number)
+  const shops = Object.keys(map).map(Number)
     .map(id => ({ pin: allPins.find(p => p.id === id), ads: map[id] }))
     .filter(s => s.pin)
     .map(s => ({ ...s, fresh: s.ads.some(ad => !seen.has(ad.id)) }))
     .sort((a, b) => (b.fresh - a.fresh) || b.ads[b.ads.length - 1].created_at.localeCompare(a.ads[a.ads.length - 1].created_at));
+  // Facebook sayfasının hikayeleri hep en başta
+  if (!fbStories.ads.length) return shops;
+  return [{ pin: FB_STORY_PIN, ads: fbStories.ads, fb: true, fresh: fbStories.ads.some(ad => !seen.has(ad.id)) }, ...shops];
+}
+
+// ── Facebook sayfasının hikayeleri (halkompleksi33) ──
+const FB_STORY_PIN = { id: 'fb', title: 'NewHal', category: '', images: ['/icons/icon-192.png'], verified: true };
+let fbStories = { page: null, ads: [] };
+
+async function loadFbStories() {
+  try {
+    const res = await fetch('/api/fb-stories');
+    if (!res.ok) return;
+    const data = await res.json();
+    fbStories = {
+      page: data.page || null,
+      // Hikaye görüntüleyicisi ilan biçiminde çalışır: resim ya da video dosyası
+      ads: (data.stories || []).map(s => ({
+        id: s.id, created_at: s.created_at, title: '', body: '', fb: true, url: s.url, thumb: s.thumb,
+        images: s.type === 'photo' ? [s.src] : [],
+        video: s.type === 'video' ? { type: 'file', url: s.src } : null,
+      })),
+    };
+    if (!story) renderStoryBar();
+  } catch {}
 }
 
 function storyThumb(entry) {
+  if (entry.fb) return entry.pin.images[0];
   const ad = entry.ads[entry.ads.length - 1];
   return (ad.images && ad.images[0]) || (ad.video && ad.video.type === 'youtube' ? `https://i.ytimg.com/vi/${ad.video.id}/mqdefault.jpg` : null)
     || (entry.pin.images && entry.pin.images[0]) || null;
@@ -2501,8 +2529,10 @@ function ensureStoryDom() {
 
   el.querySelector('.story-close').onclick = () => closeStories();
   el.querySelector('.story-who').onclick = () => {
-    const pinId = story && story.queue[story.pinIndex].pin.id;
-    closeStories(() => showPinDetail(pinId));
+    const entry = story && story.queue[story.pinIndex];
+    if (!entry) return;
+    if (entry.fb) { pauseStory(true); if (fbStories.page) window.open(fbStories.page.url, '_blank', 'noopener'); return; }
+    closeStories(() => showPinDetail(entry.pin.id));
   };
   // Dokun: sağ ileri, sol geri; basılı tut: dur
   ['prev', 'next'].forEach(side => {
@@ -2568,7 +2598,7 @@ function showStoryItem() {
   const ad = currentStoryAd();
   const pin = entry.pin;
   markStorySeen(ad.id);
-  trackOnce('view', ad.id);
+  if (!ad.fb) trackOnce('view', ad.id);
 
   // Üstteki ilerleme çubukları
   const bars = el.querySelector('.story-bars');
@@ -2604,6 +2634,7 @@ function showStoryItem() {
     v.autoplay = true;
     v.muted = false;
     v.preload = 'auto';
+    if (ad.thumb) v.poster = ad.thumb;
     v.onloadedmetadata = () => { if (story && story.video === v) story.duration = Math.min(STORY_MAX_VIDEO_MS, (v.duration || 6) * 1000); };
     v.onended = () => { if (story && story.video === v) stepStory(1); };
     v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });   // sesli başlamazsa sessiz oynat
@@ -2636,6 +2667,30 @@ function showStoryItem() {
   // Alttaki tuşlar: ilanı aç, ara, dükkan
   const actions = el.querySelector('.story-actions');
   actions.innerHTML = '';
+  if (ad.fb) {
+    const fbBtn = document.createElement('a');
+    fbBtn.className = 'story-action primary';
+    fbBtn.href = (fbStories.page && fbStories.page.url) || 'https://www.facebook.com/halkompleksi33';
+    fbBtn.target = '_blank';
+    fbBtn.rel = 'noopener';
+    fbBtn.textContent = '👍 Facebook';
+    fbBtn.onclick = () => pauseStory(true);
+    actions.appendChild(fbBtn);
+    const waBtn = document.createElement('a');
+    waBtn.className = 'story-action';
+    waBtn.href = document.querySelector('.ads-wa-btn').href;
+    waBtn.target = '_blank';
+    waBtn.rel = 'noopener';
+    waBtn.textContent = '💬 WhatsApp';
+    waBtn.onclick = () => pauseStory(true);
+    actions.appendChild(waBtn);
+    story.elapsed = 0;
+    story.startedAt = performance.now();
+    story.paused = false;
+    cancelAnimationFrame(story.raf);
+    story.raf = requestAnimationFrame(tickStory);
+    return;
+  }
   const openBtn = document.createElement('button');
   openBtn.type = 'button';
   openBtn.className = 'story-action primary';
