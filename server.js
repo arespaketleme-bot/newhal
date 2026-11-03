@@ -21,12 +21,22 @@ app.use((req, res, next) => (req.path === '/api/uploads' ? next() : jsonSmall(re
 // "/?ilan=<kimlik>" bağlantısı paylaşılınca Facebook/WhatsApp önizlemesi ilanın kendi resmi ve başlığıyla çıksın
 const INDEX_HTML = path.join(__dirname, 'public', 'index.html');
 const escAttr = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// Eski adres (newhal.onrender.com) ile açılan sayfalar kalıcı olarak newhal.com'a gider
+const OLD_HOST = 'newhal.onrender.com';
+const NEW_ORIGIN = 'https://newhal.com';
+app.use((req, res, next) => {
+  if (req.hostname === OLD_HOST && req.method === 'GET' && !req.path.startsWith('/api/') && !req.path.startsWith('/auth/')) {
+    return res.redirect(301, NEW_ORIGIN + req.originalUrl);
+  }
+  next();
+});
+
 app.use(async (req, res, next) => {
   if (req.method !== 'GET' || req.path !== '/' || !req.query.ilan) return next();
   try {
     const ad = (await db.getAds()).find(a => a.id === String(req.query.ilan) && a.active !== false && !a.pending);
     if (!ad) return next();
-    const siteUrl = process.env.SITE_URL || 'https://newhal.onrender.com';
+    const siteUrl = process.env.SITE_URL || 'https://newhal.com';
     const summary = (ad.title || ad.body || 'İlan').replace(/\s+/g, ' ').trim();
     const title = `#${ad.no} · ${summary.slice(0, 70)} | NewHal İlanlar`;
     const desc = (ad.body || ad.title || 'Mersin Hal Kompleksi ilanı').replace(/\s+/g, ' ').trim().slice(0, 200);
@@ -226,7 +236,7 @@ function describeReferrer(ref) {
     if (/instagram/.test(host)) return 'Instagram';
     if (/whatsapp|wa\.me/.test(host)) return 'WhatsApp';
     if (/t\.co$|twitter|x\.com/.test(host)) return 'X (Twitter)';
-    if (/newhal\.onrender\.com/.test(host)) return 'Site içi';
+    if (/^newhal\.com$|newhal\.onrender\.com/.test(host)) return 'Site içi';
     return host;
   } catch {
     return 'Bilinmiyor';
@@ -308,7 +318,7 @@ function osmReverse(lat, lng) {
     if (wait > 0) await new Promise(r => setTimeout(r, wait));
     geoLastAt = Date.now();
     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=tr`;
-    const r = await fetch(url, { headers: { 'User-Agent': 'NewHal/1.0 (https://newhal.onrender.com)' }, signal: AbortSignal.timeout(8000) });
+    const r = await fetch(url, { headers: { 'User-Agent': 'NewHal/1.0 (https://newhal.com)' }, signal: AbortSignal.timeout(8000) });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return r.json();
   });
@@ -1009,7 +1019,7 @@ const FB_GRAPH        = `https://graph.facebook.com/${process.env.FB_GRAPH_VERSI
 const FB_GRAPH_VIDEO  = `https://graph-video.facebook.com/${process.env.FB_GRAPH_VERSION || 'v24.0'}`;
 const FB_PAGE_USERNAME = process.env.FB_PAGE_USERNAME || 'halkompleksi33';
 const FB_CONFIG_FILE  = 'facebook.json';
-const SITE_URL        = process.env.SITE_URL || 'https://newhal.onrender.com';
+const SITE_URL        = process.env.SITE_URL || 'https://newhal.com';
 
 async function fbRequest(url, params, method = 'POST') {
   const body = new URLSearchParams(params);

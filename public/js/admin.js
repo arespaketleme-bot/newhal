@@ -1405,7 +1405,7 @@ async function deleteAd(id, title) {
 
 // ── WhatsApp'tan ilan sahibine mesaj ──────────────────────────
 // Mesaj, bu bilgisayarda açık olan WhatsApp'ta (Mersin Manşet numarası) hazır açılır; gönder tuşuna yönetici basar.
-const SITE_URL = 'https://newhal.onrender.com';
+const SITE_URL = 'https://newhal.com';
 const DEFAULT_WA_TEMPLATE = [
   'Merhaba 👋',
   '',
