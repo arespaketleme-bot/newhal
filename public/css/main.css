@@ -1439,19 +1439,14 @@ body.map-fs-open { overflow: hidden; }
 .map-search-text strong { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .map-search-text small { font-size: 12px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* Katman seçici aramanın altına iner */
-.map-layer-selector { top: 70px; }
 .map-panel.map-fullscreen .map-search { top: calc(14px + env(safe-area-inset-top)); }
-.map-panel.map-fullscreen .map-layer-selector { top: calc(70px + env(safe-area-inset-top)); }
 
 @media (max-width: 768px) {
   .map-search { top: 10px; left: 54px; right: 10px; max-width: none; }
   .map-search input { height: 44px; }
   .map-search-glass { top: 13px; }
   .map-search-clear { top: 5px; }
-  .map-layer-selector { top: 62px; right: 10px; }
   .map-panel.map-fullscreen .map-search { top: calc(10px + env(safe-area-inset-top)); }
-  .map-panel.map-fullscreen .map-layer-selector { top: calc(62px + env(safe-area-inset-top)); }
 }
 
 
@@ -1972,16 +1967,49 @@ body.story-open { overflow: hidden; }
   .story-caption { bottom: calc(76px + env(safe-area-inset-bottom)); }
 }
 @media (prefers-reduced-motion: reduce) { .story-marker.new, .story-viewer { animation: none; } }
-/* Hikaye şeridi varken katman seçici şeridin altına iner */
-.map-panel.map-fullscreen .story-bar { top: calc(70px + env(safe-area-inset-top)); }
-.map-panel.has-stories .map-layer-selector { top: 160px; }
-.map-panel.map-fullscreen.has-stories .map-layer-selector { top: calc(160px + env(safe-area-inset-top)); }
-@media (max-width: 768px) {
-  .story-bar { left: 54px; }
-  .map-panel.map-fullscreen .story-bar { top: calc(62px + env(safe-area-inset-top)); }
-  .map-panel.has-stories .map-layer-selector { top: 150px; }
-  .map-panel.map-fullscreen.has-stories .map-layer-selector { top: calc(150px + env(safe-area-inset-top)); }
-}
+@media (max-width: 768px) { .story-bar { left: 54px; } }
 
 .address-hint { display: block; margin-top: 6px; font-size: 12px; color: var(--green-400); }
 .address-hint[hidden] { display: none; }
+
+/* ── Harita: kategori şeridi ─────────────────────────────── */
+.map-cat-bar {
+  position: absolute; top: 68px; left: 58px; right: 16px; z-index: 1000; max-width: 560px;
+  display: flex; gap: 6px; overflow-x: auto; padding: 2px; scrollbar-width: none;
+}
+.map-cat-bar::-webkit-scrollbar { display: none; }
+.map-cat-bar:empty { display: none; }
+.map-cat-chip {
+  flex: 0 0 auto; height: 32px; padding: 0 12px; border-radius: 999px; cursor: pointer;
+  background: rgba(10, 15, 13, 0.88); backdrop-filter: blur(10px); border: 1px solid var(--border);
+  color: var(--text-1); font-size: 12.5px; font-weight: 600; font-family: var(--font-body); white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35); transition: var(--trans);
+}
+.map-cat-chip:hover { border-color: var(--border-g); }
+.map-cat-chip.active { background: var(--green-500); border-color: var(--green-500); color: #fff; }
+.map-panel.map-fullscreen .map-cat-bar { top: calc(68px + env(safe-area-inset-top)); }
+
+/* Hikaye şeridi kategori şeridinin altında */
+.story-bar { top: 108px; }
+.map-panel.map-fullscreen .story-bar { top: calc(108px + env(safe-area-inset-top)); }
+
+/* ── Harita: uydu / açık renk seçici sol altta, küçük ─────── */
+.map-layer-selector,
+.map-panel.map-fullscreen .map-layer-selector {
+  top: auto; right: auto; left: 10px; bottom: 24px; gap: 2px; padding: 3px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+}
+.map-panel.map-fullscreen .map-layer-selector { bottom: calc(24px + env(safe-area-inset-bottom)); }
+.layer-btn { padding: 4px 9px; font-size: 10.5px; min-height: 0; line-height: 1.4; }
+
+@media (max-width: 768px) {
+  .map-cat-bar { top: 62px; left: 54px; right: 10px; max-width: none; }
+  .map-panel.map-fullscreen .map-cat-bar { top: calc(62px + env(safe-area-inset-top)); }
+  .map-cat-chip { height: 34px; font-size: 13px; }
+  .story-bar { top: 102px; }
+  .map-panel.map-fullscreen .story-bar { top: calc(102px + env(safe-area-inset-top)); }
+  .map-layer-selector,
+  .map-panel.map-fullscreen .map-layer-selector { top: auto; right: auto; left: 10px; bottom: 30px; padding: 3px; }
+  .map-panel.map-fullscreen .map-layer-selector { bottom: calc(36px + env(safe-area-inset-bottom)); }
+  .layer-btn { padding: 5px 9px; font-size: 11px; min-height: 0; }
+}

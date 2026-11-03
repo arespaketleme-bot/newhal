@@ -544,8 +544,9 @@ function initSearch() {
 
 function filterPins(cat, btn) {
   activeFilter = cat;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  // Haritadaki ve listedeki kategori tuşları birlikte güncellenir
+  document.querySelectorAll('.filter-btn, .map-cat-chip').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+  if (btn) btn.classList.add('active');
   renderPins(allPins);
   if (searchQuery) renderSearchResults();
 
@@ -1534,6 +1535,28 @@ function renderFilters(categories) {
     btn.onclick = () => filterPins(cat.name, btn);
     filterContainer.appendChild(btn);
   });
+  renderMapCategoryBar(categories);
+}
+
+// Haritanın üstündeki kategori şeridi
+function renderMapCategoryBar(categories) {
+  const bar = document.getElementById('mapCatBar');
+  if (!bar) return;
+  bar.innerHTML = '';
+  const chip = (cat, label) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `map-cat-chip${activeFilter === cat ? ' active' : ''}`;
+    b.dataset.cat = cat;
+    b.textContent = label;
+    b.onclick = () => {
+      filterPins(cat, b);
+      b.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    };
+    bar.appendChild(b);
+  };
+  chip('all', 'Tümü');
+  categories.forEach(cat => chip(cat.name, `${cat.icon || '📦'} ${cat.name}`));
 }
 
 function renderCategorySelect(categories) {
@@ -2392,7 +2415,6 @@ function renderStoryBar() {
   const queue = storyQueue();
   bar.innerHTML = '';
   bar.hidden = !queue.length;
-  document.getElementById('mapPanel').classList.toggle('has-stories', queue.length > 0);
   queue.forEach(entry => {
     const btn = document.createElement('button');
     btn.type = 'button';
