@@ -2037,3 +2037,11 @@ body.story-open { overflow: hidden; }
 .chat-widget.collapsed .chat-toggle-icon { display: none; }
 .chat-widget.collapsed .chat-header-title svg { color: #fff !important; width: 30px; height: 30px; }
 @media (max-width: 576px) { .chat-widget.collapsed { width: 58px; } }
+
+/* Telefonda tam ekran harita alt menünün üstünde biter, alt menü hep kullanılabilir */
+@media (max-width: 768px) {
+  .map-panel.map-fullscreen { bottom: calc(var(--nav-h) + var(--safe-b)); height: auto; }
+  body.map-fs-open .bottom-nav { z-index: 195; }
+  .map-panel.map-fullscreen .map-layer-selector { bottom: 30px; }
+  .map-panel.map-fullscreen .map-fs-btn { bottom: 30px; }
+}

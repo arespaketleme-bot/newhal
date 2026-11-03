@@ -93,6 +93,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   initMap();
   initSearch();
+  // Site haritayla, tam ekran açılır; "Küçült" ya da alt menü ile sayfanın geri kalanına geçilir
+  toggleMapFullscreen(true);
   await loadCategories();
   loadPins();
   initAdsSearch();
@@ -186,6 +188,7 @@ function toggleMapFullscreen(force) {
   document.getElementById('mapFsLabel').textContent = on ? 'Küçült' : 'Tam Ekran';
   btn.setAttribute('aria-label', on ? 'Haritayı eski haline döndür' : 'Haritayı tam ekran yap');
   if (on) setChatOpen(false);
+  if (typeof updateBottomNav === 'function') updateBottomNav();
   // Leaflet yeni boyutu ölçsün, harita aynı yeri göstermeye devam etsin
   const center = map.getCenter();
   setTimeout(() => { map.invalidateSize(); map.setView(center, map.getZoom(), { animate: false }); }, 50);
@@ -1254,7 +1257,7 @@ function initChatAutoCollapse() {
 }
 
 // ── Telefon Alt Menüsü ────────────────────────────────────────
-const BOTTOM_NAV_SECTIONS = { home: 'hero', map: 'mapSection', list: 'listSection' };
+const BOTTOM_NAV_SECTIONS = { home: 'hero', map: 'mapSection', ads: 'adsSection' };
 let bottomNavSection = 'home';
 
 function isChatOpen() {
@@ -1279,14 +1282,21 @@ function bottomNavGo(tab) {
     return;
   }
   setChatOpen(false);
-  if (tab === 'home') window.scrollTo({ top: 0, behavior: 'smooth' });
-  else document.getElementById(BOTTOM_NAV_SECTIONS[tab]).scrollIntoView({ behavior: 'smooth' });
+  // Harita tuşu haritayı tam ekran açar; diğerleri tam ekrandan çıkıp ilgili bölüme gider
+  if (tab === 'map') {
+    if (!isMapFullscreen()) toggleMapFullscreen(true);
+  } else {
+    if (isMapFullscreen()) toggleMapFullscreen(false);
+    if (tab === 'home') window.scrollTo({ top: 0, behavior: 'smooth' });
+    else document.getElementById(BOTTOM_NAV_SECTIONS[tab]).scrollIntoView({ behavior: 'smooth' });
+  }
   bottomNavSection = tab;
   updateBottomNav();
 }
 
 function updateBottomNav() {
-  const active = isChatOpen() && window.matchMedia('(max-width: 768px)').matches ? 'chat' : bottomNavSection;
+  const active = isChatOpen() && window.matchMedia('(max-width: 768px)').matches ? 'chat'
+    : isMapFullscreen() ? 'map' : bottomNavSection;
   document.querySelectorAll('.bottom-nav-item').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === active);
   });
