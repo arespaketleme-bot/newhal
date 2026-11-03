@@ -2013,3 +2013,6 @@ body.story-open { overflow: hidden; }
   .map-panel.map-fullscreen .map-layer-selector { bottom: calc(36px + env(safe-area-inset-bottom)); }
   .layer-btn { padding: 5px 9px; font-size: 11px; min-height: 0; }
 }
+
+/* Gizli işaretli form satırı görünmesin */
+.form-row[hidden] { display: none; }
