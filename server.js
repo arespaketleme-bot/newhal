@@ -770,17 +770,8 @@ function splitAdText(title, body) {
   };
 }
 
-// İlanın haritadaki yeri: { lat, lng } ya da null (Türkiye ve çevresi dışı kabul edilmez)
-function cleanAdLocation(loc) {
-  if (!loc || typeof loc !== 'object') return null;
-  const lat = Number(loc.lat), lng = Number(loc.lng);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < 34 || lat > 43 || lng < 24 || lng > 46) return null;
-  return { lat: Math.round(lat * 1e6) / 1e6, lng: Math.round(lng * 1e6) / 1e6 };
-}
-
 function cleanAd(body, { allowVideoFile = true } = {}) {
   const { title, body: text } = splitAdText(body.title, body.body);
-  const location = cleanAdLocation(body.location);
   const prefix = db.adMediaUrlPrefix();
   const prefixes = [prefix, db.pinImageUrlPrefix()];
   const images = (Array.isArray(body.images) ? body.images : [])
@@ -793,7 +784,7 @@ function cleanAd(body, { allowVideoFile = true } = {}) {
     const id = youtubeId(body.video.url);
     if (id) video = { type: 'youtube', id };
   }
-  return { title, body: text, images, video, location };
+  return { title, body: text, images, video };
 }
 
 // ── Vitrin süresi ──────────────────────────────────────────────

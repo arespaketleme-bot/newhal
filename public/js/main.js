@@ -293,7 +293,6 @@ async function loadPins() {
     allPins = await res.json();
     renderPins(allPins);
     renderStoryBar();
-    renderAdMarkers();
     updateStats();
     await updateHeroStats();
   } catch (err) {
@@ -1544,13 +1543,6 @@ function renderMapCategoryBar(categories) {
   const bar = document.getElementById('mapCatBar');
   if (!bar) return;
   bar.innerHTML = '';
-  const adsChip = document.createElement('button');
-  adsChip.type = 'button';
-  adsChip.className = `map-ads-chip${showAdMarkers ? ' active' : ''}`;
-  adsChip.textContent = '📢 İlanlar';
-  adsChip.title = 'İlanları haritada göster ya da gizle';
-  adsChip.onclick = toggleAdMarkers;
-  bar.appendChild(adsChip);
   const chip = (cat, label) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -2035,7 +2027,6 @@ let adsQuery = '';
 function renderAds(ads) {
   allAds = ads;
   refreshStories();
-  renderAdMarkers();
   // Alan hep görünür: ilan yokken de kullanıcılar "İlan Ver" diyebilsin
   document.getElementById('adsSection').hidden = false;
   document.querySelectorAll('.ads-nav-link').forEach(el => { el.hidden = false; });
@@ -2362,63 +2353,6 @@ document.addEventListener('keydown', (e) => {
 }, true);
 
 window.addEventListener('popstate', () => { if (adViewer) closeAdViewer(true); });
-
-
-// ── İlanlar haritada: yeri seçilmiş ya da dükkana bağlı ilanlar küçük resimli işaretle görünür ──
-const AD_MARKERS_KEY = 'showAdMarkers';
-let showAdMarkers = (() => { try { return localStorage.getItem(AD_MARKERS_KEY) !== '0'; } catch { return true; } })();
-let adLayer = null;
-
-function adPosition(ad) {
-  if (ad.location) return ad.location;
-  const pin = ad.pinId && allPins.find(p => p.id === ad.pinId);
-  return pin ? { lat: pin.lat, lng: pin.lng, atShop: true } : null;
-}
-
-function adThumb(ad) {
-  if (ad.images && ad.images[0]) return ad.images[0];
-  if (ad.video && ad.video.type === 'youtube') return `https://i.ytimg.com/vi/${ad.video.id}/mqdefault.jpg`;
-  return AD_LOGO_URL;
-}
-
-function renderAdMarkers() {
-  if (!map) return;
-  if (!adLayer) adLayer = L.layerGroup().addTo(map);
-  adLayer.clearLayers();
-  document.querySelectorAll('.map-ads-chip').forEach(b => b.classList.toggle('active', showAdMarkers));
-  if (!showAdMarkers) return;
-
-  const groups = {};
-  allAds.forEach(ad => {
-    const pos = adPosition(ad);
-    if (!pos) return;
-    const key = `${pos.lat.toFixed(5)},${pos.lng.toFixed(5)}`;
-    (groups[key] = groups[key] || { pos, ads: [] }).ads.push(ad);
-  });
-  Object.values(groups).forEach(({ pos, ads }) => {
-    ads.forEach((ad, i) => {
-      // Aynı yerdeki ilanlar yan yana dizilir; dükkandaki ilan dükkan işaretinin sağ üstüne kayar
-      const dx = (pos.atShop ? 24 : 0) + i * 30;
-      const dy = pos.atShop ? 28 : 0;
-      const icon = L.divIcon({
-        className: '',
-        html: `<div class="ad-marker${ad.featured ? ' featured' : ''}"><img src="${escHtml(adThumb(ad))}" alt="" loading="lazy" /><span class="ad-marker-badge">📢</span></div>`,
-        iconSize: [40, 40],
-        iconAnchor: [20 - dx, 20 + dy],
-      });
-      const marker = L.marker([pos.lat, pos.lng], { icon, title: ad.title || 'İlan', zIndexOffset: 400 });
-      marker.on('click', () => openAdViewer(ad, 0));
-      adLayer.addLayer(marker);
-    });
-  });
-}
-
-function toggleAdMarkers() {
-  showAdMarkers = !showAdMarkers;
-  try { localStorage.setItem(AD_MARKERS_KEY, showAdMarkers ? '1' : '0'); } catch {}
-  renderAdMarkers();
-  showToast(showAdMarkers ? '📢 İlanlar haritada gösteriliyor' : 'İlanlar haritada gizlendi', 'success');
-}
 
 
 // ── Dükkan hikayeleri: işletmenin ilanı 24 saat haritada dükkanın üzerinde görünür ──
@@ -2928,56 +2862,10 @@ function restartVitrinTimer() {
 // ── Kullanıcı ilanı (giriş gerekir, yönetici onayından sonra yayınlanır) ──
 let userAdPhotos = null;
 
-// Küçük haritada yer seçici (ilan formları için)
-function createLocationPicker(mapId, textId, clearId, emptyText) {
-  let map = null, marker = null, loc = null;
-  const text = () => document.getElementById(textId);
-  const render = () => {
-    text().textContent = loc ? `📍 Seçildi: ${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}` : emptyText;
-    document.getElementById(clearId).hidden = !loc;
-    if (!map) return;
-    if (loc && !marker) {
-      marker = L.marker([loc.lat, loc.lng], { draggable: true }).addTo(map);
-      marker.on('dragend', () => { const p = marker.getLatLng(); loc = { lat: p.lat, lng: p.lng }; render(); });
-    } else if (loc) {
-      marker.setLatLng([loc.lat, loc.lng]);
-    } else if (marker) {
-      map.removeLayer(marker);
-      marker = null;
-    }
-  };
-  return {
-    // Form görünür olduktan sonra çağrılır (harita boyutunu ölçebilsin)
-    show() {
-      if (!map) {
-        map = L.map(mapId, { center: [36.8278, 34.6560], zoom: 16, attributionControl: false });
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 20 }).addTo(map);
-        map.on('click', e => { loc = { lat: e.latlng.lat, lng: e.latlng.lng }; render(); });
-      }
-      setTimeout(() => { map.invalidateSize(); if (loc) map.setView([loc.lat, loc.lng], Math.max(map.getZoom(), 16)); }, 60);
-      render();
-    },
-    get: () => loc,
-    set(value) { loc = value && Number.isFinite(value.lat) ? { lat: value.lat, lng: value.lng } : null; render(); if (map && loc) map.setView([loc.lat, loc.lng], 17); },
-    clear() { loc = null; render(); },
-  };
-}
-
-const userAdLoc = createLocationPicker('userAdLocMap', 'userAdLocText', 'userAdLocClear', 'Haritaya dokunarak ilanınızın yerini seçin.');
-
-function useMyLocationForAd() {
-  if (!navigator.geolocation) return showToast('Telefonunuz konum vermiyor', 'error');
-  navigator.geolocation.getCurrentPosition(
-    p => userAdLoc.set({ lat: p.coords.latitude, lng: p.coords.longitude }),
-    () => showToast('Konum alınamadı, haritaya dokunarak seçin', 'error'),
-    { enableHighAccuracy: true, timeout: 10000 });
-}
-
 function openUserAdModal() {
   if (!checkAuthAndRun()) return;
   if (!userAdPhotos) userAdPhotos = createPhotoEditor('userAdPhotos');
   document.getElementById('userAdModal').classList.add('open');
-  userAdLoc.show();
   loadMyAds();
   loadMyShops();
 }
@@ -3016,7 +2904,6 @@ async function submitUserAd(e) {
   const payload = {
     body: document.getElementById('userAdBody').value,
     pinId: document.getElementById('userAdShopRow').hidden ? undefined : document.getElementById('userAdShop').value,
-    location: userAdLoc.get(),
     images: userAdPhotos.getUrls(),
     video: youtube ? { type: 'youtube', url: youtube } : null,
   };
@@ -3038,7 +2925,6 @@ async function submitUserAd(e) {
     const shop = document.getElementById('userAdShop').value;
     document.getElementById('userAdForm').reset();
     document.getElementById('userAdShop').value = shop;
-    userAdLoc.clear();
     userAdPhotos.setUrls([]);
     loadMyAds();
     loadAds();
