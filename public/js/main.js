@@ -93,8 +93,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   initMap();
   initSearch();
-  // Site haritayla, tam ekran açılır; "Küçült" ile sayfanın geri kalanına geçilir
-  toggleMapFullscreen(true);
   await loadCategories();
   loadPins();
   initAdsSearch();
