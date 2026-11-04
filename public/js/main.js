@@ -2079,11 +2079,36 @@ function renderAdsGrid() {
     ? allAds.filter(ad => adMatchesSearch(ad, adsQuery)).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
     : allAds.filter(ad => !ad.featured);
   list.forEach(ad => grid.appendChild(buildAdCard(ad)));
+  grid.scrollTop = 0;
+  fitAdsGridRows();
   info.hidden = !adsQuery;
   info.textContent = list.length
     ? `"${adsQuery}" için ${list.length} ilan bulundu`
     : `"${adsQuery}" için ilan bulunamadı`;
 }
+
+// İlan listesi en fazla 2 satır yüksekliğinde; fazlası kutunun içinde kaydırılır
+const ADS_VISIBLE_ROWS = 2;
+
+function fitAdsGridRows() {
+  const grid = document.getElementById('adsGrid');
+  const tops = [...new Set([...grid.children].map(c => c.offsetTop))].sort((a, b) => a - b);
+  const scrollable = tops.length > ADS_VISIBLE_ROWS;
+  grid.classList.toggle('scrollable', scrollable);
+  // Kartlar uzunsa kutu ekrandan taşmasın: en fazla ekranın %80'i
+  const rowsHeight = scrollable ? tops[ADS_VISIBLE_ROWS] - tops[0] - 4 : 0;
+  grid.style.maxHeight = scrollable ? `${Math.min(rowsHeight, Math.round(window.innerHeight * 0.8))}px` : '';
+}
+
+(() => {
+  const grid = document.getElementById('adsGrid');
+  if (!grid) return;
+  let timer = null;
+  const refit = () => { clearTimeout(timer); timer = setTimeout(fitAdsGridRows, 120); };
+  // Resimler yüklendikçe kart boyları değişir, ekran döndürülünce sütun sayısı değişir
+  grid.addEventListener('load', refit, true);
+  window.addEventListener('resize', refit);
+})();
 
 function clearAdsSearch() {
   const input = document.getElementById('adsSearch');
