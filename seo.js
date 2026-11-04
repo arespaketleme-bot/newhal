@@ -42,7 +42,7 @@ function layout({ site, title, description, path, image, jsonLd, body }) {
 <meta property="og:url" content="${esc(url)}" />
 <meta property="og:title" content="${esc(title)}" />
 <meta property="og:description" content="${esc(description)}" />
-<meta property="og:image" content="${esc(image || site + '/img/banner.png')}" />
+<meta property="og:image" content="${esc(image || site + '/img/newhal-og-share.png')}" />
 <meta name="twitter:card" content="summary_large_image" />
 ${(jsonLd || []).map(d => `<script type="application/ld+json">${JSON.stringify(d).replace(/</g, '\\u003c')}</script>`).join('\n')}
 <style>
