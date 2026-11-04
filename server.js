@@ -1334,6 +1334,20 @@ app.delete('/api/admin/chat', requireAdmin, async (req, res) => {
   res.json({ message: 'Sohbet geçmişi temizlendi' });
 });
 
+// ── Android uygulaması (Google Play) ile site bağı ──
+// Uygulamanın imza parmak izleri; Google Play'in kendi imza anahtarı da eklenince
+// ANDROID_SHA256 ortam değişkenine virgülle yazılır.
+const ANDROID_PACKAGE = 'com.newhal.app';
+const ANDROID_UPLOAD_SHA256 = '8E:D1:A2:6D:8E:9E:67:D5:E3:52:01:2A:B4:32:B8:17:22:AF:2A:83:7D:0C:C4:04:BA:46:D9:0B:41:CF:DD:D8';
+app.get('/.well-known/assetlinks.json', (req, res) => {
+  const prints = [ANDROID_UPLOAD_SHA256, ...String(process.env.ANDROID_SHA256 || '').split(',')]
+    .map(s => s.trim().toUpperCase()).filter(Boolean);
+  res.json([{
+    relation: ['delegate_permission/common.handle_all_urls'],
+    target: { namespace: 'android_app', package_name: ANDROID_PACKAGE, sha256_cert_fingerprints: [...new Set(prints)] },
+  }]);
+});
+
 // ── Telefon + şifre ile hesap ve kullanıcı profilleri ──
 require('./accounts')(app, { db, supabase: db.supabase, jwt, JWT_SECRET, requireAuth, getIp });
 
