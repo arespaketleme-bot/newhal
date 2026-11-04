@@ -26,13 +26,11 @@ function updateAuthUI(name) {
   const setupBtn = (btn) => {
     if (!btn) return;
     btn.textContent = `👤 ${name}`;
+    btn.title = 'Profilim';
     btn.onclick = (e) => {
       e.preventDefault();
-      if(confirm('Çıkış yapmak istiyor musunuz?')) {
-        localStorage.removeItem('userToken');
-        localStorage.removeItem('userName');
-        location.reload();
-      }
+      if (btn.id === 'mobileAuthBtn') toggleMobileMenu();
+      openProfileModal();
     };
     btn.style.color = '#4ade80';
     btn.style.borderColor = '#4ade80';
@@ -2378,6 +2376,251 @@ document.addEventListener('keydown', (e) => {
 window.addEventListener('popstate', () => { if (adViewer) closeAdViewer(true); });
 
 
+// ── Telefonla giriş / hesap açma ──────────────────────────────
+function setAuthTab(tab) {
+  const login = tab === 'login';
+  document.getElementById('authTabLogin').classList.toggle('active', login);
+  document.getElementById('authTabRegister').classList.toggle('active', !login);
+  document.getElementById('loginForm').hidden = !login;
+  document.getElementById('registerForm').hidden = login;
+  document.getElementById(login ? 'loginPhone' : 'registerName').focus();
+}
+
+function onLoggedIn({ token, name }, message) {
+  localStorage.setItem('userToken', token);
+  localStorage.setItem('userName', name);
+  updateAuthUI(name);
+  closeAuthModal();
+  showToast(message, 'success');
+  loadMyClaims();
+  loadPins();
+}
+
+async function authRequest(path, body, btn) {
+  btn.disabled = true;
+  try {
+    const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'İşlem yapılamadı');
+    return data;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function submitLogin(e) {
+  e.preventDefault();
+  try {
+    const data = await authRequest('/api/auth/login', {
+      phone: document.getElementById('loginPhone').value,
+      password: document.getElementById('loginPassword').value,
+    }, document.getElementById('loginSubmit'));
+    document.getElementById('loginForm').reset();
+    onLoggedIn(data, `✅ Hoş geldin, ${data.name}!`);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function submitRegister(e) {
+  e.preventDefault();
+  try {
+    const data = await authRequest('/api/auth/register', {
+      name: document.getElementById('registerName').value,
+      phone: document.getElementById('registerPhone').value,
+      password: document.getElementById('registerPassword').value,
+    }, document.getElementById('registerSubmit'));
+    document.getElementById('registerForm').reset();
+    onLoggedIn(data, `🎉 Hesabınız açıldı. Hoş geldin, ${data.name}!`);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function logoutUser() {
+  if (!confirm('Çıkış yapmak istiyor musunuz?')) return;
+  localStorage.removeItem('userToken');
+  localStorage.removeItem('userName');
+  location.reload();
+}
+
+// ── Profilim ──────────────────────────────────────────────────
+let myProfile = null;
+let profileAvatarUrl = '';
+
+function avatarHtml(name, url) {
+  return url
+    ? `<img src="${escHtml(url)}" alt="" referrerpolicy="no-referrer" />`
+    : `<span>${escHtml((String(name || '?').trim()[0] || '?').toLocaleUpperCase('tr-TR'))}</span>`;
+}
+
+async function openProfileModal() {
+  const user = readToken('userToken');
+  if (!user) return openAuthModal();
+  try {
+    const res = await fetch('/api/profile/me', { headers: { 'Authorization': 'Bearer ' + user.token } });
+    if (res.status === 401) { logoutSilently(); return openAuthModal(); }
+    myProfile = await res.json();
+    if (!res.ok) throw new Error(myProfile.error || 'Profil açılamadı');
+  } catch (err) {
+    return showToast(err.message, 'error');
+  }
+  profileAvatarUrl = myProfile.avatar;
+  document.getElementById('profileAvatar').innerHTML = avatarHtml(myProfile.name, profileAvatarUrl);
+  document.getElementById('profileLoginInfo').textContent = myProfile.login === 'telefon'
+    ? `Telefonla giriş: ${myProfile.login_phone}` : `Google ile giriş${myProfile.email ? ': ' + myProfile.email : ''}`;
+  document.getElementById('profileName').value = myProfile.name;
+  document.getElementById('profileAbout').value = myProfile.about;
+  document.getElementById('profileContactPhone').value = myProfile.contact_phone ? '0' + myProfile.contact_phone.slice(3) : '';
+  document.getElementById('profileShowPhone').checked = myProfile.show_phone;
+  document.getElementById('profilePasswordBox').hidden = myProfile.login !== 'telefon';
+
+  const shops = document.getElementById('profileShops');
+  shops.innerHTML = '';
+  (myProfile.shops || []).forEach(p => shops.appendChild(profileLink(`${CATEGORY_ICONS[p.category] || '🏪'} ${p.title}`, () => { closeProfileModal(); focusPin(p.id); })));
+  document.getElementById('profileShopsBox').hidden = !(myProfile.shops || []).length;
+
+  const mine = allAds.filter(a => a.owner_id === myProfile.id);
+  const ads = document.getElementById('profileAds');
+  ads.innerHTML = '';
+  mine.slice(0, 20).forEach(a => ads.appendChild(profileLink(`#${a.no || ''} ${a.title || 'İlan'}`, () => { closeProfileModal(); openAdViewer(a, 0); })));
+  const add = profileLink('➕ Yeni ilan ver / ilanlarımı yönet', () => { closeProfileModal(); openUserAdModal(); });
+  add.classList.add('accent');
+  ads.appendChild(add);
+
+  document.getElementById('profileModal').classList.add('open');
+}
+
+function closeProfileModal() {
+  document.getElementById('profileModal').classList.remove('open');
+}
+
+function logoutSilently() {
+  localStorage.removeItem('userToken');
+  localStorage.removeItem('userName');
+}
+
+function profileLink(text, onClick) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'profile-link';
+  b.textContent = text;
+  b.onclick = onClick;
+  return b;
+}
+
+async function changeProfilePhoto(input) {
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  const box = document.getElementById('profileAvatar');
+  box.classList.add('loading');
+  try {
+    profileAvatarUrl = await uploadPhoto(file);
+    box.innerHTML = avatarHtml(myProfile.name, profileAvatarUrl);
+    showToast('Fotoğraf yüklendi, kaydetmeyi unutmayın', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    box.classList.remove('loading');
+  }
+}
+
+async function saveProfile(e) {
+  e.preventDefault();
+  const btn = document.getElementById('profileSaveBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/profile/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('userToken') },
+      body: JSON.stringify({
+        name: document.getElementById('profileName').value,
+        about: document.getElementById('profileAbout').value,
+        contact_phone: document.getElementById('profileContactPhone').value,
+        show_phone: document.getElementById('profileShowPhone').checked,
+        avatar: profileAvatarUrl,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Kaydedilemedi');
+    localStorage.setItem('userToken', data.token);
+    localStorage.setItem('userName', data.name);
+    updateAuthUI(data.name);
+    closeProfileModal();
+    showToast('✅ Profiliniz kaydedildi', 'success');
+    loadAds();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function changePassword() {
+  const oldEl = document.getElementById('profileOldPass'), newEl = document.getElementById('profileNewPass');
+  try {
+    const res = await fetch('/api/profile/password', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('userToken') },
+      body: JSON.stringify({ old: oldEl.value, new: newEl.value }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Şifre değiştirilemedi');
+    oldEl.value = ''; newEl.value = '';
+    document.getElementById('profilePasswordBox').open = false;
+    showToast('✅ Şifreniz değiştirildi', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// ── Herkese açık profil ──────────────────────────────────────
+async function openPublicProfile(id) {
+  if (!id) return;
+  if (adViewer) closeAdViewer();
+  closeProfileModal();
+  const body = document.getElementById('publicProfileBody');
+  body.innerHTML = '<p class="public-profile-loading">Yükleniyor...</p>';
+  document.getElementById('publicProfileModal').classList.add('open');
+  try {
+    const res = await fetch(`/api/users/${encodeURIComponent(id)}`);
+    const u = await res.json();
+    if (!res.ok) throw new Error(u.error || 'Profil bulunamadı');
+    const since = u.created_at ? new Date(u.created_at).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' }) : '';
+    const tel = u.phone ? u.phone.replace(/\s/g, '') : '';
+    body.innerHTML = `
+      <div class="public-profile-head">
+        <div class="profile-avatar big">${avatarHtml(u.name, u.avatar)}</div>
+        <div>
+          <h3>${escHtml(u.name)}</h3>
+          ${since ? `<small>${escHtml(since)} tarihinden beri üye</small>` : ''}
+        </div>
+      </div>
+      ${u.about ? `<p class="public-profile-about">${escHtml(u.about)}</p>` : ''}
+      ${tel ? `<a class="btn-primary public-profile-call" href="tel:${escHtml(tel)}">📞 ${escHtml(u.phone)}</a>` : ''}`;
+    if ((u.shops || []).length) {
+      const h = document.createElement('h4'); h.textContent = '🏪 Dükkanları'; body.appendChild(h);
+      const box = document.createElement('div'); box.className = 'profile-links';
+      u.shops.forEach(p => box.appendChild(profileLink(`${CATEGORY_ICONS[p.category] || '🏪'} ${p.title}`, () => { closePublicProfile(); focusPin(p.id); })));
+      body.appendChild(box);
+    }
+    const ads = allAds.filter(a => a.owner_id === u.id);
+    const h = document.createElement('h4'); h.textContent = `📢 İlanları (${ads.length})`; body.appendChild(h);
+    const box = document.createElement('div'); box.className = 'profile-links';
+    ads.slice(0, 30).forEach(a => box.appendChild(profileLink(`#${a.no || ''} ${a.title || 'İlan'}`, () => { closePublicProfile(); openAdViewer(a, 0); })));
+    if (!ads.length) box.innerHTML = '<p class="field-hint">Şu an yayında ilanı yok.</p>';
+    body.appendChild(box);
+  } catch (err) {
+    body.innerHTML = `<p class="public-profile-loading">${escHtml(err.message)}</p>`;
+  }
+}
+
+function closePublicProfile() {
+  document.getElementById('publicProfileModal').classList.remove('open');
+}
+
+
 // ── Dükkan hikayeleri: işletmenin ilanı 24 saat haritada dükkanın üzerinde görünür ──
 const STORY_IMAGE_MS = 6000;
 const STORY_YOUTUBE_MS = 15000;
@@ -3075,6 +3318,15 @@ function adMetaLine(ad) {
   t.dateTime = ad.created_at;
   t.textContent = new Date(ad.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
   line.appendChild(t);
+  if (ad.owner_id && ad.owner_name) {
+    const who = document.createElement('button');
+    who.type = 'button';
+    who.className = 'ad-owner';
+    who.textContent = `👤 ${ad.owner_name}`;
+    who.title = 'İlanı verenin profili';
+    who.onclick = (e) => { e.stopPropagation(); openPublicProfile(ad.owner_id); };
+    line.appendChild(who);
+  }
   return line;
 }
 

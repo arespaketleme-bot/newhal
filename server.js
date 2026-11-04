@@ -877,7 +877,7 @@ async function deleteAdFiles(ad) {
 }
 
 // Herkese açık ilan: ekleyenin hesap kimliği gösterilmez
-const publicAd = ({ owner, ...ad }) => (owner ? { ...ad, owner_name: owner.name } : ad);
+const publicAd = ({ owner, ...ad }) => (owner ? { ...ad, owner_name: owner.name, owner_id: owner.id } : ad);
 
 app.get('/api/ads', async (req, res) => {
   const ads = (await getAdsWithFeaturedExpiry()).filter(a => a.active !== false && !a.pending);
@@ -902,9 +902,11 @@ app.post('/api/ads', requireAuth, async (req, res) => {
   if (mine.filter(a => a.created_at > dayAgo).length >= USER_MAX_ADS_PER_DAY) {
     return res.status(429).json({ error: `Günde en fazla ${USER_MAX_ADS_PER_DAY} ilan verebilirsiniz` });
   }
+  // Ad, oturumdaki eski addan değil profildeki güncel addan alınır
+  const { data: owner } = await db.supabase.from('users').select('name').eq('id', req.user.id).maybeSingle();
   const created = {
     id: crypto.randomUUID(), ...ad, featured: false, active: true,
-    owner: { id: req.user.id, name: req.user.name || 'Kullanıcı' }, created_at: new Date().toISOString(),
+    owner: { id: req.user.id, name: (owner && owner.name) || req.user.name || 'Kullanıcı' }, created_at: new Date().toISOString(),
   };
   setAdStory(created, await userStoryPin(req.user.id, req.body.pinId));
   if (!(await db.saveAds([created, ...ads]))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
@@ -1331,6 +1333,9 @@ app.delete('/api/admin/chat', requireAdmin, async (req, res) => {
   await db.clearChat();
   res.json({ message: 'Sohbet geçmişi temizlendi' });
 });
+
+// ── Telefon + şifre ile hesap ve kullanıcı profilleri ──
+require('./accounts')(app, { db, supabase: db.supabase, jwt, JWT_SECRET, requireAuth, getIp });
 
 // ── Arama motoru sayfaları (işletme sayfaları, site haritası) ──
 require('./seo')(app, { db, getClaims, siteUrl: SITE_URL });

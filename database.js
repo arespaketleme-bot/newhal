@@ -402,4 +402,7 @@ const db = {
 };
 
 console.log('📦 Supabase veritabanı bağlandı:', supabaseUrl);
+// Hesap işlemleri (accounts.js) tabloya doğrudan erişir
+Object.defineProperty(db, 'supabase', { value: supabase });
+
 module.exports = db;

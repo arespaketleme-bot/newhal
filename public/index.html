@@ -567,10 +567,10 @@
         <button class="modal-close" onclick="closeAuthModal()" style="position: absolute; right: 16px; top: 16px;">✕</button>
         <div style="text-align: center; margin-bottom: 24px;">
           <h3 style="margin: 0 0 8px 0; color: var(--text-1);">Giriş Yap</h3>
-          <p style="margin: 0; color: var(--text-2); font-size: 14px;">Hemen giriş yapın ve iğne ekleyin</p>
+          <p style="margin: 0; color: var(--text-2); font-size: 14px;">Google ile ya da telefonunuzla giriş yapın</p>
         </div>
   
-        <div style="padding: 0 20px 20px;">
+        <div class="auth-body">
           <a href="/auth/google" class="btn-outline" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px; font-weight: 600;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -580,8 +580,94 @@
             </svg>
             Google ile Devam Et
           </a>
+          <div class="auth-or"><span>veya telefonla</span></div>
+          <div class="auth-tabs" role="tablist">
+            <button type="button" class="auth-tab active" id="authTabLogin" onclick="setAuthTab('login')">Giriş Yap</button>
+            <button type="button" class="auth-tab" id="authTabRegister" onclick="setAuthTab('register')">Hesap Aç</button>
+          </div>
+          <form class="auth-form" id="loginForm" onsubmit="submitLogin(event)">
+            <label for="loginPhone">Telefon</label>
+            <input type="tel" id="loginPhone" inputmode="tel" autocomplete="tel" placeholder="05xx xxx xx xx" required />
+            <label for="loginPassword">Şifre</label>
+            <input type="password" id="loginPassword" autocomplete="current-password" required />
+            <button type="submit" class="btn-primary auth-submit" id="loginSubmit">Giriş Yap</button>
+          </form>
+          <form class="auth-form" id="registerForm" onsubmit="submitRegister(event)" hidden>
+            <label for="registerName">Ad Soyad</label>
+            <input type="text" id="registerName" autocomplete="name" maxlength="60" placeholder="Örn: Ahmet Yılmaz" required />
+            <label for="registerPhone">Telefon</label>
+            <input type="tel" id="registerPhone" inputmode="tel" autocomplete="tel" placeholder="05xx xxx xx xx" required />
+            <label for="registerPassword">Şifre <span class="field-hint">(en az 6 karakter)</span></label>
+            <input type="password" id="registerPassword" autocomplete="new-password" minlength="6" required />
+            <p class="auth-note">Telefonunuz yalnızca giriş için kullanılır. Profilinizde gösterip göstermemek size kalmış.</p>
+            <button type="submit" class="btn-primary auth-submit" id="registerSubmit">Hesap Aç</button>
+          </form>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: PROFİLİM ─────────────────────────────────────────────── -->
+  <div class="modal-overlay" id="profileModal" onclick="if (event.target === this) closeProfileModal()">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon">👤</div>
+          <div><h3>Profilim</h3><p id="profileLoginInfo">—</p></div>
+        </div>
+        <button class="modal-close" onclick="closeProfileModal()">✕</button>
+      </div>
+      <form class="modal-form" id="profileForm" onsubmit="saveProfile(event)">
+        <div class="profile-top">
+          <div class="profile-avatar" id="profileAvatar"></div>
+          <label class="btn-outline profile-photo-btn">📷 Fotoğrafı değiştir
+            <input type="file" id="profilePhotoInput" accept="image/*" hidden onchange="changeProfilePhoto(this)" />
+          </label>
+        </div>
+        <div class="form-row"><div class="form-group full">
+          <label for="profileName">Ad Soyad</label>
+          <input type="text" id="profileName" maxlength="60" required />
+        </div></div>
+        <div class="form-row"><div class="form-group full">
+          <label for="profileAbout">Hakkımda <span class="field-hint">(isteğe bağlı)</span></label>
+          <textarea id="profileAbout" rows="3" maxlength="400" placeholder="Örn: 20 yıldır halde domates ve biber komisyonculuğu yapıyorum."></textarea>
+        </div></div>
+        <div class="form-row"><div class="form-group full">
+          <label for="profileContactPhone">İletişim telefonu <span class="field-hint">(isteğe bağlı)</span></label>
+          <input type="tel" id="profileContactPhone" inputmode="tel" placeholder="05xx xxx xx xx" />
+          <label class="profile-check"><input type="checkbox" id="profileShowPhone" /> Profilimde herkese göster</label>
+        </div></div>
+        <div class="profile-section" id="profileShopsBox" hidden>
+          <h4>🏪 Dükkanlarım</h4>
+          <div class="profile-links" id="profileShops"></div>
+        </div>
+        <div class="profile-section">
+          <h4>📢 İlanlarım</h4>
+          <div class="profile-links" id="profileAds"></div>
+        </div>
+        <details class="profile-section" id="profilePasswordBox" hidden>
+          <summary>🔒 Şifremi değiştir</summary>
+          <div class="form-group full"><label for="profileOldPass">Mevcut şifre</label><input type="password" id="profileOldPass" autocomplete="current-password" /></div>
+          <div class="form-group full"><label for="profileNewPass">Yeni şifre</label><input type="password" id="profileNewPass" autocomplete="new-password" minlength="6" /></div>
+          <button type="button" class="btn-outline" onclick="changePassword()">Şifreyi değiştir</button>
+        </details>
+        <div class="modal-actions profile-actions">
+          <button type="button" class="btn-ghost profile-logout" onclick="logoutUser()">Çıkış Yap</button>
+          <button type="button" class="btn-outline" onclick="openPublicProfile(myProfile && myProfile.id)">Profilimi gör</button>
+          <button type="submit" class="btn-primary" id="profileSaveBtn">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── MODAL: KULLANICI PROFİLİ (herkese açık) ─────────────────────────── -->
+  <div class="modal-overlay" id="publicProfileModal" onclick="if (event.target === this) closePublicProfile()">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <div class="modal-title-wrap"><div class="modal-icon">👤</div><div><h3>Profil</h3><p>NewHal üyesi</p></div></div>
+        <button class="modal-close" onclick="closePublicProfile()">✕</button>
+      </div>
+      <div class="public-profile" id="publicProfileBody"></div>
     </div>
   </div>
 

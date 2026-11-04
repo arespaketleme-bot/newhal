@@ -2064,3 +2064,60 @@ a.logo:hover img.logo-icon { transform: scale(1.06); }
   .ads-btn-row { flex: 1 1 100%; }
   .ads-btn-row .ads-post-btn { flex: 1 1 auto; }
 }
+
+/* ── Giriş penceresi: telefonla giriş ─────────────────────── */
+.auth-body { padding: 0 20px 22px; display: flex; flex-direction: column; gap: 12px; }
+.auth-or { display: flex; align-items: center; gap: 10px; color: var(--text-3); font-size: 12px; }
+.auth-or::before, .auth-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.auth-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(255,255,255,0.05); }
+.auth-tab { flex: 1; height: 36px; border-radius: 999px; border: none; background: none; color: var(--text-3); font-weight: 700; font-family: var(--font-body); cursor: pointer; }
+.auth-tab.active { background: var(--green-500); color: #fff; }
+.auth-form { display: flex; flex-direction: column; gap: 6px; }
+.auth-form[hidden] { display: none; }
+.auth-form label { font-size: 13px; color: var(--text-2); font-weight: 600; margin-top: 4px; }
+.auth-form input {
+  width: 100%; height: 44px; padding: 0 12px; border-radius: var(--radius); font-size: 15px; font-family: var(--font-body);
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text-1); outline: none;
+}
+.auth-form input:focus { border-color: var(--border-g); }
+.auth-submit { margin-top: 10px; min-height: 46px; justify-content: center; }
+.auth-note { font-size: 12px; color: var(--text-3); margin: 4px 0 0; }
+
+/* ── Profil ───────────────────────────────────────────────── */
+.profile-top { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+.profile-avatar {
+  width: 72px; height: 72px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--green-500), #0ea5e9); display: flex; align-items: center; justify-content: center;
+  color: #fff; font-family: var(--font-head); font-weight: 800; font-size: 30px; border: 3px solid rgba(255,255,255,0.12);
+}
+.profile-avatar.big { width: 84px; height: 84px; font-size: 34px; }
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.profile-avatar.loading { opacity: 0.5; }
+.profile-photo-btn { cursor: pointer; font-size: 13px; padding: 8px 14px; border-radius: 999px; }
+.profile-check { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; color: var(--text-2); cursor: pointer; }
+.profile-section { margin-top: 14px; }
+.profile-section h4, .public-profile h4 { font-size: 14px; color: var(--text-1); margin: 0 0 8px; }
+.profile-section summary { cursor: pointer; font-weight: 600; color: var(--text-2); margin-bottom: 8px; }
+.profile-section[hidden] { display: none; }
+.profile-links { display: flex; flex-direction: column; gap: 6px; }
+.profile-link {
+  text-align: left; padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 14px; font-family: var(--font-body);
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.profile-link:hover { border-color: var(--border-g); }
+.profile-link.accent { color: var(--green-400); border-style: dashed; }
+.profile-actions { flex-wrap: wrap; gap: 8px; }
+.profile-logout { color: #f87171 !important; margin-right: auto; }
+.public-profile { padding: 4px 24px 24px; display: flex; flex-direction: column; gap: 12px; }
+.public-profile-head { display: flex; align-items: center; gap: 16px; }
+.public-profile-head h3 { margin: 0; font-size: 22px; color: var(--text-1); }
+.public-profile-head small { color: var(--text-3); }
+.public-profile-about { margin: 0; color: var(--text-2); line-height: 1.5; white-space: pre-line; }
+.public-profile-call { align-self: flex-start; text-decoration: none; justify-content: center; }
+.public-profile-loading { color: var(--text-3); text-align: center; padding: 20px 0; }
+.ad-owner {
+  border: none; background: none; padding: 0; cursor: pointer; font: inherit; font-size: 12px;
+  color: var(--green-400); text-decoration: underline; text-underline-offset: 2px;
+}
+@media (max-width: 768px) { .auth-form input { font-size: 16px; } .public-profile { padding: 4px 16px 24px; } }
