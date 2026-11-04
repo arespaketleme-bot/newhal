@@ -82,6 +82,7 @@
       <nav class="nav">
         <button class="btn-ghost" onclick="scrollToMap()">Harita</button>
         <button class="btn-ghost" onclick="showPinList()">İşletmeler</button>
+        <button class="btn-ghost" onclick="openMemberSearch()">Üye Ara</button>
         <button class="btn-ghost" onclick="openMessages()">✉ Mesajlar <span class="message-unread-badge" id="messageUnreadBadge" hidden></span></button>
         <button class="btn-ghost notification-nav" onclick="openNotifications()" aria-label="Bildirimler">🔔 <span class="notification-unread-badge" id="notificationUnreadBadge" hidden></span></button>
         <button class="btn-ghost ads-nav-link" onclick="showAds()" hidden>İlanlar</button>
@@ -102,6 +103,7 @@
     <div class="mobile-menu" id="mobileMenu">
       <button onclick="scrollToMap(); toggleMobileMenu()">Harita</button>
       <button onclick="showPinList(); toggleMobileMenu()">İşletmeler</button>
+      <button onclick="toggleMobileMenu(); openMemberSearch()">Üye Ara</button>
       <button onclick="toggleMobileMenu(); openMessages()">✉ Mesajlarım <span class="message-unread-badge" id="mobileMessageUnreadBadge" hidden></span></button>
       <button onclick="toggleMobileMenu(); openNotifications()">🔔 Bildirimler <span class="notification-unread-badge" id="mobileNotificationUnreadBadge" hidden></span></button>
       <button class="ads-nav-link" onclick="showAds(); toggleMobileMenu()" hidden>📢 İlanlar</button>
@@ -703,6 +705,21 @@
         <button class="modal-close" onclick="closeNotifications()" aria-label="Bildirimleri kapat">✕</button>
       </div>
       <div class="notifications-list" id="notificationsList"></div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: ÜYE ARA ────────────────────────────────────────────────── -->
+  <div class="modal-overlay" id="memberSearchModal" onclick="if (event.target === this) closeMemberSearch()">
+    <div class="modal member-search-modal">
+      <div class="modal-header">
+        <div class="modal-title-wrap"><div class="modal-icon">👥</div><div><h3>Üye Ara</h3><p>İsimle NewHal üyelerini bul</p></div></div>
+        <button class="modal-close" onclick="closeMemberSearch()" aria-label="Üye aramayı kapat">✕</button>
+      </div>
+      <form class="member-search-form" onsubmit="searchMembers(event)">
+        <input id="memberSearchInput" type="search" maxlength="40" minlength="2" autocomplete="off" placeholder="Ad veya soyad yazın" aria-label="Üye adı" required />
+        <button class="btn-primary" type="submit">Ara</button>
+      </form>
+      <div class="member-search-results" id="memberSearchResults"><p class="messages-state">Üye bulmak için adını yazın.</p></div>
     </div>
   </div>
 

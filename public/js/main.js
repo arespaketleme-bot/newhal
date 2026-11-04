@@ -2774,6 +2774,8 @@ async function messagesRequest(url, options = {}) {
   if (res.status === 401) {
     logoutSilently();
     closeMessages();
+    closeNotifications();
+    closeMemberSearch();
     openAuthModal();
     throw new Error('Oturumunuz sona erdi. Tekrar giriş yapın.');
   }
@@ -2935,6 +2937,43 @@ async function openNotification(notificationId, type, actorId) {
     else openPublicProfile(actorId);
     refreshNotificationBadge();
   } catch (err) { showToast(err.message, 'error'); }
+}
+
+// ── Üye arama ─────────────────────────────────────────────────
+function openMemberSearch() {
+  if (!readToken('userToken')) { openAuthModal(); setAuthTab('login'); return; }
+  closeProfileModal();
+  closePublicProfile();
+  document.getElementById('memberSearchModal').classList.add('open');
+  document.getElementById('memberSearchInput').focus();
+}
+
+function closeMemberSearch() {
+  document.getElementById('memberSearchModal').classList.remove('open');
+}
+
+async function searchMembers(event) {
+  event.preventDefault();
+  const input = document.getElementById('memberSearchInput');
+  const results = document.getElementById('memberSearchResults');
+  const query = input.value.trim();
+  if (query.length < 2) return;
+  results.innerHTML = '<p class="messages-state">Üyeler aranıyor...</p>';
+  try {
+    const params = new URLSearchParams({ q: query });
+    const users = await messagesRequest(`/api/members?${params}`);
+    if (!users.length) { results.innerHTML = '<p class="messages-state">Bu isimle eşleşen üye bulunamadı.</p>'; return; }
+    const list = document.createElement('div');
+    list.className = 'follow-list';
+    users.forEach(user => {
+      const item = document.createElement('button');
+      item.type = 'button'; item.className = 'follow-list-item member-result';
+      item.innerHTML = `<span class="conversation-avatar">${avatarHtml(user.name, user.avatar)}</span><span>${escHtml(user.name)}</span><span class="member-result-arrow">›</span>`;
+      item.onclick = () => { closeMemberSearch(); openPublicProfile(user.id); };
+      list.appendChild(item);
+    });
+    results.replaceChildren(list);
+  } catch (err) { results.innerHTML = `<p class="messages-state">${escHtml(err.message)}</p>`; }
 }
 
 

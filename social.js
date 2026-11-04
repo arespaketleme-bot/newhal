@@ -45,6 +45,16 @@ module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_
     res.json({ following: false });
   });
 
+  app.get('/api/members', requireUser, async (req, res) => {
+    const query = String(req.query.q || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    if (query.length < 2) return res.status(400).json({ error: 'Aramak için en az 2 harf yazın' });
+    const pattern = `%${query.replace(/[\\%_]/g, '\\$&')}%`;
+    const { data, error } = await supabase.from('users').select('id,name,avatar')
+      .ilike('name', pattern).order('name', { ascending: true }).limit(20);
+    if (error) return res.status(500).json({ error: 'Üyeler aranamadı' });
+    res.json(data || []);
+  });
+
   app.get('/api/users/:id/social', async (req, res) => {
     const target = userId(req.params.id);
     if (!target) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
