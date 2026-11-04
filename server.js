@@ -135,7 +135,16 @@ app.post('/api/admin/login', (req, res) => {
 
 // ── ADMIN: Tüm kullanıcıları getir ───────────────────────────
 app.get('/api/admin/users', requireAdmin, async (req, res) => {
-  res.json(await db.getAllUsers());
+  const balances = new Map();
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await db.supabase.from('newhal_points_ledger')
+      .select('user_id,amount').order('id', { ascending: true }).range(offset, offset + 999);
+    if (error) return res.status(500).json({ error: 'Kullanıcı puanları alınamadı' });
+    (data || []).forEach(row => balances.set(row.user_id, (balances.get(row.user_id) || 0) + Number(row.amount || 0)));
+    if (!data || data.length < 1000) break;
+  }
+  const users = await db.getAllUsers();
+  res.json(users.map(user => ({ ...user, points_balance: balances.get(user.id) || 0 })));
 });
 
 app.post('/api/admin/notifications/broadcast', requireAdmin, async (req, res) => {

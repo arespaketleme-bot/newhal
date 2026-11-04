@@ -480,6 +480,7 @@ async function loadUsers() {
           <td><strong>${esc(u.name)}</strong></td>
           <td>${esc(u.email)}</td>
           <td style="color:var(--text-3); font-family:monospace; font-size:12px;">${esc(u.googleId) || '-'}</td>
+          <td><strong>${Number(u.points_balance || 0).toLocaleString('tr-TR')} Para Puan</strong></td>
           <td>${d}</td>
         `;
         tbody.appendChild(tr);
