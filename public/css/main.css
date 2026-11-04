@@ -2132,3 +2132,31 @@ a.logo:hover img.logo-icon { transform: scale(1.06); }
 .ads-grid.scrollable::-webkit-scrollbar-track { background: rgba(255,255,255,0.06); border-radius: 10px; }
 .ads-grid.scrollable::-webkit-scrollbar-thumb { background: var(--green-500); border-radius: 10px; border: 2px solid #0b1220; }
 .ads-grid.scrollable::-webkit-scrollbar-thumb:hover { background: var(--green-400); }
+
+/* ── Kayan ilan şeridi ─────────────────────────────────────── */
+.ads-ticker {
+  display: flex; align-items: center; gap: 0; margin-bottom: 14px; height: 42px; overflow: hidden;
+  border-radius: 999px; border: 1px solid rgba(251,191,36,0.35); background: rgba(251,191,36,0.06);
+}
+.ads-ticker[hidden] { display: none; }
+.ads-ticker-label {
+  flex-shrink: 0; height: 100%; display: flex; align-items: center; padding: 0 14px; font-weight: 800; font-size: 13px;
+  background: #fbbf24; color: #1f1300; white-space: nowrap; border-radius: 999px 0 0 999px; z-index: 1;
+}
+.ads-ticker-viewport {
+  flex: 1; overflow: hidden; height: 100%; display: flex; align-items: center;
+  mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+}
+.ads-ticker-track { display: flex; width: max-content; animation: adsTicker 60s linear infinite; }
+.ads-ticker:hover .ads-ticker-track, .ads-ticker:focus-within .ads-ticker-track { animation-play-state: paused; }
+.ads-ticker-item {
+  flex-shrink: 0; border: none; background: none; cursor: pointer; padding: 0 22px 0 0; margin-left: 22px;
+  color: var(--text-1); font-size: 14px; font-family: var(--font-body); white-space: nowrap; position: relative;
+}
+.ads-ticker-item::before { content: '•'; position: absolute; left: -15px; color: #fbbf24; }
+.ads-ticker-item b { color: #fbbf24; }
+.ads-ticker-item:hover { color: #fde68a; }
+@keyframes adsTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (max-width: 768px) { .ads-ticker { height: 40px; } .ads-ticker-label { padding: 0 10px; font-size: 12px; } .ads-ticker-item { font-size: 13px; } }
+@media (prefers-reduced-motion: reduce) { .ads-ticker-track { animation-duration: 400s !important; } }

@@ -2053,6 +2053,36 @@ function renderAds(ads) {
   document.querySelectorAll('.ads-nav-link').forEach(el => { el.hidden = false; });
   document.getElementById('adsEmpty').hidden = ads.length > 0;
   renderAdsGrid();
+  renderAdsTicker();
+}
+
+// ── Kayan ilan şeridi (vitrinin üstünde, sağdan sola) ─────────
+const TICKER_MAX_ADS = 25;
+const TICKER_SPEED = 70;          // saniyede kayan piksel
+
+function renderAdsTicker() {
+  const box = document.getElementById('adsTicker');
+  const track = document.getElementById('adsTickerTrack');
+  const ads = [...allAds].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, TICKER_MAX_ADS);
+  box.hidden = !ads.length;
+  track.innerHTML = '';
+  if (!ads.length) return;
+  // Kesintisiz akış için liste iki kez yan yana dizilir, şerit yarısı kadar kayınca başa döner
+  for (let copy = 0; copy < 2; copy++) {
+    ads.forEach(ad => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'ads-ticker-item';
+      if (copy) item.setAttribute('aria-hidden', 'true'), item.tabIndex = -1;
+      const text = [ad.title, String(ad.body || '').replace(/\s+/g, ' ')].filter(Boolean).join(' · ').slice(0, 140);
+      item.innerHTML = `${ad.no ? `<b>#${ad.no}</b> ` : ''}${escHtml(text || 'İlan')}`;
+      item.onclick = () => openAdViewer(ad, 0);
+      track.appendChild(item);
+    });
+  }
+  requestAnimationFrame(() => {
+    track.style.animationDuration = `${Math.max(20, Math.round(track.scrollWidth / 2 / TICKER_SPEED))}s`;
+  });
 }
 
 // Başlık ve metinde arar; telefon numarası rakamlarla da bulunur ("0537 032" = "+90 537 032")
