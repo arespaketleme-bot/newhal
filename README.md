@@ -10,8 +10,8 @@ npm run dev
 ```
 
 Üye arama, takip, özel mesaj ve bildirim özellikleri için `migrations/` altındaki SQL dosyalarını
-Supabase SQL Editor'de bir kez çalıştırın. Önce sosyal özellikleri, sonra bildirim dosyasını
-çalıştırın. Bildirimler yeni takiplerde ve gelen mesajlarda oluşur.
+Supabase SQL Editor'de bir kez çalıştırın. Önce sosyal özellikleri, sonra bildirim ve en son toplu
+bildirim dosyasını çalıştırın. Bildirimler yeni takiplerde, gelen mesajlarda ve admin duyurularında oluşur.
 
 ## 🌐 Erişim
 

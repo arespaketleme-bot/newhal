@@ -130,6 +130,35 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
   res.json(await db.getAllUsers());
 });
 
+app.post('/api/admin/notifications/broadcast', requireAdmin, async (req, res) => {
+  const title = String(req.body.title || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+  const body = String(req.body.body || '').trim().slice(0, 1500);
+  if (!title || !body) return res.status(400).json({ error: 'Başlık ve mesaj zorunludur' });
+
+  const ids = [];
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await db.supabase.from('users').select('id').order('id', { ascending: true }).range(offset, offset + 999);
+    if (error) return res.status(500).json({ error: 'Kullanıcı listesi alınamadı' });
+    ids.push(...(data || []).map(user => user.id));
+    if (!data || data.length < 1000) break;
+  }
+  if (!ids.length) return res.json({ sent: 0 });
+
+  let sent = 0;
+  for (let offset = 0; offset < ids.length; offset += 500) {
+    const rows = ids.slice(offset, offset + 500).map(recipient_id => ({
+      recipient_id, actor_id: null, type: 'announcement', title, body,
+    }));
+    const { error } = await db.supabase.from('user_notifications').insert(rows);
+    if (error) {
+      console.error('Toplu bildirim gönderilemedi:', error.message);
+      return res.status(500).json({ error: 'Bildirim gönderimi tamamlanamadı', sent, total: ids.length });
+    }
+    sent += rows.length;
+  }
+  res.json({ sent });
+});
+
 // ── PUBLIC: Google Auth Routes ────────────────────────────────
 app.get('/auth/google',
   passport.authenticate('google', { scope: ['profile', 'email'], session: false })

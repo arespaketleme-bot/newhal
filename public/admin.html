@@ -100,6 +100,10 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Kullanıcılar
         </button>
+        <button class="nav-item" id="navBroadcast" onclick="showSection('broadcast')">
+          <span aria-hidden="true">📣</span>
+          Toplu Bildirim
+        </button>
         <button class="nav-item" id="navStats" onclick="showSection('stats')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           İstatistikler
@@ -435,6 +439,31 @@
             <tbody id="usersBody"></tbody>
           </table>
           <div class="empty-table" id="usersEmpty">Henüz kayıtlı kullanıcı yok</div>
+        </div>
+      </section>
+
+      <!-- ── TOPLU BİLDİRİM ── -->
+      <section class="section" id="sectionBroadcast">
+        <div class="section-head">
+          <h1>Toplu Bildirim</h1>
+          <p>NewHal üyelerinin bildirim kutusuna duyuru gönderin.</p>
+        </div>
+        <div class="broadcast-card">
+          <form id="broadcastForm" onsubmit="sendBroadcast(event)">
+            <div class="form-group">
+              <label for="broadcastTitle">Başlık</label>
+              <input id="broadcastTitle" type="text" maxlength="120" placeholder="Örn: Yeni özellikler yayında" required />
+              <small>En fazla 120 karakter</small>
+            </div>
+            <div class="form-group">
+              <label for="broadcastBody">Mesaj</label>
+              <textarea id="broadcastBody" rows="6" maxlength="1500" placeholder="Üyelere iletmek istediğiniz duyuruyu yazın." required></textarea>
+              <small>En fazla 1.500 karakter</small>
+            </div>
+            <p class="broadcast-note">Gönderdiğinizde bildirim tüm kayıtlı üyelere ulaşır.</p>
+            <button class="btn-login broadcast-send" id="broadcastSend" type="submit">📣 Tüm Üyelere Gönder</button>
+            <p class="broadcast-status" id="broadcastStatus" aria-live="polite"></p>
+          </form>
         </div>
       </section>
 

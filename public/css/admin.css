@@ -623,3 +623,22 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 }
 .ad-field select option { background: #0e1626; }
 @media (max-width: 640px) { .ad-field select { font-size: 16px; } }
+
+.broadcast-card {
+  max-width: 760px; padding: 24px; background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: var(--radius);
+}
+.broadcast-card form { display: flex; flex-direction: column; gap: 18px; }
+.broadcast-card input, .broadcast-card textarea {
+  width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: rgba(255,255,255,.04); color: var(--text-1); font: inherit; outline: none;
+}
+.broadcast-card textarea { resize: vertical; min-height: 140px; }
+.broadcast-card input:focus, .broadcast-card textarea:focus { border-color: var(--border-g); }
+.broadcast-card small, .broadcast-note { color: var(--text-3); font-size: 12px; }
+.broadcast-send { width: fit-content; padding: 12px 22px; border-radius: var(--radius); cursor: pointer; }
+.broadcast-send:disabled { opacity: .6; cursor: wait; }
+.broadcast-status { min-height: 18px; font-size: 13px; }
+.broadcast-status.success { color: var(--green-400); }
+.broadcast-status.error { color: var(--red-400); }
+@media (max-width: 640px) { .broadcast-card { padding: 18px; } .broadcast-send { width: 100%; } }

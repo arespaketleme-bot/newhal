@@ -127,7 +127,7 @@ module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_
         .eq('recipient_id', me).is('read_at', null),
     ]);
     if (list.error || unread.error) return res.status(503).json({ error: 'Bildirimler henüz hazırlanıyor' });
-    const actorIds = [...new Set((list.data || []).map(item => item.actor_id))];
+    const actorIds = [...new Set((list.data || []).map(item => item.actor_id).filter(Boolean))];
     const { data: actors, error: actorsError } = actorIds.length
       ? await supabase.from('users').select('id,name,avatar').in('id', actorIds)
       : { data: [], error: null };

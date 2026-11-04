@@ -128,9 +128,11 @@ ALTER TABLE direct_messages ENABLE ROW LEVEL SECURITY;
 CREATE TABLE IF NOT EXISTS user_notifications (
   id BIGSERIAL PRIMARY KEY,
   recipient_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  actor_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  type VARCHAR(20) NOT NULL CHECK (type IN ('follow', 'message')),
+  actor_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('follow', 'message', 'announcement')),
   entity_id BIGINT REFERENCES direct_messages(id) ON DELETE CASCADE,
+  title VARCHAR(120),
+  body TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   read_at TIMESTAMPTZ
 );

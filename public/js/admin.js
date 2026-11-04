@@ -339,6 +339,7 @@ const sectionTitles = {
   reports:   'Hata Bildirimleri',
   claims:    'Dükkan Sahipleri',
   users:     'Kullanıcılar',
+  broadcast: 'Toplu Bildirim',
   stats:     'İstatistikler',
   logs:      'Aktivite Logları'
 };
@@ -361,6 +362,38 @@ function showSection(name) {
     loadUsers();
   } else if (name === 'claims') {
     loadClaims();
+  }
+}
+
+async function sendBroadcast(event) {
+  event.preventDefault();
+  const title = document.getElementById('broadcastTitle').value.trim();
+  const body = document.getElementById('broadcastBody').value.trim();
+  const button = document.getElementById('broadcastSend');
+  const status = document.getElementById('broadcastStatus');
+  if (!title || !body) return;
+  if (!confirm('Bu bildirim tüm kayıtlı üyelere gönderilecek. Göndermek istiyor musunuz?')) return;
+
+  button.disabled = true;
+  button.textContent = 'Gönderiliyor...';
+  status.textContent = '';
+  status.className = 'broadcast-status';
+  try {
+    const res = await api('/api/admin/notifications/broadcast', {
+      method: 'POST', body: JSON.stringify({ title, body }),
+    });
+    if (!res) return;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Bildirim gönderilemedi');
+    status.textContent = `${data.sent} üyeye bildirim gönderildi.`;
+    status.classList.add('success');
+    document.getElementById('broadcastForm').reset();
+  } catch (err) {
+    status.textContent = err.message;
+    status.classList.add('error');
+  } finally {
+    button.disabled = false;
+    button.textContent = '📣 Tüm Üyelere Gönder';
   }
 }
 

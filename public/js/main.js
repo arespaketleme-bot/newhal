@@ -2917,12 +2917,16 @@ async function loadNotifications() {
     updateNotificationBadges(unread || 0);
     if (!notifications.length) { list.innerHTML = '<p class="notifications-state">Henüz bildiriminiz yok.</p>'; return; }
     list.innerHTML = notifications.map(item => {
-      const kind = item.type === 'message' ? 'message' : 'follow';
+      const kind = item.type;
+      const announcement = kind === 'announcement';
+      const actorName = item.actor?.name || 'NewHal';
       const action = kind === 'message' ? 'sana mesaj gönderdi.' : 'seni takip etmeye başladı.';
       const when = new Date(item.created_at).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-      return `<button type="button" class="notification-item${item.read_at ? '' : ' unread'}" onclick="openNotification(${Number(item.id)},'${kind}',${Number(item.actor_id)})">
-        <span class="conversation-avatar">${avatarHtml(item.actor.name, item.actor.avatar)}</span>
-        <span class="notification-copy"><strong>${escHtml(item.actor.name)}</strong> ${action}<small>${when}</small></span>
+      return `<button type="button" class="notification-item${item.read_at ? '' : ' unread'}" onclick="openNotification(${Number(item.id)},'${kind}',${Number(item.actor_id) || 0})">
+        <span class="conversation-avatar">${announcement ? '📣' : avatarHtml(actorName, item.actor?.avatar)}</span>
+        <span class="notification-copy">${announcement
+          ? `<strong>${escHtml(item.title || 'NewHal Duyurusu')}</strong><small class="notification-body">${escHtml(item.body || '')}</small>`
+          : `<strong>${escHtml(actorName)}</strong> ${action}`}<small>${when}</small></span>
         ${item.read_at ? '' : '<span class="notification-dot" aria-label="Okunmadı"></span>'}
       </button>`;
     }).join('');
@@ -2934,7 +2938,7 @@ async function openNotification(notificationId, type, actorId) {
     await messagesRequest(`/api/notifications/${notificationId}/read`, { method: 'PATCH' });
     closeNotifications();
     if (type === 'message') openMessages(actorId);
-    else openPublicProfile(actorId);
+    else if (type === 'follow') openPublicProfile(actorId);
     refreshNotificationBadge();
   } catch (err) { showToast(err.message, 'error'); }
 }

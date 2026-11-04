@@ -2157,6 +2157,7 @@ a.logo:hover img.logo-icon { transform: scale(1.06); }
 .notification-copy { flex: 1; line-height: 1.4; }
 .notification-copy strong { color: var(--text-1); }
 .notification-copy small { display: block; margin-top: 4px; color: var(--text-3); font-size: 11px; }
+.notification-copy .notification-body { margin-top: 6px; color: var(--text-2); font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .notification-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green-400); }
 .member-search-modal { max-width: 480px; }
 .member-search-form { display: flex; gap: 8px; padding: 16px; border-bottom: 1px solid var(--border); }
