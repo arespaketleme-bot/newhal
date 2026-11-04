@@ -94,7 +94,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   if (readToken('userToken')) {
     refreshMessageBadges();
+    refreshNotificationBadge();
     setInterval(refreshMessageBadges, 60000);
+    setInterval(refreshNotificationBadge, 30000);
   }
 
   initMap();
@@ -2458,6 +2460,7 @@ function onLoggedIn({ token, name }, message) {
   loadMyClaims();
   loadPins();
   refreshMessageBadges();
+  refreshNotificationBadge();
 }
 
 async function authRequest(path, body, btn) {
@@ -2875,6 +2878,63 @@ async function sendDirectMessage(event, partnerId) {
     refreshMessageBadges();
   } catch (err) { showToast(err.message, 'error'); }
   finally { button.disabled = false; }
+}
+
+// ── Takip ve mesaj bildirimleri ───────────────────────────────
+function updateNotificationBadges(unread) {
+  ['notificationUnreadBadge', 'mobileNotificationUnreadBadge'].forEach(id => {
+    const badge = document.getElementById(id);
+    if (!badge) return;
+    badge.textContent = unread > 99 ? '99+' : String(unread || '');
+    badge.hidden = !unread;
+  });
+}
+
+function refreshNotificationBadge() {
+  if (!readToken('userToken')) return;
+  messagesRequest('/api/notifications').then(({ unread }) => updateNotificationBadges(unread || 0)).catch(() => {});
+}
+
+function openNotifications() {
+  if (!readToken('userToken')) { openAuthModal(); setAuthTab('login'); return; }
+  closeProfileModal();
+  closePublicProfile();
+  document.getElementById('notificationsModal').classList.add('open');
+  loadNotifications();
+}
+
+function closeNotifications() {
+  document.getElementById('notificationsModal').classList.remove('open');
+}
+
+async function loadNotifications() {
+  const list = document.getElementById('notificationsList');
+  list.innerHTML = '<p class="notifications-state">Bildirimler yükleniyor...</p>';
+  try {
+    const { notifications, unread } = await messagesRequest('/api/notifications');
+    updateNotificationBadges(unread || 0);
+    if (!notifications.length) { list.innerHTML = '<p class="notifications-state">Henüz bildiriminiz yok.</p>'; return; }
+    list.innerHTML = notifications.map(item => {
+      const kind = item.type === 'message' ? 'message' : 'follow';
+      const action = kind === 'message' ? 'sana mesaj gönderdi.' : 'seni takip etmeye başladı.';
+      const when = new Date(item.created_at).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      return `<button type="button" class="notification-item${item.read_at ? '' : ' unread'}" onclick="openNotification(${Number(item.id)},'${kind}',${Number(item.actor_id)})">
+        <span class="conversation-avatar">${avatarHtml(item.actor.name, item.actor.avatar)}</span>
+        <span class="notification-copy"><strong>${escHtml(item.actor.name)}</strong> ${action}<small>${when}</small></span>
+        ${item.read_at ? '' : '<span class="notification-dot" aria-label="Okunmadı"></span>'}
+      </button>`;
+    }).join('');
+  } catch (err) { list.innerHTML = `<p class="notifications-state">${escHtml(err.message)}</p>`; }
+}
+
+async function openNotification(notificationId, type, actorId) {
+  try {
+    await messagesRequest(`/api/notifications/${notificationId}/read`, { method: 'PATCH' });
+    closeNotifications();
+    if (type === 'message') openMessages(actorId);
+    else openPublicProfile(actorId);
+    refreshNotificationBadge();
+  } catch (err) { showToast(err.message, 'error'); }
 }
 
 

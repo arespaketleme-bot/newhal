@@ -9,9 +9,9 @@ npm install
 npm run dev
 ```
 
-Takip ve özel mesaj özellikleri için, `migrations/2026-11-04-social-features.sql`
-dosyasını Supabase SQL Editor'de bir kez çalıştırın. Sunucu kodu dağıtıldıktan sonra
-takip ve mesaj tabloları bu migration ile oluşturulur.
+Takip, özel mesaj ve bildirim özellikleri için `migrations/` altındaki SQL dosyalarını
+Supabase SQL Editor'de bir kez çalıştırın. Önce sosyal özellikleri, sonra bildirim dosyasını
+çalıştırın. Bildirimler yeni takiplerde ve gelen mesajlarda oluşur.
 
 ## 🌐 Erişim
 

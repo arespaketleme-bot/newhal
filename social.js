@@ -14,6 +14,13 @@ module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_
     return Number.isSafeInteger(id) && id > 0 ? id : null;
   };
   const tableError = res => res.status(503).json({ error: 'Takip ve mesaj özellikleri hazırlanıyor' });
+  const notify = async (recipientId, actorId, type, entityId = null) => {
+    if (Number(recipientId) === Number(actorId)) return;
+    const { error } = await supabase.from('user_notifications').insert({
+      recipient_id: recipientId, actor_id: actorId, type, entity_id: entityId,
+    });
+    if (error) console.error('Bildirim kaydedilemedi:', error.message);
+  };
 
   app.post('/api/users/:id/follow', requireUser, async (req, res) => {
     const target = userId(req.params.id);
@@ -23,9 +30,9 @@ module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_
     const { data: person, error: personError } = await supabase.from('users').select('id').eq('id', target).maybeSingle();
     if (personError) return res.status(500).json({ error: 'Takip işlemi yapılamadı' });
     if (!person) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
-    const { error } = await supabase.from('user_follows').upsert(
-      { follower_id: me, following_id: target }, { onConflict: 'follower_id,following_id', ignoreDuplicates: true });
-    if (error) return tableError(res);
+    const { error } = await supabase.from('user_follows').insert({ follower_id: me, following_id: target });
+    if (error && error.code !== '23505') return tableError(res);
+    if (!error) await notify(target, me, 'follow');
     res.json({ following: true });
   });
 
@@ -101,6 +108,36 @@ module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_
     res.json({ conversations: result, unread: result.reduce((sum, item) => sum + item.unread, 0) });
   });
 
+  app.get('/api/notifications', requireUser, async (req, res) => {
+    const me = userId(req.user.id);
+    const [list, unread] = await Promise.all([
+      supabase.from('user_notifications').select('*').eq('recipient_id', me)
+        .order('created_at', { ascending: false }).limit(100),
+      supabase.from('user_notifications').select('id', { count: 'exact', head: true })
+        .eq('recipient_id', me).is('read_at', null),
+    ]);
+    if (list.error || unread.error) return res.status(503).json({ error: 'Bildirimler henüz hazırlanıyor' });
+    const actorIds = [...new Set((list.data || []).map(item => item.actor_id))];
+    const { data: actors, error: actorsError } = actorIds.length
+      ? await supabase.from('users').select('id,name,avatar').in('id', actorIds)
+      : { data: [], error: null };
+    if (actorsError) return res.status(500).json({ error: 'Bildirimler açılamadı' });
+    const byId = new Map((actors || []).map(actor => [Number(actor.id), actor]));
+    res.json({
+      notifications: (list.data || []).map(item => ({ ...item, actor: byId.get(Number(item.actor_id)) || { id: item.actor_id, name: 'NewHal üyesi', avatar: '' } })),
+      unread: unread.count || 0,
+    });
+  });
+
+  app.patch('/api/notifications/:id/read', requireUser, async (req, res) => {
+    const id = userId(req.params.id);
+    if (!id) return res.status(404).json({ error: 'Bildirim bulunamadı' });
+    const { error } = await supabase.from('user_notifications').update({ read_at: new Date().toISOString() })
+      .eq('id', id).eq('recipient_id', req.user.id).is('read_at', null);
+    if (error) return tableError(res);
+    res.json({ read: true });
+  });
+
   app.get('/api/messages/:id', requireUser, async (req, res) => {
     const partner = userId(req.params.id);
     const me = userId(req.user.id);
@@ -138,6 +175,7 @@ module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_
     const { data: message, error } = await supabase.from('direct_messages')
       .insert({ sender_id: sender, recipient_id: recipient, body }).select().single();
     if (error) return tableError(res);
+    await notify(recipient, sender, 'message', message.id);
     times.push(now);
     sends.set(sender, times);
     res.status(201).json(message);
