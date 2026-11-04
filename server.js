@@ -1385,6 +1385,7 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
 
 // ── Telefon + şifre ile hesap ve kullanıcı profilleri ──
 const accounts = require('./accounts')(app, { db, supabase: db.supabase, jwt, JWT_SECRET, requireAuth, getIp });
+require('./social')(app, { supabase: db.supabase, jwt, JWT_SECRET, requireAuth });
 
 // ── Hesabımı sil: kullanıcının hesabı ve kişisel verileri kalıcı olarak silinir ──
 // İlanları (resim/video dosyalarıyla) silinir; sahibi olduğu dükkanlar rehberde sahipsiz kalır.

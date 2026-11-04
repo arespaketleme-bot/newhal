@@ -2116,6 +2116,37 @@ a.logo:hover img.logo-icon { transform: scale(1.06); }
 .public-profile-about { margin: 0; color: var(--text-2); line-height: 1.5; white-space: pre-line; }
 .public-profile-call { align-self: flex-start; text-decoration: none; justify-content: center; }
 .public-profile-loading { color: var(--text-3); text-align: center; padding: 20px 0; }
+.public-social-stats { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.public-social-stats button { background: transparent; color: var(--text-2); padding: 6px 0; font-size: 13px; }
+.public-social-stats button:hover { color: var(--green-400); }
+.public-social-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.public-social-actions > * { flex: 1; justify-content: center; }
+.message-unread-badge:not([hidden]) { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 3px; border-radius: 10px; background: #e05252; color: white; font-size: 11px; font-weight: 700; }
+.messages-modal { max-width: 520px; }
+.messages-panel { min-height: 0; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.messages-state { color: var(--text-3); text-align: center; padding: 32px 20px; }
+.conversation-list { padding: 8px 16px 20px; overflow-y: auto; }
+.conversation-item { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 8px; border-bottom: 1px solid var(--border); color: var(--text-1); text-align: left; background: transparent; }
+.conversation-item:hover { background: rgba(255,255,255,.04); }
+.conversation-avatar { width: 44px; height: 44px; flex: 0 0 44px; overflow: hidden; border-radius: 50%; background: rgba(255,255,255,.08); display: grid; place-items: center; color: var(--text-2); font-weight: 700; }
+.conversation-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.conversation-copy { flex: 1; min-width: 0; }
+.conversation-copy strong, .conversation-copy small { display: block; }
+.conversation-copy small { color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 4px; }
+.conversation-unread { border-radius: 12px; background: var(--green-600); color: white; min-width: 20px; padding: 2px 6px; text-align: center; font-size: 11px; }
+.message-thread { min-height: 0; flex: 1; display: flex; flex-direction: column; }
+.message-thread-head { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--border); color: var(--text-1); }
+.message-back { padding: 6px 8px; background: transparent; color: var(--green-400); font-size: 20px; }
+.message-thread-messages { min-height: 0; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 16px; }
+.direct-message { max-width: 82%; align-self: flex-start; padding: 9px 12px; border-radius: 14px 14px 14px 4px; color: var(--text-1); background: rgba(255,255,255,.08); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }
+.direct-message.mine { align-self: flex-end; border-radius: 14px 14px 4px 14px; background: var(--green-700); }
+.direct-message time { display: block; margin-top: 4px; font-size: 10px; color: rgba(255,255,255,.65); text-align: right; }
+.message-compose { display: flex; gap: 8px; align-items: flex-end; padding: 12px 16px max(12px, env(safe-area-inset-bottom)); border-top: 1px solid var(--border); }
+.message-compose textarea { min-height: 42px; max-height: 120px; flex: 1; resize: vertical; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; color: var(--text-1); background: rgba(255,255,255,.04); font: inherit; }
+.message-compose .btn-primary { min-height: 42px; }
+.follow-list { display: flex; flex-direction: column; gap: 8px; }
+.follow-list-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; border-radius: 10px; background: rgba(255,255,255,.04); color: var(--text-1); text-align: left; }
+.follow-list-item:hover { background: rgba(255,255,255,.08); }
 .ad-owner {
   border: none; background: none; padding: 0; cursor: pointer; font: inherit; font-size: 12px;
   color: var(--green-400); text-decoration: underline; text-underline-offset: 2px;

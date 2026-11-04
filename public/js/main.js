@@ -92,6 +92,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (savedName) {
     updateAuthUI(savedName);
   }
+  if (readToken('userToken')) {
+    refreshMessageBadges();
+    setInterval(refreshMessageBadges, 60000);
+  }
 
   initMap();
   initSearch();
@@ -2453,6 +2457,7 @@ function onLoggedIn({ token, name }, message) {
   showToast(message, 'success');
   loadMyClaims();
   loadPins();
+  refreshMessageBadges();
 }
 
 async function authRequest(path, body, btn) {
@@ -2658,11 +2663,19 @@ async function openPublicProfile(id) {
   body.innerHTML = '<p class="public-profile-loading">Yükleniyor...</p>';
   document.getElementById('publicProfileModal').classList.add('open');
   try {
-    const res = await fetch(`/api/users/${encodeURIComponent(id)}`);
+    const auth = readToken('userToken');
+    const headers = auth ? { Authorization: 'Bearer ' + auth.token } : {};
+    const [res, socialRes] = await Promise.all([
+      fetch(`/api/users/${encodeURIComponent(id)}`),
+      fetch(`/api/users/${encodeURIComponent(id)}/social`, { headers }),
+    ]);
     const u = await res.json();
+    const socialData = await socialRes.json().catch(() => ({}));
+    const social = { ...socialData, enabled: socialRes.ok };
     if (!res.ok) throw new Error(u.error || 'Profil bulunamadı');
     const since = u.created_at ? new Date(u.created_at).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' }) : '';
     const tel = u.phone ? u.phone.replace(/\s/g, '') : '';
+    const ownProfile = String(readToken('userToken')?.payload.id) === String(u.id);
     body.innerHTML = `
       <div class="public-profile-head">
         <div class="profile-avatar big">${avatarHtml(u.name, u.avatar)}</div>
@@ -2672,6 +2685,14 @@ async function openPublicProfile(id) {
         </div>
       </div>
       ${u.about ? `<p class="public-profile-about">${escHtml(u.about)}</p>` : ''}
+      ${social.enabled ? `<div class="public-social-stats">
+        <button type="button" onclick="loadFollowList(${Number(u.id)},'followers')"><strong>${Number(social.followers) || 0}</strong> takipçi</button>
+        <button type="button" onclick="loadFollowList(${Number(u.id)},'following')"><strong>${Number(social.following) || 0}</strong> takip</button>
+      </div>` : ''}
+      ${social.enabled && !ownProfile ? `<div class="public-social-actions">
+        <button type="button" class="btn-outline" onclick="toggleUserFollow(${Number(u.id)},${!!social.is_following})">${social.is_following ? 'Takibi Bırak' : 'Takip Et'}</button>
+        <button type="button" class="btn-primary" onclick="startPrivateMessage(${Number(u.id)})">✉ Mesaj Gönder</button>
+      </div>` : ''}
       ${tel ? `<a class="btn-primary public-profile-call" href="tel:${escHtml(tel)}">📞 ${escHtml(u.phone)}</a>` : ''}`;
     if ((u.shops || []).length) {
       const h = document.createElement('h4'); h.textContent = '🏪 Dükkanları'; body.appendChild(h);
@@ -2690,8 +2711,170 @@ async function openPublicProfile(id) {
   }
 }
 
+async function toggleUserFollow(id, isFollowing) {
+  const auth = readToken('userToken');
+  if (!auth) { closePublicProfile(); openAuthModal(); setAuthTab('login'); return; }
+  try {
+    const res = await fetch(`/api/users/${id}/follow`, {
+      method: isFollowing ? 'DELETE' : 'POST',
+      headers: { Authorization: 'Bearer ' + auth.token },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Takip işlemi yapılamadı');
+    await openPublicProfile(id);
+    showToast(isFollowing ? 'Takipten çıktınız' : 'Kullanıcı takip ediliyor', 'success');
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function loadFollowList(id, list) {
+  const body = document.getElementById('publicProfileBody');
+  body.innerHTML = '<p class="public-profile-loading">Yükleniyor...</p>';
+  try {
+    const res = await fetch(`/api/users/${id}/${list}`);
+    const users = await res.json();
+    if (!res.ok) throw new Error(users.error || 'Liste açılamadı');
+    const title = list === 'followers' ? 'Takipçiler' : 'Takip ettikleri';
+    body.innerHTML = `<button type="button" class="btn-ghost" onclick="openPublicProfile(${id})">← Profile dön</button><h4>${title}</h4>`;
+    if (!users.length) { body.insertAdjacentHTML('beforeend', '<p class="field-hint">Bu liste henüz boş.</p>'); return; }
+    const listBox = document.createElement('div'); listBox.className = 'follow-list';
+    users.forEach(person => {
+      const item = document.createElement('button'); item.type = 'button'; item.className = 'follow-list-item';
+      item.innerHTML = `<span class="conversation-avatar">${avatarHtml(person.name, person.avatar)}</span><span>${escHtml(person.name)}</span>`;
+      item.onclick = () => openPublicProfile(person.id);
+      listBox.appendChild(item);
+    });
+    body.appendChild(listBox);
+  } catch (err) { body.innerHTML = `<p class="public-profile-loading">${escHtml(err.message)}</p>`; }
+}
+
+function startPrivateMessage(id) {
+  closePublicProfile();
+  openMessages(id);
+}
+
 function closePublicProfile() {
   document.getElementById('publicProfileModal').classList.remove('open');
+}
+
+// ── Takipçiler arası özel mesajlar ────────────────────────────
+let activeMessagePartner = null;
+let messageRefreshTimer = null;
+
+async function messagesRequest(url, options = {}) {
+  const auth = readToken('userToken');
+  if (!auth) throw new Error('Giriş yapmak için oturum açın');
+  const res = await fetch(url, {
+    ...options,
+    headers: { Authorization: 'Bearer ' + auth.token, ...(options.headers || {}) },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) {
+    logoutSilently();
+    closeMessages();
+    openAuthModal();
+    throw new Error('Oturumunuz sona erdi. Tekrar giriş yapın.');
+  }
+  if (!res.ok) throw new Error(data.error || 'İşlem yapılamadı');
+  return data;
+}
+
+function openMessages(partnerId = null) {
+  if (!readToken('userToken')) { openAuthModal(); setAuthTab('login'); return; }
+  closeProfileModal();
+  closePublicProfile();
+  document.getElementById('messagesModal').classList.add('open');
+  activeMessagePartner = partnerId ? Number(partnerId) : null;
+  if (messageRefreshTimer) clearInterval(messageRefreshTimer);
+  if (activeMessagePartner) loadMessageThread(activeMessagePartner);
+  else loadConversations();
+  messageRefreshTimer = setInterval(() => {
+    if (!document.getElementById('messagesModal').classList.contains('open')) return;
+    if (activeMessagePartner) {
+      if (document.activeElement?.id !== 'directMessageInput') loadMessageThread(activeMessagePartner, true);
+    } else loadConversations(true);
+  }, 7000);
+}
+
+function closeMessages() {
+  document.getElementById('messagesModal').classList.remove('open');
+  if (messageRefreshTimer) clearInterval(messageRefreshTimer);
+  messageRefreshTimer = null;
+  activeMessagePartner = null;
+}
+
+function refreshMessageBadges() {
+  if (!readToken('userToken')) return;
+  messagesRequest('/api/messages').then(({ unread }) => {
+    ['messageUnreadBadge', 'mobileMessageUnreadBadge'].forEach(id => {
+      const badge = document.getElementById(id);
+      if (!badge) return;
+      badge.textContent = unread > 99 ? '99+' : String(unread || '');
+      badge.hidden = !unread;
+    });
+  }).catch(() => {});
+}
+
+async function loadConversations(silent = false) {
+  const panel = document.getElementById('messagesPanel');
+  if (!silent) panel.innerHTML = '<p class="messages-state">Mesajlar yükleniyor...</p>';
+  try {
+    const { conversations, unread } = await messagesRequest('/api/messages');
+    ['messageUnreadBadge', 'mobileMessageUnreadBadge'].forEach(id => {
+      const badge = document.getElementById(id);
+      if (!badge) return;
+      badge.textContent = unread > 99 ? '99+' : String(unread || '');
+      badge.hidden = !unread;
+    });
+    if (activeMessagePartner || !document.getElementById('messagesModal').classList.contains('open')) return;
+    if (!conversations.length) { panel.innerHTML = '<p class="messages-state">Henüz mesajınız yok. Bir üyenin profilinden mesaj gönderebilirsiniz.</p>'; return; }
+    panel.innerHTML = `<div class="conversation-list">${conversations.map(item => `
+      <button type="button" class="conversation-item" onclick="loadMessageThread(${Number(item.user_id)})">
+        <span class="conversation-avatar">${avatarHtml(item.user.name, item.user.avatar)}</span>
+        <span class="conversation-copy"><strong>${escHtml(item.user.name)}</strong><small>${escHtml(item.last_message.body)}</small></span>
+        ${item.unread ? `<span class="conversation-unread">${item.unread > 99 ? '99+' : item.unread}</span>` : ''}
+      </button>`).join('')}</div>`;
+  } catch (err) { if (!silent) panel.innerHTML = `<p class="messages-state">${escHtml(err.message)}</p>`; }
+}
+
+async function loadMessageThread(partnerId, silent = false) {
+  const panel = document.getElementById('messagesPanel');
+  if (!silent) panel.innerHTML = '<p class="messages-state">Konuşma yükleniyor...</p>';
+  try {
+    const thread = await messagesRequest(`/api/messages/${partnerId}`);
+    activeMessagePartner = Number(partnerId);
+    if (!document.getElementById('messagesModal').classList.contains('open')) return;
+    const messagesHtml = thread.messages.map(message => {
+      const own = Number(message.sender_id) === Number(readToken('userToken')?.payload.id);
+      const at = new Date(message.created_at).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      return `<div class="direct-message${own ? ' mine' : ''}">${escHtml(message.body)}<time>${at}</time></div>`;
+    }).join('') || '<p class="messages-state">Konuşmayı başlatmak için ilk mesajı yazın.</p>';
+    panel.innerHTML = `<div class="message-thread">
+      <div class="message-thread-head"><button type="button" class="message-back" onclick="activeMessagePartner=null; loadConversations()" aria-label="Mesaj listesine dön">‹</button><span class="conversation-avatar">${avatarHtml(thread.user.name, thread.user.avatar)}</span><strong>${escHtml(thread.user.name)}</strong></div>
+      <div class="message-thread-messages" id="messageThreadMessages">${messagesHtml}</div>
+      <form class="message-compose" onsubmit="sendDirectMessage(event,${Number(partnerId)})">
+        <textarea id="directMessageInput" maxlength="2000" rows="1" aria-label="Mesajınız" placeholder="Mesaj yazın..." required></textarea>
+        <button class="btn-primary" type="submit">Gönder</button>
+      </form>
+    </div>`;
+    const scroller = document.getElementById('messageThreadMessages');
+    if (scroller) scroller.scrollTop = scroller.scrollHeight;
+    refreshMessageBadges();
+  } catch (err) { if (!silent) panel.innerHTML = `<p class="messages-state">${escHtml(err.message)}</p>`; }
+}
+
+async function sendDirectMessage(event, partnerId) {
+  event.preventDefault();
+  const input = document.getElementById('directMessageInput');
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  const body = input.value.trim();
+  if (!body) return;
+  button.disabled = true;
+  try {
+    await messagesRequest(`/api/messages/${partnerId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ body }) });
+    await loadMessageThread(partnerId);
+    refreshMessageBadges();
+  } catch (err) { showToast(err.message, 'error'); }
+  finally { button.disabled = false; }
 }
 
 

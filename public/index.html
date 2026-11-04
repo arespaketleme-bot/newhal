@@ -82,6 +82,7 @@
       <nav class="nav">
         <button class="btn-ghost" onclick="scrollToMap()">Harita</button>
         <button class="btn-ghost" onclick="showPinList()">İşletmeler</button>
+        <button class="btn-ghost" onclick="openMessages()">✉ Mesajlar <span class="message-unread-badge" id="messageUnreadBadge" hidden></span></button>
         <button class="btn-ghost ads-nav-link" onclick="showAds()" hidden>İlanlar</button>
         <button class="btn-ghost install-nav-link" onclick="installFromMenu()" title="NewHal'i uygulama olarak yükle">📲 Yükle</button>
         <a href="/auth/google" class="btn-outline" id="authBtn" style="display:flex;align-items:center;gap:6px;">
@@ -100,6 +101,7 @@
     <div class="mobile-menu" id="mobileMenu">
       <button onclick="scrollToMap(); toggleMobileMenu()">Harita</button>
       <button onclick="showPinList(); toggleMobileMenu()">İşletmeler</button>
+      <button onclick="toggleMobileMenu(); openMessages()">✉ Mesajlarım <span class="message-unread-badge" id="mobileMessageUnreadBadge" hidden></span></button>
       <button class="ads-nav-link" onclick="showAds(); toggleMobileMenu()" hidden>📢 İlanlar</button>
       <button class="install-nav-link" onclick="toggleMobileMenu(); installFromMenu()">📲 Uygulamayı Yükle</button>
       <a class="wa-group-menu" href="https://chat.whatsapp.com/LmYOXYNJ6cMKMEE8LM6WPP?s=cl&amp;p=a&amp;mlu=4&amp;ilr=4&amp;iam=2" target="_blank" rel="noopener">💬 WhatsApp Grubuna Katıl</a>
@@ -677,6 +679,17 @@
         <button class="modal-close" onclick="closePublicProfile()">✕</button>
       </div>
       <div class="public-profile" id="publicProfileBody"></div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: ÖZEL MESAJLAR ──────────────────────────────────────────── -->
+  <div class="modal-overlay" id="messagesModal" onclick="if (event.target === this) closeMessages()">
+    <div class="modal messages-modal">
+      <div class="modal-header">
+        <div class="modal-title-wrap"><div class="modal-icon">✉️</div><div><h3>Mesajlar</h3><p>NewHal üyeleriyle özel konuşmalar</p></div></div>
+        <button class="modal-close" onclick="closeMessages()" aria-label="Mesajları kapat">✕</button>
+      </div>
+      <div class="messages-panel" id="messagesPanel"></div>
     </div>
   </div>
 
