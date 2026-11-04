@@ -2160,3 +2160,5 @@ a.logo:hover img.logo-icon { transform: scale(1.06); }
 @keyframes adsTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @media (max-width: 768px) { .ads-ticker { height: 40px; } .ads-ticker-label { padding: 0 10px; font-size: 12px; } .ads-ticker-item { font-size: 13px; } }
 @media (prefers-reduced-motion: reduce) { .ads-ticker-track { animation-duration: 400s !important; } }
+
+.profile-delete { color: #f87171 !important; opacity: 0.8; font-size: 12px; }

@@ -1349,7 +1349,38 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
 });
 
 // ── Telefon + şifre ile hesap ve kullanıcı profilleri ──
-require('./accounts')(app, { db, supabase: db.supabase, jwt, JWT_SECRET, requireAuth, getIp });
+const accounts = require('./accounts')(app, { db, supabase: db.supabase, jwt, JWT_SECRET, requireAuth, getIp });
+
+// ── Hesabımı sil: kullanıcının hesabı ve kişisel verileri kalıcı olarak silinir ──
+// İlanları (resim/video dosyalarıyla) silinir; sahibi olduğu dükkanlar rehberde sahipsiz kalır.
+app.delete('/api/profile/me', requireAuth, async (req, res) => {
+  if (req.user.role !== 'user' || !req.user.id) return res.status(403).json({ error: 'Kullanıcı girişi gerekli' });
+  const userId = req.user.id;
+  try {
+    const ads = await db.getAds();
+    const mine = ads.filter(a => a.owner && a.owner.id === userId);
+    if (mine.length) {
+      if (!(await db.saveAds(ads.filter(a => !mine.includes(a))))) throw new Error('İlanlar silinemedi');
+      for (const ad of mine) await deleteAdFiles(ad);
+    }
+    for (const pin of await db.getPinsByOwner(userId)) await db.setPinOwner(pin.id, null);
+    await db.supabase.from('pins').update({ owner_id: null }).eq('owner_id', userId);
+
+    const claims = await getClaims();
+    claims.requests = claims.requests.filter(r => r.userId !== userId);
+    for (const [pinId, v] of Object.entries(claims.verified)) if (v.userId === userId) delete claims.verified[pinId];
+    await saveClaims(claims);
+
+    await accounts.forgetUser(userId);
+    const { error } = await db.supabase.from('users').delete().eq('id', userId);
+    if (error) throw new Error(error.message);
+    await db.logActivity(`Bir kullanıcı hesabını sildi (${mine.length} ilan silindi)`, true);
+    res.json({ message: 'Hesabınız ve verileriniz silindi' });
+  } catch (err) {
+    console.error('Hesap silinemedi:', err.message);
+    res.status(500).json({ error: 'Hesap silinemedi, tekrar deneyin' });
+  }
+});
 
 // ── Arama motoru sayfaları (işletme sayfaları, site haritası) ──
 require('./seo')(app, { db, getClaims, siteUrl: SITE_URL });
@@ -1357,6 +1388,10 @@ require('./seo')(app, { db, getClaims, siteUrl: SITE_URL });
 // ── Sayfa yönlendirme ─────────────────────────────────────────
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.get('/hesap-silme', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'hesap-silme.html'));
 });
 
 app.get('/gizlilik', (req, res) => {

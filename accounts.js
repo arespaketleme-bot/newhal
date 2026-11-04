@@ -169,4 +169,14 @@ module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET,
       shops,
     });
   });
+
+  // Hesap silinince şifre ve profil kayıtları da silinir
+  async function forgetUser(userId) {
+    for (const file of [ACCOUNTS_FILE, PROFILES_FILE]) {
+      const data = await load(file);
+      if (data[userId]) { delete data[userId]; await save(file, data); }
+    }
+  }
+
+  return { forgetUser };
 };

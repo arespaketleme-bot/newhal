@@ -2630,6 +2630,21 @@ async function changePassword() {
   }
 }
 
+async function deleteMyAccount() {
+  const sure = confirm('Hesabınız, ilanlarınız ve profil bilgileriniz kalıcı olarak silinecek. Bu işlem geri alınamaz.\n\nDevam etmek istiyor musunuz?');
+  if (!sure) return;
+  try {
+    const res = await fetch('/api/profile/me', { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('userToken') } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Hesap silinemedi');
+    logoutSilently();
+    alert('Hesabınız ve verileriniz silindi.');
+    location.reload();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
 // ── Herkese açık profil ──────────────────────────────────────
 async function openPublicProfile(id) {
   if (!id) return;
