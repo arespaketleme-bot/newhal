@@ -3,7 +3,7 @@ const MESSAGE_MAX = 2000;
 const MESSAGE_TRIES = 30;
 const WINDOW_MS = 60 * 1000;
 
-module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_SECRET }) {
+module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_SECRET, sendBrowserPush }) {
   const sends = new Map();
   const requireUser = (req, res, next) => requireAuth(req, res, () => {
     if (req.user.role !== 'user' || !userId(req.user.id)) return res.status(403).json({ error: 'Kullanıcı girişi gerekli' });
@@ -14,12 +14,21 @@ module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_
     return Number.isSafeInteger(id) && id > 0 ? id : null;
   };
   const tableError = res => res.status(503).json({ error: 'Takip ve mesaj özellikleri hazırlanıyor' });
-  const notify = async (recipientId, actorId, type, entityId = null) => {
+  const notify = async (recipientId, actorId, type, entityId = null, actorName = 'NewHal üyesi') => {
     if (Number(recipientId) === Number(actorId)) return;
     const { error } = await supabase.from('user_notifications').insert({
       recipient_id: recipientId, actor_id: actorId, type, entity_id: entityId,
     });
     if (error) console.error('Bildirim kaydedilemedi:', error.message);
+    else if (sendBrowserPush) {
+      const message = type === 'message';
+      void sendBrowserPush(recipientId, {
+        title: message ? 'NewHal: Yeni mesaj' : 'NewHal: Yeni takipçi',
+        body: message ? `${actorName} sana mesaj gönderdi.` : `${actorName} seni takip etmeye başladı.`,
+        url: message ? '/?openMessages=1' : '/?openNotifications=1',
+        tag: `newhal-${type}-${entityId || actorId}`,
+      });
+    }
   };
 
   app.post('/api/users/:id/follow', requireUser, async (req, res) => {
@@ -32,7 +41,7 @@ module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_
     if (!person) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
     const { error } = await supabase.from('user_follows').insert({ follower_id: me, following_id: target });
     if (error && error.code !== '23505') return tableError(res);
-    if (!error) await notify(target, me, 'follow');
+    if (!error) await notify(target, me, 'follow', null, req.user.name || 'Bir NewHal üyesi');
     res.json({ following: true });
   });
 
@@ -185,7 +194,7 @@ module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_
     const { data: message, error } = await supabase.from('direct_messages')
       .insert({ sender_id: sender, recipient_id: recipient, body }).select().single();
     if (error) return tableError(res);
-    await notify(recipient, sender, 'message', message.id);
+    await notify(recipient, sender, 'message', message.id, req.user.name || 'Bir NewHal üyesi');
     times.push(now);
     sends.set(sender, times);
     res.status(201).json(message);

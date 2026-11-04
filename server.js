@@ -7,6 +7,7 @@ const fs      = require('fs');
 const crypto  = require('crypto');
 const db      = require('./database');
 const bcrypt  = require('bcryptjs');
+const webpush = require('web-push');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
@@ -21,6 +22,20 @@ const todayInIstanbul = () => {
   }).formatToParts(new Date()).map(part => [part.type, part.value]));
   return `${parts.year}-${parts.month}-${parts.day}`;
 };
+let vapidConfigured = false;
+let vapidPublicKey = '';
+const vapidInitialization = (async () => {
+  let keys = await db.getPrivateJson('web-push-vapid.json');
+  if (!keys || !keys.publicKey || !keys.privateKey) {
+    keys = webpush.generateVAPIDKeys();
+    if (!(await db.savePrivateJson('web-push-vapid.json', keys))) throw new Error('VAPID anahtarı güvenli depoya yazılamadı');
+  }
+  webpush.setVapidDetails('mailto:arespaketleme@gmail.com', keys.publicKey, keys.privateKey);
+  vapidPublicKey = keys.publicKey;
+  vapidConfigured = true;
+})().catch(err => {
+  console.error('Tarayıcı bildirim anahtarları yüklenemedi:', err.message);
+});
 
 app.use(cors());
 // Fotoğraf yükleme kendi (daha büyük) sınırıyla ayrıca okunur
@@ -120,6 +135,34 @@ function requireAdmin(req, res, next) {
   }
 }
 
+async function sendBrowserPushMany(userIds, payload) {
+  try {
+    await vapidInitialization;
+    if (!vapidConfigured || !userIds.length) return;
+    const { data: subscriptions, error } = await db.supabase.from('web_push_subscriptions')
+      .select('endpoint,subscription').in('user_id', [...new Set(userIds)]);
+    if (error) {
+      console.error('Tarayıcı bildirim abonelikleri alınamadı:', error.message);
+      return;
+    }
+    await Promise.all((subscriptions || []).map(async item => {
+      try {
+        await webpush.sendNotification(item.subscription, JSON.stringify(payload), { TTL: 60 });
+      } catch (err) {
+        if (err.statusCode === 404 || err.statusCode === 410) {
+          await db.supabase.from('web_push_subscriptions').delete().eq('endpoint', item.endpoint);
+        } else {
+          console.error('Tarayıcı bildirimi gönderilemedi:', err.statusCode || err.message);
+        }
+      }
+    }));
+  } catch (err) {
+    console.error('Tarayıcı bildirimi gönderilemedi:', err.statusCode || err.message);
+  }
+}
+
+const sendBrowserPush = (userId, payload) => sendBrowserPushMany([userId], payload);
+
 // ── PUBLIC: Admin Girişi ──────────────────────────────────────
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body;
@@ -144,7 +187,10 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
     if (!data || data.length < 1000) break;
   }
   const users = await db.getAllUsers();
-  res.json(users.map(user => ({ ...user, points_balance: balances.get(user.id) || 0 })));
+  res.json(users.map(user => {
+    const pointsBalance = balances.get(user.id) || 0;
+    return { ...user, points_balance: pointsBalance, level: Math.floor(pointsBalance / 1000) + 1 };
+  }));
 });
 
 app.post('/api/admin/users/:id/points', requireAdmin, async (req, res) => {
@@ -168,6 +214,57 @@ app.post('/api/admin/users/:id/points', requireAdmin, async (req, res) => {
     return res.status(500).json({ error: 'Para Puan yüklenemedi' });
   }
   res.json({ userId, amount });
+});
+
+app.get('/api/push/public-key', requireAuth, async (req, res) => {
+  await vapidInitialization;
+  if (!vapidConfigured) return res.status(503).json({ error: 'Tarayıcı bildirimi şu anda kullanılamıyor' });
+  res.json({ publicKey: vapidPublicKey });
+});
+
+app.post('/api/push/subscriptions', requireAuth, async (req, res) => {
+  if (req.user.role !== 'user') return res.status(403).json({ error: 'Kullanıcı girişi gerekli' });
+  if (!vapidConfigured) return res.status(503).json({ error: 'Tarayıcı bildirimi şu anda kullanılamıyor' });
+  const subscription = req.body || {};
+  const endpoint = String(subscription.endpoint || '');
+  const keys = subscription.keys || {};
+  let pushHost = '';
+  try {
+    const parsed = new URL(endpoint);
+    pushHost = parsed.hostname.toLowerCase();
+    if (parsed.protocol !== 'https:' || endpoint.length > 2048) throw new Error('endpoint');
+  } catch {
+    return res.status(400).json({ error: 'Tarayıcı bildirimi aboneliği geçersiz' });
+  }
+  const supportedHost = pushHost === 'fcm.googleapis.com'
+    || pushHost.endsWith('.push.services.mozilla.com')
+    || pushHost.endsWith('.push.apple.com')
+    || pushHost.endsWith('.notify.windows.com');
+  if (!supportedHost) return res.status(400).json({ error: 'Desteklenmeyen tarayıcı bildirimi servisi' });
+  if (typeof keys.p256dh !== 'string' || typeof keys.auth !== 'string') {
+    return res.status(400).json({ error: 'Tarayıcı bildirimi anahtarları eksik' });
+  }
+  const { error } = await db.supabase.from('web_push_subscriptions').upsert({
+    user_id: req.user.id,
+    endpoint,
+    subscription,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'endpoint' });
+  if (error) {
+    console.error('Tarayıcı bildirimi aboneliği kaydedilemedi:', error.message);
+    return res.status(500).json({ error: 'Tarayıcı bildirimi açılamadı' });
+  }
+  res.json({ subscribed: true });
+});
+
+app.delete('/api/push/subscriptions', requireAuth, async (req, res) => {
+  if (req.user.role !== 'user') return res.status(403).json({ error: 'Kullanıcı girişi gerekli' });
+  const endpoint = String(req.body.endpoint || '');
+  if (!endpoint) return res.status(400).json({ error: 'Abonelik bulunamadı' });
+  const { error } = await db.supabase.from('web_push_subscriptions').delete()
+    .eq('user_id', req.user.id).eq('endpoint', endpoint);
+  if (error) return res.status(500).json({ error: 'Tarayıcı bildirimi kapatılamadı' });
+  res.json({ subscribed: false });
 });
 
 app.post('/api/admin/notifications/broadcast', requireAdmin, async (req, res) => {
@@ -194,6 +291,9 @@ app.post('/api/admin/notifications/broadcast', requireAdmin, async (req, res) =>
       console.error('Toplu bildirim gönderilemedi:', error.message);
       return res.status(500).json({ error: 'Bildirim gönderimi tamamlanamadı', sent, total: ids.length });
     }
+    await sendBrowserPushMany(rows.map(row => row.recipient_id), {
+      title, body, url: '/?openNotifications=1', tag: `announcement-${Date.now()}`,
+    });
     sent += rows.length;
   }
   res.json({ sent });
@@ -1486,7 +1586,7 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
 
 // ── Telefon + şifre ile hesap ve kullanıcı profilleri ──
 const accounts = require('./accounts')(app, { db, supabase: db.supabase, jwt, JWT_SECRET, requireAuth, getIp });
-require('./social')(app, { supabase: db.supabase, jwt, JWT_SECRET, requireAuth });
+require('./social')(app, { supabase: db.supabase, jwt, JWT_SECRET, requireAuth, sendBrowserPush });
 
 // ── Hesabımı sil: kullanıcının hesabı ve kişisel verileri kalıcı olarak silinir ──
 // İlanları (resim/video dosyalarıyla) silinir; sahibi olduğu dükkanlar rehberde sahipsiz kalır.

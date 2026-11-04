@@ -166,6 +166,19 @@ CREATE INDEX IF NOT EXISTS newhal_referrals_referrer_idx
   ON newhal_referrals (referrer_id, created_at DESC);
 ALTER TABLE newhal_referrals ENABLE ROW LEVEL SECURITY;
 
+-- 13. Browser push subscriptions
+CREATE TABLE IF NOT EXISTS web_push_subscriptions (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  endpoint TEXT NOT NULL UNIQUE,
+  subscription JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS web_push_subscriptions_user_idx
+  ON web_push_subscriptions (user_id, updated_at DESC);
+ALTER TABLE web_push_subscriptions ENABLE ROW LEVEL SECURITY;
+
 CREATE OR REPLACE FUNCTION newhal_award_daily_login(p_user_id BIGINT, p_day_key TEXT)
 RETURNS BOOLEAN
 LANGUAGE plpgsql

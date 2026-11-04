@@ -112,6 +112,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     setInterval(refreshMessageBadges, 60000);
     setInterval(refreshNotificationBadge, 30000);
   }
+  if (urlParams.get('openNotifications') === '1' && readToken('userToken')) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+    setTimeout(openNotifications, 400);
+  } else if (urlParams.get('openMessages') === '1' && readToken('userToken')) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+    setTimeout(openMessages, 400);
+  }
 
   initMap();
   initSearch();
@@ -1949,6 +1956,10 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data?.type === 'NEWHAL_OPEN_NOTIFICATION') openNotifications();
+    else if (event.data?.type === 'NEWHAL_OPEN_MESSAGES') openMessages();
+  });
 }
 
 function isStandaloneApp() {
@@ -2553,6 +2564,9 @@ async function openProfileModal() {
   profileAvatarUrl = myProfile.avatar;
   document.getElementById('profileAvatar').innerHTML = avatarHtml(myProfile.name, profileAvatarUrl);
   document.getElementById('profilePointsBalance').textContent = `${Number(myProfile.points_balance || 0).toLocaleString('tr-TR')} Para Puan`;
+  document.getElementById('profileLevelLabel').textContent = `Seviye ${Number(myProfile.level || 1)}`;
+  document.getElementById('profileLevelProgressText').textContent = `${Number(myProfile.level_progress || 0).toLocaleString('tr-TR')} / 1.000 puan`;
+  document.getElementById('profileLevelProgressBar').style.width = `${Math.max(0, Math.min(100, Number(myProfile.level_progress || 0) / 10))}%`;
   document.getElementById('profileReferralLink').value = `${location.origin}/?ref=${encodeURIComponent(myProfile.referral_code)}`;
   document.getElementById('profileLoginInfo').textContent = myProfile.login === 'telefon'
     ? `Telefonla giriş: ${myProfile.login_phone}` : `Google ile giriş${myProfile.email ? ': ' + myProfile.email : ''}`;
@@ -2924,6 +2938,79 @@ function updateNotificationBadges(unread) {
   });
 }
 
+function base64UrlToBytes(value) {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(normalized + '='.repeat((4 - normalized.length % 4) % 4));
+  return Uint8Array.from(raw, char => char.charCodeAt(0));
+}
+
+async function refreshBrowserNotificationButton() {
+  const button = document.getElementById('browserNotificationButton');
+  const status = document.getElementById('browserNotificationStatus');
+  if (!button || !status) return;
+  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+    button.disabled = true;
+    status.textContent = 'Bu tarayıcı bildirim desteği sunmuyor.';
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    button.disabled = true;
+    status.textContent = 'Bildirim izni tarayıcıda kapalı. NewHal için tarayıcı ayarlarından izin verebilirsin.';
+    return;
+  }
+  button.disabled = false;
+  if (Notification.permission === 'granted') {
+    try {
+      const subscription = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+      button.textContent = subscription ? 'Tarayıcı bildirimlerini kapat' : 'Tarayıcı bildirimlerini aç';
+      status.textContent = subscription
+        ? 'Açık. Yeni takip, mesaj ve duyurular tarayıcı bildirimi olarak gelir.'
+        : 'Tarayıcı izni var. Bildirim aboneliğini etkinleştir.';
+      return;
+    } catch {}
+  }
+  button.textContent = 'Tarayıcı bildirimlerini aç';
+  status.textContent = 'Tarayıcı kapalıyken de takip, mesaj ve duyuru bildirimi al.';
+}
+
+async function enableBrowserNotifications() {
+  const button = document.getElementById('browserNotificationButton');
+  if (button) button.disabled = true;
+  try {
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      throw new Error('Bu tarayıcı bildirim desteği sunmuyor');
+    }
+    const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+    if (permission !== 'granted') throw new Error('Tarayıcı bildirim izni verilmedi');
+    const { publicKey } = await messagesRequest('/api/push/public-key');
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    if (subscription) {
+      await messagesRequest('/api/push/subscriptions', {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint: subscription.endpoint }),
+      });
+      await subscription.unsubscribe();
+      showToast('Tarayıcı bildirimleri kapatıldı', 'success');
+      return;
+    }
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: base64UrlToBytes(publicKey),
+    });
+    await messagesRequest('/api/push/subscriptions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(subscription),
+    });
+    showToast('Tarayıcı bildirimleri açıldı', 'success');
+  } catch (err) {
+    showToast(err.message || 'Tarayıcı bildirimleri açılamadı', 'error');
+  } finally {
+    if (button) button.disabled = false;
+    refreshBrowserNotificationButton();
+  }
+}
+
 function refreshNotificationBadge() {
   if (!readToken('userToken')) return;
   messagesRequest('/api/notifications').then(({ unread }) => updateNotificationBadges(unread || 0)).catch(() => {});
@@ -2934,6 +3021,7 @@ function openNotifications() {
   closeProfileModal();
   closePublicProfile();
   document.getElementById('notificationsModal').classList.add('open');
+  refreshBrowserNotificationButton();
   loadNotifications();
 }
 

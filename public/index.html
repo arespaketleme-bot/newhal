@@ -640,6 +640,10 @@
         </div>
         <section class="profile-rewards" aria-label="Para Puan ve davet bağlantısı">
           <div class="profile-rewards-balance"><span>💰 Para Puan bakiyen</span><strong id="profilePointsBalance">0 Para Puan</strong></div>
+          <div class="profile-level-box">
+            <div><strong id="profileLevelLabel">Seviye 1</strong><span id="profileLevelProgressText">0 / 1.000 puan</span></div>
+            <div class="profile-level-track"><span id="profileLevelProgressBar"></span></div>
+          </div>
           <p>Her gün girişte 100 Para Puan kazan. Davet bağlantınla katılan her yeni üye için 100 Para Puan daha al.</p>
           <div class="profile-referral-share">
             <input id="profileReferralLink" type="text" readonly aria-label="Davet bağlantın" />
@@ -711,6 +715,10 @@
       <div class="modal-header">
         <div class="modal-title-wrap"><div class="modal-icon">🔔</div><div><h3>Bildirimler</h3><p>Takipçiler ve yeni mesajlar</p></div></div>
         <button class="modal-close" onclick="closeNotifications()" aria-label="Bildirimleri kapat">✕</button>
+      </div>
+      <div class="browser-notification-settings">
+        <p id="browserNotificationStatus">Tarayıcı kapalıyken de takip, mesaj ve duyuru bildirimi al.</p>
+        <button type="button" class="btn-outline" id="browserNotificationButton" onclick="enableBrowserNotifications()">Tarayıcı bildirimlerini aç</button>
       </div>
       <div class="notifications-list" id="notificationsList"></div>
     </div>

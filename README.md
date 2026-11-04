@@ -11,8 +11,11 @@ npm run dev
 
 Üye arama, takip, özel mesaj ve bildirim özellikleri için `migrations/` altındaki SQL dosyalarını
 Supabase SQL Editor'de bir kez çalıştırın. Önce sosyal özellikleri, sonra bildirim ve en son toplu
-bildirim dosyasını çalıştırın. Para Puan ve referans ödülleri için `2026-11-04-zzz-points-referrals.sql`
-migrasyonunu da uygulayın. Bildirimler yeni takiplerde, gelen mesajlarda ve admin duyurularında oluşur.
+bildirim dosyasını çalıştırın. Para Puan ve referans ödülleri için `2026-11-04-zzz-points-referrals.sql`,
+admin puan yüklemesi için `2026-11-04-zzzz-admin-point-credit.sql` ve tarayıcı bildirimleri için
+`2026-11-04-zzzzz-web-push.sql` migrasyonlarını uygulayın. Bildirimler takip, mesaj ve admin duyurularında oluşur.
+Üyeler Bildirimler penceresinden tarayıcı izni vererek NewHal kapalıyken de bildirim alabilir. Push anahtarı
+Supabase'in özel dosya alanında sunucu tarafından bir kez oluşturulur ve saklanır.
 
 ## 🌐 Erişim
 
@@ -35,6 +38,8 @@ Supabase ve Google giriş anahtarları buradan okunur. `.env` asla GitHub'a gön
 - 🏪 Kategori filtreleme (Sebze&Meyve, Bakliyat, Kuru Gıda, Balık, Et&Tavuk)
 - 📊 Admin dashboard: istatistikler, bekleyen/onaylı/reddedilen iğneler
 - 💰 Günlük girişte ve yeni üye davetinde Para Puan ödülü
+- 🏅 Her 1.000 Para Puanda bir artan üye seviyesi
+- 🔔 Takip, mesaj ve duyurular için tarayıcı push bildirimi
 - 🌙 Dark mode tasarım, glassmorphism efektler
 
 ## 🗂 Proje Yapısı

@@ -150,9 +150,12 @@ module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET,
     const [accounts, profiles, shops] = await Promise.all([load(ACCOUNTS_FILE), load(PROFILES_FILE), db.getPinsByOwner(user.id)]);
     const account = accounts[user.id];
     const profile = profiles[user.id] || {};
+    const pointsBalance = await getPointsBalance(user.id);
+    const level = Math.floor(pointsBalance / 1000) + 1;
+    const levelProgress = pointsBalance % 1000;
     res.json({
       id: user.id, name: user.name, avatar: user.avatar || '', email: user.email || '',
-      points_balance: await getPointsBalance(user.id), referral_code: `NH${user.id}`,
+      points_balance: pointsBalance, level, level_progress: levelProgress, referral_code: `NH${user.id}`,
       login: account ? 'telefon' : 'google',
       login_phone: account ? prettyPhone(account.phone) : '',
       about: profile.about || '', contact_phone: profile.contact_phone || '', show_phone: !!profile.show_phone,
@@ -161,12 +164,18 @@ module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET,
   });
 
   async function getPointsBalance(userId) {
-    const { data, error } = await supabase.from('newhal_points_ledger').select('amount').eq('user_id', userId);
-    if (error) {
-      console.error('Para Puan bakiyesi alınamadı:', error.message);
-      return 0;
+    let balance = 0;
+    for (let offset = 0; ; offset += 1000) {
+      const { data, error } = await supabase.from('newhal_points_ledger').select('amount')
+        .eq('user_id', userId).order('id', { ascending: true }).range(offset, offset + 999);
+      if (error) {
+        console.error('Para Puan bakiyesi alınamadı:', error.message);
+        return balance;
+      }
+      (data || []).forEach(row => { balance += Number(row.amount || 0); });
+      if (!data || data.length < 1000) break;
     }
-    return (data || []).reduce((total, row) => total + Number(row.amount || 0), 0);
+    return balance;
   }
 
   app.put('/api/profile/me', requireAuth, async (req, res) => {

@@ -481,6 +481,7 @@ async function loadUsers() {
           <td>${esc(u.email)}</td>
           <td style="color:var(--text-3); font-family:monospace; font-size:12px;">${esc(u.googleId) || '-'}</td>
           <td><strong id="userPointsBalance-${Number(u.id)}" data-balance="${Number(u.points_balance || 0)}">${Number(u.points_balance || 0).toLocaleString('tr-TR')} Para Puan</strong></td>
+          <td><strong id="userLevel-${Number(u.id)}">Seviye ${Number(u.level || 1)}</strong></td>
           <td class="user-points-actions"><input type="number" id="userPointsAmount-${Number(u.id)}" min="1" max="100000" step="1" placeholder="Miktar" aria-label="Yüklenecek Para Puan" /><button type="button" class="btn-sm btn-approve" onclick="addUserPoints(${Number(u.id)})">Yükle</button></td>
           <td>${d}</td>
         `;
@@ -509,6 +510,7 @@ async function addUserPoints(userId) {
     const next = Number(balance.dataset.balance || 0) + data.amount;
     balance.dataset.balance = String(next);
     balance.textContent = `${next.toLocaleString('tr-TR')} Para Puan`;
+    document.getElementById(`userLevel-${userId}`).textContent = `Seviye ${Math.floor(next / 1000) + 1}`;
     input.value = '';
     showToast(`${data.amount.toLocaleString('tr-TR')} Para Puan yüklendi`, 'success');
   } catch (err) {
