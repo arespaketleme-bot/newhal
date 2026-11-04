@@ -8,6 +8,7 @@ const crypto  = require('crypto');
 const db      = require('./database');
 const bcrypt  = require('bcryptjs');
 const webpush = require('web-push');
+const emailNotifications = require('./email-notifications');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
@@ -272,13 +273,14 @@ app.post('/api/admin/notifications/broadcast', requireAdmin, async (req, res) =>
   const body = String(req.body.body || '').trim().slice(0, 1500);
   if (!title || !body) return res.status(400).json({ error: 'Başlık ve mesaj zorunludur' });
 
-  const ids = [];
+  const allUsers = [];
   for (let offset = 0; ; offset += 1000) {
-    const { data, error } = await db.supabase.from('users').select('id').order('id', { ascending: true }).range(offset, offset + 999);
+    const { data, error } = await db.supabase.from('users').select('id,email').order('id', { ascending: true }).range(offset, offset + 999);
     if (error) return res.status(500).json({ error: 'Kullanıcı listesi alınamadı' });
-    ids.push(...(data || []).map(user => user.id));
+    allUsers.push(...(data || []));
     if (!data || data.length < 1000) break;
   }
+  const ids = allUsers.map(user => user.id);
   if (!ids.length) return res.json({ sent: 0 });
 
   let sent = 0;
@@ -296,7 +298,10 @@ app.post('/api/admin/notifications/broadcast', requireAdmin, async (req, res) =>
     });
     sent += rows.length;
   }
-  res.json({ sent });
+  const emailResults = await emailNotifications.sendNotificationEmails(allUsers, {
+    subject: `NewHal duyurusu: ${title}`, title, body, path: '/?openNotifications=1',
+  });
+  res.json({ sent, email: emailResults });
 });
 
 // ── PUBLIC: Google Auth Routes ────────────────────────────────
@@ -1586,7 +1591,10 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
 
 // ── Telefon + şifre ile hesap ve kullanıcı profilleri ──
 const accounts = require('./accounts')(app, { db, supabase: db.supabase, jwt, JWT_SECRET, requireAuth, getIp });
-require('./social')(app, { supabase: db.supabase, jwt, JWT_SECRET, requireAuth, sendBrowserPush });
+require('./social')(app, {
+  supabase: db.supabase, jwt, JWT_SECRET, requireAuth, sendBrowserPush,
+  sendNotificationEmail: emailNotifications.sendNotificationEmail,
+});
 
 // ── Hesabımı sil: kullanıcının hesabı ve kişisel verileri kalıcı olarak silinir ──
 // İlanları (resim/video dosyalarıyla) silinir; sahibi olduğu dükkanlar rehberde sahipsiz kalır.

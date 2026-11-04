@@ -17,6 +17,10 @@ admin puan yüklemesi için `2026-11-04-zzzz-admin-point-credit.sql` ve tarayıc
 Üyeler Bildirimler penceresinden tarayıcı izni vererek NewHal kapalıyken de bildirim alabilir. Push anahtarı
 Supabase'in özel dosya alanında sunucu tarafından bir kez oluşturulur ve saklanır.
 
+Takip, özel mesaj ve yönetici duyuruları e-posta adresi olan üyelere e-posta ile de gönderilir.
+Bunun için sunucuda `RESEND_API_KEY` ve Resend'de doğrulanmış gönderen adresini içeren `RESEND_FROM`
+ayarları tanımlanmalıdır. Ayarlar yoksa uygulama içi ve tarayıcı bildirimleri çalışmaya devam eder.
+
 ## 🌐 Erişim
 
 | Sayfa | URL |

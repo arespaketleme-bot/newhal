@@ -3,7 +3,7 @@ const MESSAGE_MAX = 2000;
 const MESSAGE_TRIES = 30;
 const WINDOW_MS = 60 * 1000;
 
-module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_SECRET, sendBrowserPush }) {
+module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_SECRET, sendBrowserPush, sendNotificationEmail }) {
   const sends = new Map();
   const requireUser = (req, res, next) => requireAuth(req, res, () => {
     if (req.user.role !== 'user' || !userId(req.user.id)) return res.status(403).json({ error: 'Kullanıcı girişi gerekli' });
@@ -14,20 +14,26 @@ module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_
     return Number.isSafeInteger(id) && id > 0 ? id : null;
   };
   const tableError = res => res.status(503).json({ error: 'Takip ve mesaj özellikleri hazırlanıyor' });
-  const notify = async (recipientId, actorId, type, entityId = null, actorName = 'NewHal üyesi') => {
+  const notify = async (recipientId, actorId, type, entityId = null, actorName = 'NewHal üyesi', recipientEmail = '') => {
     if (Number(recipientId) === Number(actorId)) return;
     const { error } = await supabase.from('user_notifications').insert({
       recipient_id: recipientId, actor_id: actorId, type, entity_id: entityId,
     });
     if (error) console.error('Bildirim kaydedilemedi:', error.message);
-    else if (sendBrowserPush) {
+    else {
       const message = type === 'message';
-      void sendBrowserPush(recipientId, {
-        title: message ? 'NewHal: Yeni mesaj' : 'NewHal: Yeni takipçi',
-        body: message ? `${actorName} sana mesaj gönderdi.` : `${actorName} seni takip etmeye başladı.`,
-        url: message ? '/?openMessages=1' : '/?openNotifications=1',
-        tag: `newhal-${type}-${entityId || actorId}`,
+      const title = message ? 'Yeni bir mesaj aldın' : 'Yeni takipçin var';
+      const body = message ? `${actorName} sana mesaj gönderdi.` : `${actorName} seni takip etmeye başladı.`;
+      const path = message ? '/?openMessages=1' : '/?openNotifications=1';
+      if (sendBrowserPush) void sendBrowserPush(recipientId, {
+          title: message ? 'NewHal: Yeni mesaj' : 'NewHal: Yeni takipçi',
+          body,
+          url: path,
+          tag: `newhal-${type}-${entityId || actorId}`,
       });
+      if (sendNotificationEmail && recipientEmail) {
+        void sendNotificationEmail({ to: recipientEmail, subject: `NewHal: ${title}`, title, body, path });
+      }
     }
   };
 
@@ -36,12 +42,12 @@ module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_
     const me = userId(req.user.id);
     if (!target) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
     if (target === me) return res.status(400).json({ error: 'Kendinizi takip edemezsiniz' });
-    const { data: person, error: personError } = await supabase.from('users').select('id').eq('id', target).maybeSingle();
+    const { data: person, error: personError } = await supabase.from('users').select('id,email').eq('id', target).maybeSingle();
     if (personError) return res.status(500).json({ error: 'Takip işlemi yapılamadı' });
     if (!person) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
     const { error } = await supabase.from('user_follows').insert({ follower_id: me, following_id: target });
     if (error && error.code !== '23505') return tableError(res);
-    if (!error) await notify(target, me, 'follow', null, req.user.name || 'Bir NewHal üyesi');
+    if (!error) await notify(target, me, 'follow', null, req.user.name || 'Bir NewHal üyesi', person.email);
     res.json({ following: true });
   });
 
@@ -188,13 +194,13 @@ module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_
     const now = Date.now();
     const times = (sends.get(sender) || []).filter(time => time > now - WINDOW_MS);
     if (times.length >= MESSAGE_TRIES) return res.status(429).json({ error: 'Çok sık mesaj gönderiyorsunuz. Biraz sonra tekrar deneyin.' });
-    const { data: person, error: personError } = await supabase.from('users').select('id').eq('id', recipient).maybeSingle();
+    const { data: person, error: personError } = await supabase.from('users').select('id,email').eq('id', recipient).maybeSingle();
     if (personError) return res.status(500).json({ error: 'Mesaj gönderilemedi' });
     if (!person) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
     const { data: message, error } = await supabase.from('direct_messages')
       .insert({ sender_id: sender, recipient_id: recipient, body }).select().single();
     if (error) return tableError(res);
-    await notify(recipient, sender, 'message', message.id, req.user.name || 'Bir NewHal üyesi');
+    await notify(recipient, sender, 'message', message.id, req.user.name || 'Bir NewHal üyesi', person.email);
     times.push(now);
     sends.set(sender, times);
     res.status(201).json(message);

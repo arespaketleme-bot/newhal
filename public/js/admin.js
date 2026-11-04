@@ -385,7 +385,10 @@ async function sendBroadcast(event) {
     if (!res) return;
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'Bildirim gönderilemedi');
-    status.textContent = `${data.sent} üyeye bildirim gönderildi.`;
+    status.textContent = `${data.sent} üyeye uygulama bildirimi gönderildi.`
+      + (data.email?.configured
+        ? ` ${data.email.sent} e-posta gönderildi${data.email.failed ? `, ${data.email.failed} başarısız` : ''}.`
+        : ' E-posta gönderimi henüz ayarlanmamış.');
     status.classList.add('success');
     document.getElementById('broadcastForm').reset();
   } catch (err) {
