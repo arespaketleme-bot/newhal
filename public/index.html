@@ -84,9 +84,10 @@
         <button class="btn-ghost" onclick="showPinList()">İşletmeler</button>
         <button class="btn-ghost ads-nav-link" onclick="showAds()" hidden>İlanlar</button>
         <button class="btn-ghost install-nav-link" onclick="installFromMenu()" title="NewHal'i uygulama olarak yükle">📲 Yükle</button>
-        <a href="#" class="btn-outline" id="authBtn" onclick="openAuthModal()" style="display:flex;align-items:center;gap:6px;">
-          👤 Google ile Devam Et
+        <a href="/auth/google" class="btn-outline" id="authBtn" style="display:flex;align-items:center;gap:6px;">
+          ⚡ Google ile Hızlı Giriş
         </a>
+        <button class="btn-ghost" id="phoneAuthBtn" onclick="openAuthModal(); setAuthTab('login')">Telefonla giriş</button>
         <button class="btn-primary" id="btnAddPin" onclick="openAddPinModal()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           İğne Ekle
@@ -102,7 +103,8 @@
       <button class="ads-nav-link" onclick="showAds(); toggleMobileMenu()" hidden>📢 İlanlar</button>
       <button class="install-nav-link" onclick="toggleMobileMenu(); installFromMenu()">📲 Uygulamayı Yükle</button>
       <a class="wa-group-menu" href="https://chat.whatsapp.com/LmYOXYNJ6cMKMEE8LM6WPP?s=cl&amp;p=a&amp;mlu=4&amp;ilr=4&amp;iam=2" target="_blank" rel="noopener">💬 WhatsApp Grubuna Katıl</a>
-      <a href="#" id="mobileAuthBtn" onclick="openAuthModal(); toggleMobileMenu()">Google ile Devam Et</a>
+      <a href="/auth/google" id="mobileAuthBtn">⚡ Google ile Hızlı Giriş</a>
+      <a href="#" id="mobilePhoneAuthBtn" onclick="toggleMobileMenu(); openAuthModal(); setAuthTab('login')">Telefonla giriş / Hesap aç</a>
       <button class="btn-primary" onclick="openAddPinModal(); toggleMobileMenu()">İğne Ekle</button>
     </div>
   </header>

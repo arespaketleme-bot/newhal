@@ -23,6 +23,8 @@ function closeAuthModal() {
 function updateAuthUI(name) {
   const btn1 = document.getElementById('authBtn');
   const btn2 = document.getElementById('mobileAuthBtn');
+  const phoneBtn1 = document.getElementById('phoneAuthBtn');
+  const phoneBtn2 = document.getElementById('mobilePhoneAuthBtn');
   const setupBtn = (btn) => {
     if (!btn) return;
     btn.textContent = `👤 ${name}`;
@@ -37,6 +39,8 @@ function updateAuthUI(name) {
   };
   setupBtn(btn1);
   setupBtn(btn2);
+  if (phoneBtn1) phoneBtn1.hidden = true;
+  if (phoneBtn2) phoneBtn2.hidden = true;
 }
 
 // ── State ──────────────────────────────────────────────────────
