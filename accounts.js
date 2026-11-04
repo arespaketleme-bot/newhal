@@ -48,6 +48,46 @@ module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET,
   const loginFails = new Map();   // telefon → yanlış deneme zamanları
   const registers = new Map();    // IP → kayıt zamanları
   const recent = (map, key, windowMs) => (map.get(key) || []).filter(t => t > Date.now() - windowMs);
+  const dayKey = () => {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en', {
+      timeZone: 'Europe/Istanbul', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date()).map(part => [part.type, part.value]));
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  };
+  const cleanReferralCode = value => /^NH[1-9]\d{0,17}$/i.test(String(value || '').trim())
+    ? String(value).trim().toUpperCase() : '';
+
+  async function awardDailyLogin(userId) {
+    try {
+      const { data, error } = await supabase.rpc('newhal_award_daily_login', {
+        p_user_id: userId,
+        p_day_key: dayKey(),
+      });
+      if (error) throw error;
+      return data === true;
+    } catch (error) {
+      console.error('Günlük giriş puanı verilemedi:', error.message);
+      return false;
+    }
+  }
+
+  async function awardReferral(newUserId, referralCode) {
+    const code = cleanReferralCode(referralCode);
+    if (!code) return false;
+    const referrerId = Number(code.slice(2));
+    if (!Number.isSafeInteger(referrerId) || referrerId === Number(newUserId)) return false;
+    try {
+      const { data, error } = await supabase.rpc('newhal_award_referral', {
+        p_referrer_id: referrerId,
+        p_referred_id: newUserId,
+      });
+      if (error) throw error;
+      return data === true;
+    } catch (error) {
+      console.error('Referans puanı verilemedi:', error.message);
+      return false;
+    }
+  }
 
   // ── Kayıt ──
   app.post('/api/auth/register', async (req, res) => {
@@ -75,9 +115,11 @@ module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET,
       await supabase.from('users').delete().eq('id', user.id);
       return res.status(500).json({ error: 'Hesap açılamadı, tekrar deneyin' });
     }
+    const pointsAwarded = await awardDailyLogin(user.id);
+    const referralAwarded = await awardReferral(user.id, req.body.referralCode);
     tries.push(Date.now());
     registers.set(ip, tries);
-    res.status(201).json({ token: signToken(user), name: user.name });
+    res.status(201).json({ token: signToken(user), name: user.name, pointsAwarded, referralAwarded });
   });
 
   // ── Giriş ──
@@ -96,7 +138,8 @@ module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET,
       return res.status(401).json({ error: 'Telefon ya da şifre hatalı' });
     }
     loginFails.delete(phone);
-    res.json({ token: signToken(user), name: user.name });
+    const pointsAwarded = await awardDailyLogin(user.id);
+    res.json({ token: signToken(user), name: user.name, pointsAwarded });
   });
 
   // ── Kendi profilim ──
@@ -109,12 +152,22 @@ module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET,
     const profile = profiles[user.id] || {};
     res.json({
       id: user.id, name: user.name, avatar: user.avatar || '', email: user.email || '',
+      points_balance: await getPointsBalance(user.id), referral_code: `NH${user.id}`,
       login: account ? 'telefon' : 'google',
       login_phone: account ? prettyPhone(account.phone) : '',
       about: profile.about || '', contact_phone: profile.contact_phone || '', show_phone: !!profile.show_phone,
       created_at: user.created_at, shops,
     });
   });
+
+  async function getPointsBalance(userId) {
+    const { data, error } = await supabase.from('newhal_points_ledger').select('amount').eq('user_id', userId);
+    if (error) {
+      console.error('Para Puan bakiyesi alınamadı:', error.message);
+      return 0;
+    }
+    return (data || []).reduce((total, row) => total + Number(row.amount || 0), 0);
+  }
 
   app.put('/api/profile/me', requireAuth, async (req, res) => {
     if (req.user.role !== 'user') return res.status(403).json({ error: 'Kullanıcı girişi gerekli' });

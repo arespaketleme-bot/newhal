@@ -41,9 +41,10 @@ const db = {
       const { data: userByEmail } = await supabase.from('users').select('*').eq('email', email).single();
       if (userByEmail) {
         const { data: updatedUser } = await supabase.from('users').update({ google_id: googleId, avatar }).eq('id', userByEmail.id).select().single();
-        return updatedUser;
+        return updatedUser ? { ...updatedUser, _newhalCreated: false } : null;
       }
     }
+    let created = false;
     if (!user) {
       const { data: newUser, error } = await supabase.from('users').insert({
         google_id: googleId,
@@ -53,8 +54,9 @@ const db = {
       }).select().single();
       if (error) console.error('Google kullanıcısı kaydedilemedi:', error.message);
       user = newUser;
+      created = !!newUser;
     }
-    return user;
+    return user ? { ...user, _newhalCreated: created } : null;
   },
 
   /** Kategoriler */

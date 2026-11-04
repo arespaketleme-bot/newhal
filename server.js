@@ -13,6 +13,14 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const app        = express();
 const PORT       = process.env.PORT       || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'newhal_secret';
+const cleanReferralCode = value => /^NH[1-9]\d{0,17}$/i.test(String(value || '').trim())
+  ? String(value).trim().toUpperCase() : '';
+const todayInIstanbul = () => {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en', {
+    timeZone: 'Europe/Istanbul', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date()).map(part => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
 
 app.use(cors());
 // Fotoğraf yükleme kendi (daha büyük) sınırıyla ayrıca okunur
@@ -160,19 +168,51 @@ app.post('/api/admin/notifications/broadcast', requireAdmin, async (req, res) =>
 });
 
 // ── PUBLIC: Google Auth Routes ────────────────────────────────
-app.get('/auth/google',
-  passport.authenticate('google', { scope: ['profile', 'email'], session: false })
-);
+app.get('/auth/google', (req, res, next) => {
+  res.cookie('newhal_referral', cleanReferralCode(req.query.ref), {
+    httpOnly: true, secure: true, sameSite: 'lax', maxAge: 10 * 60 * 1000, path: '/',
+  });
+  next();
+}, passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
 
 app.get('/auth/google/callback', 
   passport.authenticate('google', { session: false, failureRedirect: '/?error=google_auth_failed' }),
-  function(req, res) {
+  async function(req, res) {
+    const cookie = String(req.headers.cookie || '').split(';').map(part => part.trim()).find(part => part.startsWith('newhal_referral='));
+    let referralCode = '';
+    try { referralCode = cleanReferralCode(cookie ? decodeURIComponent(cookie.slice('newhal_referral='.length)) : ''); } catch {}
+    let pointsAwarded = false;
+    try {
+      const { data, error } = await db.supabase.rpc('newhal_award_daily_login', {
+        p_user_id: req.user.id,
+        p_day_key: todayInIstanbul(),
+      });
+      if (error) throw error;
+      pointsAwarded = data === true;
+    } catch (err) {
+      console.error('Google giriş puanı verilemedi:', err.message);
+    }
+    if (req.user._newhalCreated && referralCode) {
+      const referrerId = Number(referralCode.slice(2));
+      if (Number.isSafeInteger(referrerId) && referrerId !== Number(req.user.id)) {
+        try {
+          const { error } = await db.supabase.rpc('newhal_award_referral', {
+            p_referrer_id: referrerId,
+            p_referred_id: req.user.id,
+          });
+          if (error) console.error('Google kayıt referans puanı verilemedi:', error.message);
+        } catch (err) {
+          console.error('Google kayıt referans puanı verilemedi:', err.message);
+        }
+      }
+    }
+    res.clearCookie('newhal_referral', { httpOnly: true, secure: true, sameSite: 'lax', path: '/' });
     const token = jwt.sign(
       { id: req.user.id, name: req.user.name, email: req.user.email, role: 'user' },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
-    res.redirect(`/?googleAuth=success&token=${token}&name=${encodeURIComponent(req.user.name)}`);
+    res.redirect(`/?googleAuth=success&token=${token}&name=${encodeURIComponent(req.user.name)}${pointsAwarded ? '&points=100' : ''}`);
   }
 );
 

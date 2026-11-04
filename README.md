@@ -11,7 +11,8 @@ npm run dev
 
 Üye arama, takip, özel mesaj ve bildirim özellikleri için `migrations/` altındaki SQL dosyalarını
 Supabase SQL Editor'de bir kez çalıştırın. Önce sosyal özellikleri, sonra bildirim ve en son toplu
-bildirim dosyasını çalıştırın. Bildirimler yeni takiplerde, gelen mesajlarda ve admin duyurularında oluşur.
+bildirim dosyasını çalıştırın. Para Puan ve referans ödülleri için `2026-11-04-zzz-points-referrals.sql`
+migrasyonunu da uygulayın. Bildirimler yeni takiplerde, gelen mesajlarda ve admin duyurularında oluşur.
 
 ## 🌐 Erişim
 
@@ -33,6 +34,7 @@ Supabase ve Google giriş anahtarları buradan okunur. `.env` asla GitHub'a gön
 - ⏳ Onay sistemi: kullanıcı ekler → admin onaylar → yayınlanır
 - 🏪 Kategori filtreleme (Sebze&Meyve, Bakliyat, Kuru Gıda, Balık, Et&Tavuk)
 - 📊 Admin dashboard: istatistikler, bekleyen/onaylı/reddedilen iğneler
+- 💰 Günlük girişte ve yeni üye davetinde Para Puan ödülü
 - 🌙 Dark mode tasarım, glassmorphism efektler
 
 ## 🗂 Proje Yapısı

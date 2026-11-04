@@ -69,6 +69,18 @@ const HAL_ZOOM   = 16;
 
 // ── Init ───────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  const referralFromUrl = new URLSearchParams(window.location.search).get('ref');
+  if (/^NH[1-9]\d{0,17}$/i.test(referralFromUrl || '')) {
+    localStorage.setItem('newhalReferralCode', referralFromUrl.toUpperCase());
+  }
+  const updateGoogleReferralLinks = () => {
+    const code = localStorage.getItem('newhalReferralCode');
+    document.querySelectorAll('a[href="/auth/google"]').forEach(link => {
+      link.href = code ? `/auth/google?ref=${encodeURIComponent(code)}` : '/auth/google';
+    });
+  };
+  updateGoogleReferralLinks();
+
   // Google Auth Handler
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('googleAuth') === 'success') {
@@ -81,7 +93,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     window.history.replaceState({}, document.title, window.location.pathname);
-    setTimeout(() => showToast(`✅ Başarıyla giriş yapıldı. Hoş geldin, ${name}!`, 'success'), 500);
+    const points = urlParams.get('points') === '100' ? ' 100 Para Puan kazandın!' : '';
+    localStorage.removeItem('newhalReferralCode');
+    setTimeout(() => showToast(`✅ Başarıyla giriş yapıldı. Hoş geldin, ${name}!${points}`, 'success'), 500);
   } else if (urlParams.get('error') === 'google_auth_failed') {
     showToast('❌ Google ile giriş yapılamadı.', 'error');
     window.history.replaceState({}, document.title, window.location.pathname);
@@ -2451,12 +2465,15 @@ function setAuthTab(tab) {
   document.getElementById(login ? 'loginPhone' : 'registerName').focus();
 }
 
-function onLoggedIn({ token, name }, message) {
+function onLoggedIn({ token, name, pointsAwarded, referralAwarded }, message) {
   localStorage.setItem('userToken', token);
   localStorage.setItem('userName', name);
   updateAuthUI(name);
   closeAuthModal();
-  showToast(message, 'success');
+  localStorage.removeItem('newhalReferralCode');
+  const reward = pointsAwarded ? ' 100 Para Puan kazandın!' : '';
+  const referral = referralAwarded ? ' Davet bağlantısıyla kayıt olduğun için davet eden kişi 100 Para Puan kazandı.' : '';
+  showToast(message + reward + referral, 'success');
   loadMyClaims();
   loadPins();
   refreshMessageBadges();
@@ -2496,6 +2513,7 @@ async function submitRegister(e) {
       name: document.getElementById('registerName').value,
       phone: document.getElementById('registerPhone').value,
       password: document.getElementById('registerPassword').value,
+      referralCode: localStorage.getItem('newhalReferralCode') || '',
     }, document.getElementById('registerSubmit'));
     document.getElementById('registerForm').reset();
     onLoggedIn(data, `🎉 Hesabınız açıldı. Hoş geldin, ${data.name}!`);
@@ -2534,6 +2552,8 @@ async function openProfileModal() {
   }
   profileAvatarUrl = myProfile.avatar;
   document.getElementById('profileAvatar').innerHTML = avatarHtml(myProfile.name, profileAvatarUrl);
+  document.getElementById('profilePointsBalance').textContent = `${Number(myProfile.points_balance || 0).toLocaleString('tr-TR')} Para Puan`;
+  document.getElementById('profileReferralLink').value = `${location.origin}/?ref=${encodeURIComponent(myProfile.referral_code)}`;
   document.getElementById('profileLoginInfo').textContent = myProfile.login === 'telefon'
     ? `Telefonla giriş: ${myProfile.login_phone}` : `Google ile giriş${myProfile.email ? ': ' + myProfile.email : ''}`;
   document.getElementById('profileName').value = myProfile.name;
@@ -2556,6 +2576,18 @@ async function openProfileModal() {
   ads.appendChild(add);
 
   document.getElementById('profileModal').classList.add('open');
+}
+
+async function copyReferralLink() {
+  const input = document.getElementById('profileReferralLink');
+  try {
+    await navigator.clipboard.writeText(input.value);
+    showToast('Davet bağlantısı kopyalandı. Yeni üyeye göndererek 100 Para Puan kazanabilirsin.', 'success');
+  } catch {
+    input.select();
+    document.execCommand('copy');
+    showToast('Davet bağlantısı kopyalandı.', 'success');
+  }
 }
 
 function closeProfileModal() {

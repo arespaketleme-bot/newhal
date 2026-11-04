@@ -638,6 +638,14 @@
             <input type="file" id="profilePhotoInput" accept="image/*" hidden onchange="changeProfilePhoto(this)" />
           </label>
         </div>
+        <section class="profile-rewards" aria-label="Para Puan ve davet bağlantısı">
+          <div class="profile-rewards-balance"><span>💰 Para Puan bakiyen</span><strong id="profilePointsBalance">0 Para Puan</strong></div>
+          <p>Her gün girişte 100 Para Puan kazan. Davet bağlantınla katılan her yeni üye için 100 Para Puan daha al.</p>
+          <div class="profile-referral-share">
+            <input id="profileReferralLink" type="text" readonly aria-label="Davet bağlantın" />
+            <button type="button" class="btn-primary" onclick="copyReferralLink()">Bağlantıyı kopyala</button>
+          </div>
+        </section>
         <div class="form-row"><div class="form-group full">
           <label for="profileName">Ad Soyad</label>
           <input type="text" id="profileName" maxlength="60" required />

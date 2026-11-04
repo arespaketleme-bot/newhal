@@ -2085,6 +2085,14 @@ a.logo:hover img.logo-icon { transform: scale(1.06); }
 
 /* ── Profil ───────────────────────────────────────────────── */
 .profile-top { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+.profile-rewards { margin: 14px 0; padding: 14px; border: 1px solid rgba(34,197,94,.22); border-radius: 14px; background: rgba(34,197,94,.07); }
+.profile-rewards-balance { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-2); font-size: 13px; }
+.profile-rewards-balance strong { color: var(--green-400); font-size: 16px; white-space: nowrap; }
+.profile-rewards p { margin: 8px 0 12px; color: var(--text-3); font-size: 12px; line-height: 1.5; }
+.profile-referral-share { display: flex; gap: 8px; }
+.profile-referral-share input { flex: 1; min-width: 0; padding: 9px 10px; border: 1px solid var(--border); border-radius: 9px; background: rgba(0,0,0,.12); color: var(--text-2); font-size: 12px; }
+.profile-referral-share button { flex: 0 0 auto; padding: 9px 12px; font-size: 12px; }
+@media (max-width: 480px) { .profile-referral-share { flex-direction: column; } }
 .profile-avatar {
   width: 72px; height: 72px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
   background: linear-gradient(135deg, var(--green-500), #0ea5e9); display: flex; align-items: center; justify-content: center;
