@@ -480,7 +480,8 @@ async function loadUsers() {
           <td><strong>${esc(u.name)}</strong></td>
           <td>${esc(u.email)}</td>
           <td style="color:var(--text-3); font-family:monospace; font-size:12px;">${esc(u.googleId) || '-'}</td>
-          <td><strong>${Number(u.points_balance || 0).toLocaleString('tr-TR')} Para Puan</strong></td>
+          <td><strong id="userPointsBalance-${Number(u.id)}" data-balance="${Number(u.points_balance || 0)}">${Number(u.points_balance || 0).toLocaleString('tr-TR')} Para Puan</strong></td>
+          <td class="user-points-actions"><input type="number" id="userPointsAmount-${Number(u.id)}" min="1" max="100000" step="1" placeholder="Miktar" aria-label="Yüklenecek Para Puan" /><button type="button" class="btn-sm btn-approve" onclick="addUserPoints(${Number(u.id)})">Yükle</button></td>
           <td>${d}</td>
         `;
         tbody.appendChild(tr);
@@ -488,6 +489,30 @@ async function loadUsers() {
     }
   } catch (err) {
     showToast('Kullanıcılar yüklenemedi', 'error');
+  }
+}
+
+async function addUserPoints(userId) {
+  const input = document.getElementById(`userPointsAmount-${userId}`);
+  const amount = Number(input && input.value);
+  if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100000) {
+    return showToast('1 ile 100.000 arasında tam sayı girin', 'error');
+  }
+  try {
+    const res = await api(`/api/admin/users/${userId}/points`, {
+      method: 'POST', body: JSON.stringify({ amount }),
+    });
+    if (!res) return;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Para Puan yüklenemedi');
+    const balance = document.getElementById(`userPointsBalance-${userId}`);
+    const next = Number(balance.dataset.balance || 0) + data.amount;
+    balance.dataset.balance = String(next);
+    balance.textContent = `${next.toLocaleString('tr-TR')} Para Puan`;
+    input.value = '';
+    showToast(`${data.amount.toLocaleString('tr-TR')} Para Puan yüklendi`, 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
   }
 }
 

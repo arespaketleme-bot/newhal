@@ -147,6 +147,29 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
   res.json(users.map(user => ({ ...user, points_balance: balances.get(user.id) || 0 })));
 });
 
+app.post('/api/admin/users/:id/points', requireAdmin, async (req, res) => {
+  const userId = Number(req.params.id);
+  const amount = Number(req.body.amount);
+  if (!Number.isSafeInteger(userId) || userId <= 0) return res.status(400).json({ error: 'Geçersiz kullanıcı' });
+  if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100000) {
+    return res.status(400).json({ error: 'Yüklenecek puan 1 ile 100.000 arasında olmalı' });
+  }
+  const { data: user, error: userError } = await db.supabase.from('users').select('id').eq('id', userId).maybeSingle();
+  if (userError || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+  const { error } = await db.supabase.from('newhal_points_ledger').insert({
+    user_id: userId,
+    amount,
+    reason: 'admin_credit',
+    idempotency_key: `admin-credit:${crypto.randomUUID()}`,
+    created_by: String(req.admin.username || 'admin').slice(0, 80),
+  });
+  if (error) {
+    console.error('Admin Para Puan yüklemesi yapılamadı:', error.message);
+    return res.status(500).json({ error: 'Para Puan yüklenemedi' });
+  }
+  res.json({ userId, amount });
+});
+
 app.post('/api/admin/notifications/broadcast', requireAdmin, async (req, res) => {
   const title = String(req.body.title || '').replace(/\s+/g, ' ').trim().slice(0, 120);
   const body = String(req.body.body || '').trim().slice(0, 1500);

@@ -147,8 +147,9 @@ CREATE TABLE IF NOT EXISTS newhal_points_ledger (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   amount INTEGER NOT NULL CHECK (amount > 0),
-  reason VARCHAR(32) NOT NULL CHECK (reason IN ('daily_login', 'referral')),
+  reason VARCHAR(32) NOT NULL CHECK (reason IN ('daily_login', 'referral', 'admin_credit')),
   idempotency_key VARCHAR(160) NOT NULL UNIQUE,
+  created_by VARCHAR(80),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS newhal_points_ledger_user_idx
