@@ -142,12 +142,13 @@ function renderDashRecent(pins) {
   const tbody = document.getElementById('dashRecentBody');
   tbody.innerHTML = '';
   if (pins.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:32px">Bekleyen iğne yok ✅</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:32px">Bekleyen iğne yok ✅</td></tr>';
     return;
   }
   pins.slice(0, 6).forEach(p => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
+      <td><strong>#${Number(p.id)}</strong></td>
       <td>
         <div class="td-title">${esc(p.title)}</div>
         <div class="td-sub">📍 ${esc(p.address)}</div>
@@ -182,6 +183,7 @@ function renderPendingTable(pins) {
       `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" /></a>`
     ).join('');
     tr.innerHTML = `
+      <td><strong>#${Number(p.id)}</strong></td>
       <td>
         <div class="td-title">${esc(p.title)}</div>
         ${(p.sells || []).length ? `<div class="td-sub">🛒 ${esc(p.sells.join(', '))}</div>` : ''}
@@ -230,6 +232,7 @@ function renderApprovedTable(pins) {
       `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" /></a>`
     ).join('');
     tr.innerHTML = `
+      <td><strong>#${Number(p.id)}</strong></td>
       <td>
         <div class="td-title">${esc(p.title)}</div>
         ${(p.sells || []).length ? `<div class="td-sub">🛒 ${esc(p.sells.join(', '))}</div>` : ''}
@@ -269,6 +272,7 @@ function renderRejectedTable(pins) {
   pins.forEach(p => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
+      <td><strong>#${Number(p.id)}</strong></td>
       <td>
         <div class="td-title">${esc(p.title)}</div>
         <div class="td-sub">📍 ${esc(p.address)}</div>
@@ -480,6 +484,7 @@ async function loadUsers() {
         const avatar = u.avatar ? `<img src="${esc(u.avatar)}" style="width:32px;height:32px;border-radius:50%;" />` : '👤';
         tr.innerHTML = `
           <td>${avatar}</td>
+          <td><strong>#${Number(u.id)}</strong></td>
           <td><strong>${esc(u.name)}</strong></td>
           <td>${esc(u.email)}</td>
           <td style="color:var(--text-3); font-family:monospace; font-size:12px;">${esc(u.googleId) || '-'}</td>
