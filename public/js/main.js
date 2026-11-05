@@ -1303,6 +1303,7 @@ function initChatAutoCollapse() {
 // ── Telefon Alt Menüsü ────────────────────────────────────────
 const BOTTOM_NAV_SECTIONS = { home: 'hero', map: 'mapSection', ads: 'adsSection' };
 let bottomNavSection = 'home';
+let bottomNavPreviousSection = 'home';
 
 function isChatOpen() {
   return !document.getElementById('chatWidget').classList.contains('collapsed');
@@ -1321,6 +1322,15 @@ function setChatOpen(open) {
 }
 
 function bottomNavGo(tab) {
+  if (tab === 'profile') {
+    setChatOpen(false);
+    if (isMapFullscreen()) toggleMapFullscreen(false);
+    if (bottomNavSection !== 'profile') bottomNavPreviousSection = bottomNavSection;
+    bottomNavSection = 'profile';
+    openProfileModal();
+    updateBottomNav();
+    return;
+  }
   if (tab === 'chat') {
     setChatOpen(!isChatOpen());
     return;
@@ -1339,8 +1349,8 @@ function bottomNavGo(tab) {
 }
 
 function updateBottomNav() {
-  const active = isChatOpen() && window.matchMedia('(max-width: 768px)').matches ? 'chat'
-    : isMapFullscreen() ? 'map' : bottomNavSection;
+  const profileOpen = document.getElementById('profileModal')?.classList.contains('open');
+  const active = profileOpen ? 'profile' : isMapFullscreen() ? 'map' : bottomNavSection;
   document.querySelectorAll('.bottom-nav-item').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === active);
   });
@@ -2606,6 +2616,8 @@ async function copyReferralLink() {
 
 function closeProfileModal() {
   document.getElementById('profileModal').classList.remove('open');
+  if (bottomNavSection === 'profile') bottomNavSection = bottomNavPreviousSection;
+  updateBottomNav();
 }
 
 function logoutSilently() {
