@@ -4,6 +4,11 @@
 
 // ── AUTH YARDIMCISI ──────────────────────────────
 function openAuthModal() {
+  const googleLink = document.getElementById('googleAuthLink');
+  const referralCode = localStorage.getItem('newhalReferralCode');
+  if (googleLink) googleLink.href = referralCode
+    ? `/auth/google?ref=${encodeURIComponent(referralCode)}`
+    : '/auth/google';
   document.getElementById('authModal').classList.add('open');
 }
 
