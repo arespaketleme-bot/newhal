@@ -249,6 +249,12 @@ function renderApprovedTable(pins) {
       </td>
       <td style="color:var(--text-3);font-size:12px">${formatDate(p.created_at)}</td>
       <td>
+        <div style="display:flex;align-items:center;gap:6px;white-space:nowrap">
+          <strong style="color:#fbbf24">⭐ ${Math.max(1, Number(p.level) || 1)}</strong>
+          <button class="btn-level-up" onclick="increaseBusinessLevel(${Number(p.id)})" title="İşletme seviyesini 1 artır">＋1</button>
+        </div>
+      </td>
+      <td>
         <div class="actions">
           <button class="btn-edit" onclick="openEditPinModal(${p.id})" style="background:var(--accent); color:#111; border:none; padding:4px 8px; border-radius:4px; font-weight:600; cursor:pointer; margin-right:6px;">✏️ Düzenle</button>
           <button class="btn-delete" onclick="deletePin(${p.id})">🗑 Sil</button>
@@ -257,6 +263,18 @@ function renderApprovedTable(pins) {
     `;
     tbody.appendChild(tr);
   });
+}
+
+async function increaseBusinessLevel(id) {
+  const res = await api(`/api/admin/pins/${id}/level`, { method: 'PATCH' });
+  if (!res || !res.ok) {
+    const err = res ? await res.json() : { error: 'Hata oluştu' };
+    showToast(err.error || 'Seviye artırılamadı', 'error');
+    return;
+  }
+  const data = await res.json();
+  showToast(`İşletme seviyesi ${data.level} oldu`, 'success');
+  await loadApproved();
 }
 
 // ── Render Rejected ────────────────────────────────────────────

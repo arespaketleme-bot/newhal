@@ -182,6 +182,14 @@ const db = {
     return count || 0;
   },
 
+  async adjustPinLevelBonus(pinId, delta) {
+    const { data, error } = await supabase.rpc('adjust_pin_level_bonus', {
+      p_pin_id: Number(pinId),
+      p_delta: Number(delta),
+    });
+    return { bonus: data, error };
+  },
+
   /** Ürünler & fotoğraflar (işletme sahibi veya admin günceller) */
   async updatePinCatalog(id, { sells, seeks, images }) {
     const { data } = await supabase.from('pins').update({ sells, seeks, images })

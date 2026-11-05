@@ -368,25 +368,32 @@ function optionalViewerId(req) {
   }
 }
 
-function businessLevel(commentCount, likeCount) {
-  return Math.floor((Number(commentCount || 0) + Number(likeCount || 0)) / 5) + 1;
+function businessLevel(commentCount, likeCount, adminBonus = 0) {
+  return Math.floor((Number(commentCount || 0) + Number(likeCount || 0)) / 5) + 1 + Math.max(0, Number(adminBonus) || 0);
+}
+
+async function decoratePinsWithEngagement(pins, viewerId = null) {
+  const engagements = await db.getPinEngagement(pins.map(p => p.id), viewerId);
+  return pins.map(pin => {
+    const engagement = engagements.get(Number(pin.id)) || { likeCount: 0, likedByViewer: false };
+    const comments = pin.comments || [];
+    return {
+      ...pin,
+      like_count: engagement.likeCount,
+      liked_by_me: engagement.likedByViewer,
+      level: businessLevel(comments.length, engagement.likeCount, pin.admin_level_bonus),
+    };
+  });
 }
 
 app.get('/api/pins', async (req, res) => {
   const [pins, claims] = await Promise.all([db.getApprovedPins(), getClaims()]);
-  const engagements = await db.getPinEngagement(pins.map(p => p.id), optionalViewerId(req));
-  res.json(pins.map(p => {
-    const engagement = engagements.get(Number(p.id)) || { likeCount: 0, likedByViewer: false };
-    const comments = p.comments || [];
-    return {
-      ...p,
-      verified: !!claims.verified[p.id],
-      comments: comments.map(stripIp),
-      like_count: engagement.likeCount,
-      liked_by_me: engagement.likedByViewer,
-      level: businessLevel(comments.length, engagement.likeCount),
-    };
-  }));
+  const decoratedPins = await decoratePinsWithEngagement(pins, optionalViewerId(req));
+  res.json(decoratedPins.map(p => ({
+    ...p,
+    verified: !!claims.verified[p.id],
+    comments: (p.comments || []).map(stripIp),
+  })));
 });
 
 // ── PUBLIC: Online & ziyaretçi sayacı ─────────────────────────
@@ -868,7 +875,17 @@ app.delete('/api/admin/claims/verified/:pinId', requireAdmin, async (req, res) =
 
 // ── ADMIN: Tüm iğneleri getir ─────────────────────────────────
 app.get('/api/admin/pins', requireAdmin, async (req, res) => {
-  res.json(await db.getPins(req.query.status || null));
+  const pins = await db.getPins(req.query.status || null);
+  res.json(await decoratePinsWithEngagement(pins));
+});
+
+app.patch('/api/admin/pins/:id/level', requireAdmin, async (req, res) => {
+  const pin = await db.getPin(req.params.id);
+  if (!pin || pin.status !== 'approved') return res.status(404).json({ error: 'İşletme bulunamadı' });
+  const { bonus, error } = await db.adjustPinLevelBonus(pin.id, 1);
+  if (error) return res.status(500).json({ error: 'İşletme seviyesi artırılamadı' });
+  const [updatedPin] = await decoratePinsWithEngagement([{ ...pin, admin_level_bonus: Number(bonus) || 0 }]);
+  res.json({ id: pin.id, level: updatedPin.level, admin_level_bonus: updatedPin.admin_level_bonus });
 });
 
 // ── ADMIN: İğne onayla ───────────────────────────────────────
@@ -1016,7 +1033,7 @@ app.post('/api/pins/:id/likes', requireAuth, async (req, res) => {
     db.getPinCommentCount(pin.id),
   ]);
   const result = engagement.get(Number(pin.id)) || { likeCount: 0, likedByViewer: false };
-  res.json({ liked: result.likedByViewer, like_count: result.likeCount, level: businessLevel(commentCount, result.likeCount) });
+  res.json({ liked: result.likedByViewer, like_count: result.likeCount, level: businessLevel(commentCount, result.likeCount, pin.admin_level_bonus) });
 });
 
 app.delete('/api/pins/:id/likes', requireAuth, async (req, res) => {
@@ -1029,7 +1046,7 @@ app.delete('/api/pins/:id/likes', requireAuth, async (req, res) => {
     db.getPinCommentCount(pin.id),
   ]);
   const result = engagement.get(Number(pin.id)) || { likeCount: 0, likedByViewer: false };
-  res.json({ liked: result.likedByViewer, like_count: result.likeCount, level: businessLevel(commentCount, result.likeCount) });
+  res.json({ liked: result.likedByViewer, like_count: result.likeCount, level: businessLevel(commentCount, result.likeCount, pin.admin_level_bonus) });
 });
 
 // ── PUBLIC: Hata Bildirme ──────────────────────────────────────
