@@ -295,25 +295,25 @@ function createIcon(emoji, isTemp = false, story = null) {
     return L.divIcon({
       className: '',
       html: `<div class="story-marker ${story}"><div class="story-marker-inner">${escHtml(emoji)}</div></div>`,
-      iconSize: [52, 52],
-      iconAnchor: [26, 26],
-      popupAnchor: [0, -28],
+      iconSize: [60, 60],
+      iconAnchor: [30, 30],
+      popupAnchor: [0, -32],
     });
   }
   return L.divIcon({
     className: '',
     html: `<div style="
-      width:${isTemp ? 38 : 42}px; height:${isTemp ? 38 : 42}px;
+      width:${isTemp ? 38 : 52}px; height:${isTemp ? 38 : 52}px;
       background:${isTemp ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)'};
       border:2px solid ${isTemp ? 'rgba(239,68,68,0.6)' : 'rgba(34,197,94,0.6)'};
       border-radius:50%; display:flex; align-items:center; justify-content:center;
-      font-size:20px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
+      font-size:${isTemp ? 20 : 23}px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
       backdrop-filter:blur(4px); cursor:pointer;
       transition:all 0.2s ease;
     ">${escHtml(emoji)}</div>`,
-    iconSize: [isTemp ? 38 : 42, isTemp ? 38 : 42],
-    iconAnchor: [isTemp ? 19 : 21, isTemp ? 19 : 21],
-    popupAnchor: [0, -24],
+    iconSize: [isTemp ? 38 : 52, isTemp ? 38 : 52],
+    iconAnchor: [isTemp ? 19 : 26, isTemp ? 19 : 26],
+    popupAnchor: [0, isTemp ? -24 : -30],
   });
 }
 
@@ -356,7 +356,7 @@ function getPinCluster() {
     showCoverageOnHover: false,
     iconCreateFunction: (cluster) => {
       const n = cluster.getChildCount();
-      const size = n < 10 ? 38 : n < 50 ? 46 : 54;
+      const size = n < 10 ? 44 : n < 50 ? 54 : 64;
       return L.divIcon({
         html: `<div class="pin-cluster" style="width:${size}px;height:${size}px">${n}</div>`,
         className: 'pin-cluster-wrap',
