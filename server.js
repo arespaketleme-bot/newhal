@@ -891,8 +891,9 @@ app.post('/api/categories', requireAuth, async (req, res) => {
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Kategori adı zorunlu' });
   }
-  if (name.trim().length > 40 || (icon && icon.trim().length > 8)) {
-    return res.status(400).json({ error: 'Kategori adı en fazla 40, ikon en fazla 8 karakter olabilir' });
+  const iconLength = typeof icon === 'string' ? icon.trim().length : 0;
+  if (name.trim().length > 40 || iconLength > 32) {
+    return res.status(400).json({ error: 'Kategori adı en fazla 40, emoji en fazla 32 karakter olabilir' });
   }
   const result = await db.addCategory({ name, icon });
   if (result.error) {
@@ -915,6 +916,10 @@ app.put('/api/admin/categories/:name', requireAdmin, async (req, res) => {
   const { name, icon } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Kategori adı zorunlu' });
+  }
+  const iconLength = typeof icon === 'string' ? icon.trim().length : 0;
+  if (name.trim().length > 40 || iconLength > 32) {
+    return res.status(400).json({ error: 'Kategori adı en fazla 40, emoji en fazla 32 karakter olabilir' });
   }
   const result = await db.updateCategory(req.params.name, { name, icon });
   if (result.error) {

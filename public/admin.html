@@ -533,7 +533,8 @@
       </div>
       <div class="form-group" style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px; position: relative;">
         <label style="color:var(--text-2); font-size:12px;">İkon / Emoji</label>
-        <input type="text" id="adminNewCatIcon" placeholder="Örn: 🐟" readonly style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; color: var(--text-1); outline: none; text-align: center; cursor: pointer;" />
+        <input type="text" id="adminNewCatIcon" placeholder="Emoji yazın veya seçin" maxlength="32" autocomplete="off" aria-label="Kategori emojisi" style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; color: var(--text-1); outline: none; text-align: center; cursor: text;" />
+        <small style="color:var(--text-3);font-size:11px;">Listede olmayan emojiyi de buraya yazabilir veya yapıştırabilirsiniz.</small>
       </div>
       <div class="modal-actions" style="margin-top: 20px;">
         <button class="btn-cancel" onclick="closeAddCategoryModal()">İptal</button>
@@ -553,7 +554,8 @@
       </div>
       <div class="form-group" style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px; position: relative;">
         <label style="color:var(--text-2); font-size:12px;">İkon / Emoji</label>
-        <input type="text" id="adminEditCatIcon" placeholder="Örn: 🐟" readonly style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; color: var(--text-1); outline: none; text-align: center; cursor: pointer;" />
+        <input type="text" id="adminEditCatIcon" placeholder="Emoji yazın veya seçin" maxlength="32" autocomplete="off" aria-label="Kategori emojisi" style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; color: var(--text-1); outline: none; text-align: center; cursor: text;" />
+        <small style="color:var(--text-3);font-size:11px;">Listede olmayan emojiyi de buraya yazabilir veya yapıştırabilirsiniz.</small>
       </div>
       <div class="modal-actions" style="margin-top: 20px;">
         <button class="btn-cancel" onclick="closeEditCategoryModal()">İptal</button>
