@@ -23,8 +23,6 @@ function closeAuthModal() {
 function updateAuthUI(name) {
   const btn1 = document.getElementById('authBtn');
   const btn2 = document.getElementById('mobileAuthBtn');
-  const phoneBtn1 = document.getElementById('phoneAuthBtn');
-  const phoneBtn2 = document.getElementById('mobilePhoneAuthBtn');
   const setupBtn = (btn) => {
     if (!btn) return;
     btn.textContent = `👤 ${name}`;
@@ -39,8 +37,6 @@ function updateAuthUI(name) {
   };
   setupBtn(btn1);
   setupBtn(btn2);
-  if (phoneBtn1) phoneBtn1.hidden = true;
-  if (phoneBtn2) phoneBtn2.hidden = true;
 }
 
 // ── State ──────────────────────────────────────────────────────
@@ -73,14 +69,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (/^NH[1-9]\d{0,17}$/i.test(referralFromUrl || '')) {
     localStorage.setItem('newhalReferralCode', referralFromUrl.toUpperCase());
   }
-  const updateGoogleReferralLinks = () => {
-    const code = localStorage.getItem('newhalReferralCode');
-    document.querySelectorAll('a[href="/auth/google"]').forEach(link => {
-      link.href = code ? `/auth/google?ref=${encodeURIComponent(code)}` : '/auth/google';
-    });
-  };
-  updateGoogleReferralLinks();
-
   // Google Auth Handler
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('googleAuth') === 'success') {
@@ -2925,7 +2913,7 @@ function closeMessages() {
 function refreshMessageBadges() {
   if (!readToken('userToken')) return;
   messagesRequest('/api/messages').then(({ unread }) => {
-    ['messageUnreadBadge', 'mobileMessageUnreadBadge'].forEach(id => {
+    ['profileMessageUnreadBadge'].forEach(id => {
       const badge = document.getElementById(id);
       if (!badge) return;
       badge.textContent = unread > 99 ? '99+' : String(unread || '');
@@ -2939,7 +2927,7 @@ async function loadConversations(silent = false) {
   if (!silent) panel.innerHTML = '<p class="messages-state">Mesajlar yükleniyor...</p>';
   try {
     const { conversations, unread } = await messagesRequest('/api/messages');
-    ['messageUnreadBadge', 'mobileMessageUnreadBadge'].forEach(id => {
+    ['profileMessageUnreadBadge'].forEach(id => {
       const badge = document.getElementById(id);
       if (!badge) return;
       badge.textContent = unread > 99 ? '99+' : String(unread || '');
