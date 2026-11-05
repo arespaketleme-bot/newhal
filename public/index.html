@@ -775,6 +775,8 @@
         <div class="form-row">
           <div class="form-group full">
             <label>📷 Resimler <span class="field-hint">(isteğe bağlı, en fazla 5)</span></label>
+            <button type="button" class="btn-outline user-ad-camera-btn" onclick="captureUserAdPhoto()">📷 Resim Çek</button>
+            <input type="file" id="userAdCameraInput" accept="image/*" capture="environment" hidden onchange="addUserAdCameraPhoto(this)" />
             <div class="photo-editor" id="userAdPhotos"></div>
           </div>
         </div>
@@ -813,7 +815,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
       <span>Harita</span>
     </button>
-    <button type="button" class="bottom-nav-add" onclick="openAddPinModal()" aria-label="İşletme Ekle">
+    <button type="button" class="bottom-nav-add" onclick="openUserAdModal()" aria-label="İlan Ver">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
     <button type="button" class="bottom-nav-item" data-tab="ads" onclick="bottomNavGo('ads')">

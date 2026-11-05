@@ -1084,6 +1084,7 @@ function createPhotoEditor(containerId) {
   return {
     getUrls: () => urls.slice(),
     setUrls: (list) => { urls = list.slice(0, MAX_PIN_PHOTOS); render(); },
+    addFiles,
     isBusy: () => busy > 0,
   };
 }
@@ -3679,6 +3680,21 @@ function openUserAdModal() {
   document.getElementById('userAdModal').classList.add('open');
   loadMyAds();
   loadMyShops();
+}
+
+function captureUserAdPhoto() {
+  if (!checkAuthAndRun()) return;
+  if (!userAdPhotos) userAdPhotos = createPhotoEditor('userAdPhotos');
+  if (userAdPhotos.getUrls().length >= MAX_PIN_PHOTOS) {
+    return showToast(`En fazla ${MAX_PIN_PHOTOS} fotoğraf ekleyebilirsiniz`, 'error');
+  }
+  document.getElementById('userAdCameraInput').click();
+}
+
+function addUserAdCameraPhoto(input) {
+  const files = [...(input.files || [])];
+  input.value = '';
+  if (files.length && userAdPhotos) userAdPhotos.addFiles(files);
 }
 
 // Dükkan sahibiyse ilanı hangi dükkanı adına vereceğini seçer
