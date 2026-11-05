@@ -193,8 +193,11 @@ app.post('/api/visit', async (req, res) => {
 const TG_CONFIG_FILE = 'telegram.json';
 const TG_SAME_VISITOR_MS = 6 * 60 * 60 * 1000;   // aynı IP'ye 6 saatte bir bildirim
 const TG_MAX_PER_HOUR = 30;
+const IP_LOCATION_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const IP_LOCATION_CACHE_MAX = 2000;
 let tgConfig;                                     // undefined: henüz okunmadı, null: ayarlı değil
 const tgLastByIp = new Map();
+const ipLocationCache = new Map();                 // IP → { value, expiresAt }
 let tgHour = { at: 0, sent: 0, skipped: 0 };
 
 async function getTelegramConfig() {
@@ -203,6 +206,36 @@ async function getTelegramConfig() {
 }
 
 const tgEsc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// IP konumu yaklaşık şehir/ülke bilgisidir; Telegram bildirimi gecikmesin diye
+// başarısız lookup'lar sessizce atlanır ve başarılı sonuçlar 24 saat saklanır.
+async function getIpLocation(ip) {
+  const cached = ipLocationCache.get(ip);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  if (cached) ipLocationCache.delete(ip);
+
+  try {
+    const response = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}?fields=success,city,region,country`, {
+      signal: AbortSignal.timeout(3000),
+      headers: { 'User-Agent': 'NewHal-Visitor-Notification/1.0' },
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data.success) return null;
+
+    const location = [data.city, data.region, data.country]
+      .map(value => String(value || '').trim())
+      .filter((value, index, values) => value && values.indexOf(value) === index)
+      .join(', ');
+    if (!location) return null;
+
+    if (ipLocationCache.size >= IP_LOCATION_CACHE_MAX) ipLocationCache.delete(ipLocationCache.keys().next().value);
+    ipLocationCache.set(ip, { value: location, expiresAt: Date.now() + IP_LOCATION_CACHE_TTL_MS });
+    return location;
+  } catch {
+    return null;
+  }
+}
 
 async function sendTelegram(html) {
   const cfg = await getTelegramConfig();
@@ -269,16 +302,18 @@ async function notifyNewVisitor(req, visits) {
     const ad = (await db.getAds()).find(a => a.id === ilan);
     if (ad) pageText = `İlan #${ad.no} · ${(ad.title || ad.body || '').split('\n')[0].slice(0, 50)}`;
   }
+  const location = await getIpLocation(ip);
   const time = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
   const lines = [
     `👋 <b>NewHal'e yeni ziyaretçi</b> · #${tgEsc(visits)}. ziyaret`,
     '',
     `🕒 ${tgEsc(time)}`,
     `🌐 IP: <code>${tgEsc(ip)}</code> · <a href="https://ipinfo.io/${encodeURIComponent(ip)}">konumu gör</a>`,
+    location ? `📍 Konum: ${tgEsc(location)}` : null,
     `${tgEsc(describeDevice(ua))}${info.app ? ' · 📲 uygulamadan' : ''}`,
     `↪️ Geldiği yer: ${tgEsc(describeReferrer(info.referrer))}`,
     `📄 Açtığı sayfa: ${tgEsc(pageText)}`,
-  ];
+  ].filter(line => line !== null);
   if (info.screen) lines.push(`🖥 Ekran: ${tgEsc(String(info.screen).slice(0, 15))}${info.lang ? ` · Dil: ${tgEsc(String(info.lang).slice(0, 10))}` : ''}`);
   if (who) lines.push(`👤 Giriş yapmış: ${tgEsc(who)}`);
   if (tgHour.skipped) { lines.push('', `ℹ️ Son bir saatte ${tgHour.skipped} ziyaretçi daha bildirim sınırı yüzünden atlandı.`); tgHour.skipped = 0; }
