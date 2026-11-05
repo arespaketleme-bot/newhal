@@ -349,6 +349,9 @@ app.get('/auth/google/callback',
       JWT_SECRET,
       { expiresIn: '7d' }
     );
+    if (req.user._newhalCreated) {
+      notifyNewMember(req.user).catch(err => console.error('Yeni üye Telegram bildirimi gönderilemedi:', err.message));
+    }
     res.redirect(`/?googleAuth=success&token=${token}&name=${encodeURIComponent(req.user.name)}${pointsAwarded ? '&points=100' : ''}`);
   }
 );
@@ -510,6 +513,19 @@ async function sendTelegram(html) {
   const d = await r.json().catch(() => ({}));
   if (!d.ok) throw new Error(d.description || `HTTP ${r.status}`);
   return true;
+}
+
+async function notifyNewMember(user) {
+  const time = new Date().toLocaleString('tr-TR', {
+    timeZone: 'Europe/Istanbul', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+  await sendTelegram([
+    '🆕 <b>NewHal’e yeni üye katıldı</b>',
+    '',
+    `👤 ${tgEsc(user && user.name)}`,
+    `🔢 Üye no: ${tgEsc(user && user.id)}`,
+    `🕒 ${tgEsc(time)}`,
+  ].join('\n'));
 }
 
 // Tarayıcı bilgisinden kısa cihaz tanımı: "📱 Android · Chrome"
@@ -1711,7 +1727,7 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
 });
 
 // ── Telefon + şifre ile hesap ve kullanıcı profilleri ──
-const accounts = require('./accounts')(app, { db, supabase: db.supabase, jwt, JWT_SECRET, requireAuth, getIp });
+const accounts = require('./accounts')(app, { db, supabase: db.supabase, jwt, JWT_SECRET, requireAuth, getIp, notifyNewMember });
 require('./social')(app, {
   supabase: db.supabase, jwt, JWT_SECRET, requireAuth, sendBrowserPush,
   sendNotificationEmail: emailNotifications.sendNotificationEmail,

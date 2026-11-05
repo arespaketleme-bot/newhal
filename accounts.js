@@ -30,7 +30,7 @@ function cleanName(input) {
   return name.split(' ').filter(w => /\p{L}/u.test(w)).length >= 2 ? name : null;
 }
 
-module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET, requireAuth, getIp }) {
+module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET, requireAuth, getIp, notifyNewMember }) {
   // Gizli depodaki iki dosya, okunduktan sonra bellekte tutulur
   const stores = {};
   async function load(file) {
@@ -120,6 +120,9 @@ module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET,
     tries.push(Date.now());
     registers.set(ip, tries);
     res.status(201).json({ token: signToken(user), name: user.name, pointsAwarded, referralAwarded });
+    if (notifyNewMember) {
+      notifyNewMember(user).catch(err => console.error('Yeni üye Telegram bildirimi gönderilemedi:', err.message));
+    }
   });
 
   // ── Giriş ──
