@@ -1,0 +1,11 @@
+{
+  "name": "Tarsus Sebze ve Meyve Hali",
+  "source": "Tarsus Hali approximate boundary, based on the published market location",
+  "polygon": [
+    [36.9092, 34.8658],
+    [36.9092, 34.8750],
+    [36.9024, 34.8750],
+    [36.9024, 34.8658],
+    [36.9092, 34.8658]
+  ]
+}
