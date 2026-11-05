@@ -95,7 +95,40 @@ async function api(path, opts = {}) {
 // ── Load All Data ──────────────────────────────────────────────
 async function loadAll() {
   api('/api/admin/ads').then(r => r && r.json()).then(ads => ads && updateAdsBadge(ads)).catch(() => {});
-  await Promise.all([loadStats(), loadPending(), loadApproved(), loadRejected(), loadCategories(), loadReports(), loadLogs(), loadClaims()]);
+  await Promise.all([loadStats(), loadPending(), loadApproved(), loadRejected(), loadCategories(), loadReports(), loadLogs(), loadClaims(), loadBusinessLevelRules()]);
+}
+
+async function loadBusinessLevelRules() {
+  const res = await api('/api/admin/business-level-rules');
+  if (!res || !res.ok) return;
+  const rules = await res.json();
+  const input = document.getElementById('businessInteractionsPerLevel');
+  if (input) input.value = Number(rules.interactionsPerLevel) || 5;
+}
+
+async function saveBusinessLevelRules() {
+  const input = document.getElementById('businessInteractionsPerLevel');
+  const button = document.getElementById('saveBusinessLevelRules');
+  const interactionsPerLevel = Number(input.value);
+  if (!Number.isInteger(interactionsPerLevel) || interactionsPerLevel < 1 || interactionsPerLevel > 10000) {
+    showToast('Etkileşim sayısı 1 ile 10.000 arasında tam sayı olmalı', 'error');
+    return;
+  }
+  button.disabled = true;
+  try {
+    const res = await api('/api/admin/business-level-rules', {
+      method: 'PUT', body: JSON.stringify({ interactionsPerLevel }),
+    });
+    const data = res && await res.json();
+    if (!res || !res.ok) throw new Error((data && data.error) || 'Kural kaydedilemedi');
+    input.value = data.interactionsPerLevel;
+    showToast('Seviye atlama kuralı kaydedildi', 'success');
+    await loadApproved();
+  } catch (err) {
+    showToast(err.message || 'Kural kaydedilemedi', 'error');
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function loadStats() {

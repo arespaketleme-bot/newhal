@@ -17,7 +17,7 @@ admin puan yüklemesi için `2026-11-04-zzzz-admin-point-credit.sql` ve tarayıc
 Üyeler Bildirimler penceresinden tarayıcı izni vererek NewHal kapalıyken de bildirim alabilir. Push anahtarı
 Supabase'in özel dosya alanında sunucu tarafından bir kez oluşturulur ve saklanır.
 
-İşletme beğenileri ve seviye sistemi için `migrations/2026-11-05-business-levels.sql` dosyasını Supabase SQL Editor'de bir kez çalıştırın. Admin seviyeyi elle yükseltebilsin diye `migrations/2026-11-05-admin-business-levels.sql` dosyasını da çalıştırın. Her 5 beğeni veya yoruma bir seviye eklenir; seviye harita işaretinin boyutunu artırır.
+İşletme beğenileri ve seviye sistemi için `migrations/2026-11-05-business-levels.sql` dosyasını Supabase SQL Editor'de bir kez çalıştırın. Admin seviyeyi elle yükseltebilsin diye `migrations/2026-11-05-admin-business-levels.sql` dosyasını da çalıştırın. Varsayılan olarak her 5 toplam beğeni veya yorumda bir seviye eklenir. Admin panelindeki Onaylananlar sayfasından bu sayıyı değiştirebilir; ayar özel Supabase deposunda saklanır. Seviye harita işaretinin boyutunu artırır.
 
 Takip, özel mesaj ve yönetici duyuruları e-posta adresi olan üyelere e-posta ile de gönderilir.
 Bunun için sunucuda `RESEND_API_KEY` ve Resend'de doğrulanmış gönderen adresini içeren `RESEND_FROM`

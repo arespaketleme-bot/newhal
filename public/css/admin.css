@@ -218,6 +218,14 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 .pins-table tr:hover td { background: rgba(255,255,255,0.02); }
 .btn-level-up { border: 1px solid rgba(245,158,11,.35); border-radius: 7px; padding: 4px 8px; background: rgba(245,158,11,.14); color: #fbbf24; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
 .btn-level-up:hover { background: rgba(245,158,11,.25); }
+.level-rules-card { margin: 0 0 18px; padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; }
+.level-rules-card h3 { margin: 0 0 5px; color: var(--text-1); font-size: 15px; }
+.level-rules-card p { margin: 0; color: var(--text-3); font-size: 12px; }
+.level-rules-card > label { margin-left: auto; color: var(--text-2); font-size: 12px; font-weight: 600; }
+.level-rules-input { display: flex; align-items: center; gap: 8px; }
+.level-rules-input input { width: 86px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; background: rgba(255,255,255,.05); color: var(--text-1); font: inherit; }
+.level-rules-input span { color: var(--text-3); font-size: 12px; white-space: nowrap; }
+.level-rules-input button:disabled { opacity: .6; cursor: wait; }
 
 .td-title { font-weight: 600; color: var(--text-1); }
 .td-sub   { font-size: 12px; color: var(--text-3); margin-top: 2px; }

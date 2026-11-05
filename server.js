@@ -368,12 +368,34 @@ function optionalViewerId(req) {
   }
 }
 
-function businessLevel(commentCount, likeCount, adminBonus = 0) {
-  return Math.floor((Number(commentCount || 0) + Number(likeCount || 0)) / 5) + 1 + Math.max(0, Number(adminBonus) || 0);
+const DEFAULT_BUSINESS_LEVEL_RULES = Object.freeze({ interactionsPerLevel: 5 });
+let businessLevelRulesCache = { ...DEFAULT_BUSINESS_LEVEL_RULES };
+let businessLevelRulesCacheAt = 0;
+
+async function getBusinessLevelRules() {
+  if (Date.now() - businessLevelRulesCacheAt < 30_000) return businessLevelRulesCache;
+  try {
+    const saved = await db.getPrivateJson('business-level-rules.json');
+    const interactionsPerLevel = Number(saved && saved.interactionsPerLevel);
+    businessLevelRulesCache = Number.isInteger(interactionsPerLevel) && interactionsPerLevel >= 1 && interactionsPerLevel <= 10000
+      ? { interactionsPerLevel }
+      : { ...DEFAULT_BUSINESS_LEVEL_RULES };
+  } catch (err) {
+    console.error('İşletme seviye kuralı okunamadı:', err.message);
+  }
+  businessLevelRulesCacheAt = Date.now();
+  return businessLevelRulesCache;
+}
+
+function businessLevel(commentCount, likeCount, adminBonus = 0, interactionsPerLevel = DEFAULT_BUSINESS_LEVEL_RULES.interactionsPerLevel) {
+  return Math.floor((Number(commentCount || 0) + Number(likeCount || 0)) / interactionsPerLevel) + 1 + Math.max(0, Number(adminBonus) || 0);
 }
 
 async function decoratePinsWithEngagement(pins, viewerId = null) {
-  const engagements = await db.getPinEngagement(pins.map(p => p.id), viewerId);
+  const [engagements, rules] = await Promise.all([
+    db.getPinEngagement(pins.map(p => p.id), viewerId),
+    getBusinessLevelRules(),
+  ]);
   return pins.map(pin => {
     const engagement = engagements.get(Number(pin.id)) || { likeCount: 0, likedByViewer: false };
     const comments = pin.comments || [];
@@ -381,7 +403,7 @@ async function decoratePinsWithEngagement(pins, viewerId = null) {
       ...pin,
       like_count: engagement.likeCount,
       liked_by_me: engagement.likedByViewer,
-      level: businessLevel(comments.length, engagement.likeCount, pin.admin_level_bonus),
+      level: businessLevel(comments.length, engagement.likeCount, pin.admin_level_bonus, rules.interactionsPerLevel),
     };
   });
 }
@@ -879,6 +901,24 @@ app.get('/api/admin/pins', requireAdmin, async (req, res) => {
   res.json(await decoratePinsWithEngagement(pins));
 });
 
+app.get('/api/admin/business-level-rules', requireAdmin, async (req, res) => {
+  res.json(await getBusinessLevelRules());
+});
+
+app.put('/api/admin/business-level-rules', requireAdmin, async (req, res) => {
+  const interactionsPerLevel = Number(req.body && req.body.interactionsPerLevel);
+  if (!Number.isInteger(interactionsPerLevel) || interactionsPerLevel < 1 || interactionsPerLevel > 10000) {
+    return res.status(400).json({ error: 'Seviye için etkileşim sayısı 1 ile 10.000 arasında tam sayı olmalı' });
+  }
+  const rules = { interactionsPerLevel };
+  if (!(await db.savePrivateJson('business-level-rules.json', rules))) {
+    return res.status(500).json({ error: 'Seviye kuralı kaydedilemedi' });
+  }
+  businessLevelRulesCache = rules;
+  businessLevelRulesCacheAt = Date.now();
+  res.json(rules);
+});
+
 app.patch('/api/admin/pins/:id/level', requireAdmin, async (req, res) => {
   const pin = await db.getPin(req.params.id);
   if (!pin || pin.status !== 'approved') return res.status(404).json({ error: 'İşletme bulunamadı' });
@@ -1032,8 +1072,9 @@ app.post('/api/pins/:id/likes', requireAuth, async (req, res) => {
     db.getPinEngagement([pin.id], req.user.id),
     db.getPinCommentCount(pin.id),
   ]);
+  const rules = await getBusinessLevelRules();
   const result = engagement.get(Number(pin.id)) || { likeCount: 0, likedByViewer: false };
-  res.json({ liked: result.likedByViewer, like_count: result.likeCount, level: businessLevel(commentCount, result.likeCount, pin.admin_level_bonus) });
+  res.json({ liked: result.likedByViewer, like_count: result.likeCount, level: businessLevel(commentCount, result.likeCount, pin.admin_level_bonus, rules.interactionsPerLevel) });
 });
 
 app.delete('/api/pins/:id/likes', requireAuth, async (req, res) => {
@@ -1045,8 +1086,9 @@ app.delete('/api/pins/:id/likes', requireAuth, async (req, res) => {
     db.getPinEngagement([pin.id], req.user.id),
     db.getPinCommentCount(pin.id),
   ]);
+  const rules = await getBusinessLevelRules();
   const result = engagement.get(Number(pin.id)) || { likeCount: 0, likedByViewer: false };
-  res.json({ liked: result.likedByViewer, like_count: result.likeCount, level: businessLevel(commentCount, result.likeCount, pin.admin_level_bonus) });
+  res.json({ liked: result.likedByViewer, like_count: result.likeCount, level: businessLevel(commentCount, result.likeCount, pin.admin_level_bonus, rules.interactionsPerLevel) });
 });
 
 // ── PUBLIC: Hata Bildirme ──────────────────────────────────────

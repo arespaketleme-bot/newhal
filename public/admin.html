@@ -221,6 +221,18 @@
           <h1>Onaylanan İğneler</h1>
           <p>Sitede yayında olan işletmeler</p>
         </div>
+        <div class="level-rules-card">
+          <div>
+            <h3>Seviye atlama kuralı</h3>
+            <p>İşletme, belirlenen sayıda toplam beğeni ve yorum aldığında bir seviye yükselir.</p>
+          </div>
+          <label for="businessInteractionsPerLevel">Bir seviye için etkileşim</label>
+          <div class="level-rules-input">
+            <input id="businessInteractionsPerLevel" type="number" min="1" max="10000" step="1" value="5" inputmode="numeric" />
+            <span>beğeni veya yorum</span>
+            <button class="btn-sm btn-approve" id="saveBusinessLevelRules" onclick="saveBusinessLevelRules()">Kaydet</button>
+          </div>
+        </div>
         <div class="pins-table-wrap">
           <table class="pins-table">
             <thead>
