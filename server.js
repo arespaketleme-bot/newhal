@@ -357,9 +357,36 @@ app.get('/auth/google/callback',
 // IP adresleri kişisel veri: herkese açık yanıtlardan çıkarılır, sadece admin görür
 const stripIp = ({ ip, ...rest }) => rest;
 
+function optionalViewerId(req) {
+  const header = req.headers.authorization;
+  if (!header) return null;
+  try {
+    const user = jwt.verify(header.split(' ')[1], JWT_SECRET);
+    return user.role === 'user' && Number.isSafeInteger(Number(user.id)) ? Number(user.id) : null;
+  } catch {
+    return null;
+  }
+}
+
+function businessLevel(commentCount, likeCount) {
+  return Math.floor((Number(commentCount || 0) + Number(likeCount || 0)) / 5) + 1;
+}
+
 app.get('/api/pins', async (req, res) => {
   const [pins, claims] = await Promise.all([db.getApprovedPins(), getClaims()]);
-  res.json(pins.map(p => ({ ...p, verified: !!claims.verified[p.id], comments: (p.comments || []).map(stripIp) })));
+  const engagements = await db.getPinEngagement(pins.map(p => p.id), optionalViewerId(req));
+  res.json(pins.map(p => {
+    const engagement = engagements.get(Number(p.id)) || { likeCount: 0, likedByViewer: false };
+    const comments = p.comments || [];
+    return {
+      ...p,
+      verified: !!claims.verified[p.id],
+      comments: comments.map(stripIp),
+      like_count: engagement.likeCount,
+      liked_by_me: engagement.likedByViewer,
+      level: businessLevel(comments.length, engagement.likeCount),
+    };
+  }));
 });
 
 // ── PUBLIC: Online & ziyaretçi sayacı ─────────────────────────
@@ -973,6 +1000,36 @@ app.post('/api/pins/:id/comments', requireAuth, async (req, res) => {
   });
   if (!comment) return res.status(404).json({ error: 'İşletme bulunamadı' });
   res.status(201).json(stripIp(comment));
+});
+
+// ── PUBLIC: İşletme beğenisi ──────────────────────────────────
+app.post('/api/pins/:id/likes', requireAuth, async (req, res) => {
+  const pin = await db.getPin(req.params.id);
+  if (!pin || pin.status !== 'approved') return res.status(404).json({ error: 'İşletme bulunamadı' });
+  if (Number(pin.owner_id) === Number(req.user.id)) {
+    return res.status(400).json({ error: 'Kendi işletmenizi beğenemezsiniz' });
+  }
+  const { error } = await db.setPinLike(pin.id, req.user.id, true);
+  if (error) return res.status(500).json({ error: 'Beğeni kaydedilemedi' });
+  const [engagement, commentCount] = await Promise.all([
+    db.getPinEngagement([pin.id], req.user.id),
+    db.getPinCommentCount(pin.id),
+  ]);
+  const result = engagement.get(Number(pin.id)) || { likeCount: 0, likedByViewer: false };
+  res.json({ liked: result.likedByViewer, like_count: result.likeCount, level: businessLevel(commentCount, result.likeCount) });
+});
+
+app.delete('/api/pins/:id/likes', requireAuth, async (req, res) => {
+  const pin = await db.getPin(req.params.id);
+  if (!pin || pin.status !== 'approved') return res.status(404).json({ error: 'İşletme bulunamadı' });
+  const { error } = await db.setPinLike(pin.id, req.user.id, false);
+  if (error) return res.status(500).json({ error: 'Beğeni kaldırılamadı' });
+  const [engagement, commentCount] = await Promise.all([
+    db.getPinEngagement([pin.id], req.user.id),
+    db.getPinCommentCount(pin.id),
+  ]);
+  const result = engagement.get(Number(pin.id)) || { likeCount: 0, likedByViewer: false };
+  res.json({ liked: result.likedByViewer, like_count: result.likeCount, level: businessLevel(commentCount, result.likeCount) });
 });
 
 // ── PUBLIC: Hata Bildirme ──────────────────────────────────────

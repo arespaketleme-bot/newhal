@@ -290,29 +290,40 @@ function selectLocation(lat, lng) {
   }
 }
 
-function createIcon(emoji, isTemp = false, story = null) {
+function pinLevelSize(level, baseSize = 52) {
+  const levelGrowth = Math.min(8, Math.max(0, Number(level || 1) - 1));
+  return baseSize + levelGrowth * 4;
+}
+
+function pinLevelBadge(level) {
+  return `<span class="pin-level-badge" aria-label="Seviye ${Math.max(1, Number(level) || 1)}">${Math.max(1, Number(level) || 1)}</span>`;
+}
+
+function createIcon(emoji, isTemp = false, story = null, level = 1) {
+  const size = isTemp ? 38 : pinLevelSize(level);
   if (story) {
+    const storySize = pinLevelSize(level, 60);
     return L.divIcon({
       className: '',
-      html: `<div class="story-marker ${story}"><div class="story-marker-inner">${escHtml(emoji)}</div></div>`,
-      iconSize: [60, 60],
-      iconAnchor: [30, 30],
-      popupAnchor: [0, -32],
+      html: `<div class="story-marker ${story}" style="width:${storySize}px;height:${storySize}px">${pinLevelBadge(level)}<div class="story-marker-inner">${escHtml(emoji)}</div></div>`,
+      iconSize: [storySize, storySize],
+      iconAnchor: [storySize / 2, storySize / 2],
+      popupAnchor: [0, -Math.round(storySize * 0.55)],
     });
   }
   return L.divIcon({
     className: '',
     html: `<div style="
-      width:${isTemp ? 38 : 52}px; height:${isTemp ? 38 : 52}px;
+      position:relative; width:${size}px; height:${size}px;
       background:${isTemp ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)'};
       border:2px solid ${isTemp ? 'rgba(239,68,68,0.6)' : 'rgba(34,197,94,0.6)'};
       border-radius:50%; display:flex; align-items:center; justify-content:center;
       font-size:${isTemp ? 20 : 23}px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
       backdrop-filter:blur(4px); cursor:pointer;
       transition:all 0.2s ease;
-    ">${escHtml(emoji)}</div>`,
-    iconSize: [isTemp ? 38 : 52, isTemp ? 38 : 52],
-    iconAnchor: [isTemp ? 19 : 26, isTemp ? 19 : 26],
+    ">${escHtml(emoji)}${isTemp ? '' : pinLevelBadge(level)}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, isTemp ? -24 : -30],
   });
 }
@@ -321,7 +332,10 @@ function createIcon(emoji, isTemp = false, story = null) {
 async function loadPins() {
   loadMyClaims();
   try {
-    const res = await fetch('/api/pins');
+    const userToken = localStorage.getItem('userToken');
+    const res = await fetch('/api/pins', {
+      headers: userToken ? { Authorization: 'Bearer ' + userToken } : {},
+    });
     allPins = await res.json();
     renderPins(allPins);
     renderStoryBar();
@@ -396,7 +410,7 @@ function renderPins(pins) {
   filtered.forEach(pin => {
     const emoji = CATEGORY_ICONS[pin.category] || '📦';
     const storyMark = storyState(pin.id);
-    const marker = L.marker([pin.lat, pin.lng], { icon: createIcon(emoji, false, storyMark), title: pin.title, zIndexOffset: storyMark ? 500 : 0 });
+    const marker = L.marker([pin.lat, pin.lng], { icon: createIcon(emoji, false, storyMark, pin.level), title: pin.title, zIndexOffset: storyMark ? 500 : 0 });
     // İzlenmemiş hikayesi olan dükkana dokununca hikaye açılır
     if (storyMark === 'new') marker.on('click', () => { setTimeout(() => marker.closePopup(), 0); openStories(pin.id); });
     pinMarkers[pin.id] = marker;
@@ -407,6 +421,7 @@ function renderPins(pins) {
     marker.bindPopup(`
       <div style="font-family:'Inter',sans-serif; min-width:200px;">
         <div style="font-size:18px;margin-bottom:6px;">${escHtml(emoji)} <strong style="color:#f0fdf4;font-size:14px;">${escHtml(pin.title)}</strong>${verifiedBadge(pin)}</div>
+        <div style="font-size:12px;color:#fbbf24;margin-bottom:5px;">⭐ Seviye ${Math.max(1, Number(pin.level) || 1)} · ${Number(pin.like_count) || 0} beğeni · ${(pin.comments || []).length} yorum</div>
         <div style="font-size:12px;color:#6b7280;margin-bottom:4px;">📍 ${escHtml(pin.address)}</div>
         ${showContactInfo && pin.phone ? `<div style="font-size:12px;color:#86efac;">📞 <a href="tel:${escHtml(pin.phone)}" style="color:#4ade80;">${escHtml(pin.phone)}</a></div>` : ''}
         ${(pin.images || []).length ? `<img class="popup-photo" src="${escHtml(pin.images[0])}" alt="" loading="lazy" />` : ''}
@@ -444,6 +459,7 @@ function renderPins(pins) {
         </div>
         ${(pin.images || []).length ? `<img class="pin-card-photo" src="${escHtml(pin.images[0])}" alt="" loading="lazy" />` : ''}
         <div class="pin-card-title">${escHtml(pin.title)}${verifiedBadge(pin)}</div>
+        <div class="pin-card-level">⭐ Seviye ${Math.max(1, Number(pin.level) || 1)} · ${Number(pin.like_count) || 0} beğeni</div>
         <div class="pin-card-addr">📍 ${escHtml(pin.address)}</div>
         ${(pin.sells || []).length ? `<div class="pin-card-products">🛒 ${escHtml(pin.sells.slice(0, 4).join(', '))}${pin.sells.length > 4 ? ` +${pin.sells.length - 4}` : ''}</div>` : ''}
         ${(pin.seeks || []).length ? `<div class="pin-card-products seeks">🔎 ${escHtml(pin.seeks.slice(0, 4).join(', '))}${pin.seeks.length > 4 ? ` +${pin.seeks.length - 4}` : ''}</div>` : ''}
@@ -718,6 +734,7 @@ function showPinDetail(id) {
   }
 
   renderPinCatalog(pin);
+  renderPinEngagement(pin);
 
   // Render comments for this pin
   renderPinComments(pin.comments || []);
@@ -1743,6 +1760,44 @@ function renderPinComments(comments) {
   list.scrollTop = list.scrollHeight;
 }
 
+function renderPinEngagement(pin) {
+  const level = Math.max(1, Number(pin.level) || 1);
+  const commentCount = (pin.comments || []).length;
+  const likeCount = Number(pin.like_count) || 0;
+  const levelEl = document.getElementById('detailPinLevel');
+  const countEl = document.getElementById('detailPinLikeCount');
+  const labelEl = document.getElementById('detailPinLikeLabel');
+  const button = document.getElementById('detailPinLikeButton');
+  if (levelEl) levelEl.textContent = `⭐ Seviye ${level} · ${commentCount} yorum`;
+  if (countEl) countEl.textContent = likeCount.toLocaleString('tr-TR');
+  if (labelEl) labelEl.textContent = pin.liked_by_me ? '❤️ Beğenildi' : '🤍 Beğen';
+  if (button) button.setAttribute('aria-pressed', pin.liked_by_me ? 'true' : 'false');
+}
+
+async function togglePinLike() {
+  if (!checkAuthAndRun()) return;
+  const pin = allPins.find(p => p.id === currentDetailPinId);
+  if (!pin) return;
+  const liked = !!pin.liked_by_me;
+  const button = document.getElementById('detailPinLikeButton');
+  if (button) button.disabled = true;
+  try {
+    const res = await fetch(`/api/pins/${pin.id}/likes`, {
+      method: liked ? 'DELETE' : 'POST',
+      headers: { Authorization: 'Bearer ' + localStorage.getItem('userToken') },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Beğeni kaydedilemedi');
+    Object.assign(pin, { liked_by_me: data.liked, like_count: data.like_count, level: data.level });
+    renderPinEngagement(pin);
+    renderPins(allPins);
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
 async function submitComment() {
   if (!checkAuthAndRun()) return;
   if (!currentDetailPinId) return;
@@ -1778,6 +1833,7 @@ async function submitComment() {
     const pin = allPins.find(p => p.id === currentDetailPinId);
     if (pin) {
       renderPinComments(pin.comments || []);
+      renderPinEngagement(pin);
     }
   } catch (err) {
     showToast(err.message, 'error');

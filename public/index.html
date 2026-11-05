@@ -432,6 +432,12 @@
         </div>
         <button class="modal-close" onclick="closePinDetail()">✕</button>
       </div>
+      <div class="pin-engagement-bar">
+        <span id="detailPinLevel">⭐ Seviye 1 · 0 yorum</span>
+        <button type="button" id="detailPinLikeButton" class="pin-like-button" onclick="togglePinLike()" aria-pressed="false">
+          <span id="detailPinLikeLabel">🤍 Beğen</span><span id="detailPinLikeCount">0</span>
+        </button>
+      </div>
       <div class="detail-body" style="display: flex; flex-direction: column; gap: 16px;">
         <div class="detail-item" id="detailAddressRow">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>

@@ -144,8 +144,42 @@ const db = {
   },
 
   async getPin(id) {
-    const { data } = await supabase.from('pins').select('*').eq('id', parseInt(id)).single();
+    const { data } = await supabase.from('pins').select('*, comments:pin_comments(*)').eq('id', parseInt(id)).single();
     return data;
+  },
+
+  async getPinEngagement(pinIds, viewerId = null) {
+    const ids = [...new Set((pinIds || []).map(Number).filter(Number.isSafeInteger))];
+    if (!ids.length) return new Map();
+    const { data, error } = await supabase.rpc('get_pin_engagement', {
+      p_pin_ids: ids,
+      p_viewer_id: viewerId ? Number(viewerId) : null,
+    });
+    if (error) throw error;
+    return new Map((data || []).map(row => [Number(row.pin_id), {
+      likeCount: Number(row.like_count || 0),
+      likedByViewer: !!row.liked_by_viewer,
+    }]));
+  },
+
+  async setPinLike(pinId, userId, liked) {
+    if (liked) {
+      const { error } = await supabase.from('pin_likes').upsert({
+        pin_id: Number(pinId),
+        user_id: Number(userId),
+      }, { onConflict: 'pin_id,user_id', ignoreDuplicates: true });
+      return { error };
+    }
+    const { error } = await supabase.from('pin_likes')
+      .delete().eq('pin_id', Number(pinId)).eq('user_id', Number(userId));
+    return { error };
+  },
+
+  async getPinCommentCount(pinId) {
+    const { count, error } = await supabase.from('pin_comments')
+      .select('id', { count: 'exact', head: true }).eq('pin_id', Number(pinId));
+    if (error) throw error;
+    return count || 0;
   },
 
   /** Ürünler & fotoğraflar (işletme sahibi veya admin günceller) */

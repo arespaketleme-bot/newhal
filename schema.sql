@@ -54,6 +54,36 @@ CREATE TABLE IF NOT EXISTS pin_comments (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Beğeniler, her üye bir işletmeyi en fazla bir kez beğenebilir.
+CREATE TABLE IF NOT EXISTS pin_likes (
+  pin_id BIGINT NOT NULL REFERENCES pins(id) ON DELETE CASCADE,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (pin_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS pin_likes_pin_id_idx ON pin_likes (pin_id);
+
+CREATE OR REPLACE FUNCTION public.get_pin_engagement(
+  p_pin_ids BIGINT[],
+  p_viewer_id BIGINT DEFAULT NULL
+)
+RETURNS TABLE (pin_id BIGINT, like_count BIGINT, liked_by_viewer BOOLEAN)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT requested.pin_id,
+         COUNT(likes.user_id)::BIGINT AS like_count,
+         COALESCE(BOOL_OR(likes.user_id = p_viewer_id), FALSE) AS liked_by_viewer
+  FROM UNNEST(p_pin_ids) AS requested(pin_id)
+  LEFT JOIN public.pin_likes AS likes ON likes.pin_id = requested.pin_id
+  GROUP BY requested.pin_id;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_pin_engagement(BIGINT[], BIGINT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_pin_engagement(BIGINT[], BIGINT) TO service_role;
+
 -- 5. reports tablosu
 CREATE TABLE IF NOT EXISTS reports (
   id BIGSERIAL PRIMARY KEY,
@@ -95,6 +125,7 @@ ALTER TABLE users          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pins           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pin_comments   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pin_likes      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reports        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_messages  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE logs           ENABLE ROW LEVEL SECURITY;
