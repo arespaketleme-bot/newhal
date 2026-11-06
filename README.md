@@ -52,6 +52,7 @@ Supabase ve Google giriş anahtarları buradan okunur. `.env` asla GitHub'a gön
 - 📱 Mobil ilan ekranında üst menü için gereksiz boşluk olmadan başlangıç
 - 💰 Yönetici tarafından ayarlanabilen ilan ve takip Para Puan ekonomisi
 - 📊 Ekonomi ekranında toplam dağıtım özeti ve ödül günlüğü
+- 🌦️ Günlük Mersin hava durumu yalnızca Vitrin'de gösterilir
 
 ## 🗂 Proje Yapısı
 

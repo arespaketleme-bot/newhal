@@ -2144,7 +2144,7 @@ function renderAds(ads) {
   // Alan hep görünür: ilan yokken de kullanıcılar "İlan Ver" diyebilsin
   document.getElementById('adsSection').hidden = false;
   document.querySelectorAll('.ads-nav-link').forEach(el => { el.hidden = false; });
-  document.getElementById('adsEmpty').hidden = ads.length > 0;
+  document.getElementById('adsEmpty').hidden = ads.some(ad => !ad.weather);
   renderAdsGrid();
   renderAdsTicker();
 }
@@ -2156,7 +2156,7 @@ const TICKER_SPEED = 70;          // saniyede kayan piksel
 function renderAdsTicker() {
   const box = document.getElementById('adsTicker');
   const track = document.getElementById('adsTickerTrack');
-  const ads = [...allAds].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, TICKER_MAX_ADS);
+  const ads = allAds.filter(ad => !ad.weather).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, TICKER_MAX_ADS);
   box.hidden = !ads.length;
   track.innerHTML = '';
   if (!ads.length) return;
@@ -2196,11 +2196,12 @@ function renderAdsGrid() {
   const info = document.getElementById('adsSearchInfo');
   grid.innerHTML = '';
   // Arama yokken vitrin ilanları üstteki vitrinde, altta tekrar edilmez
+  const regularAds = allAds.filter(ad => !ad.weather);
   const featured = allAds.filter(ad => ad.featured);
   renderVitrin(adsQuery ? [] : featured);
   const list = adsQuery
-    ? allAds.filter(ad => adMatchesSearch(ad, adsQuery)).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
-    : allAds.filter(ad => !ad.featured);
+    ? regularAds.filter(ad => adMatchesSearch(ad, adsQuery)).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
+    : regularAds.filter(ad => !ad.featured);
   list.forEach(ad => grid.appendChild(buildAdCard(ad)));
   grid.scrollTop = 0;
   fitAdsGridRows();
@@ -3183,7 +3184,7 @@ function markStorySeen(adId) {
 function storyAdsByPin() {
   const now = Date.now();
   const map = {};
-  allAds.filter(ad => ad.pinId && Date.parse(ad.story_until) > now).forEach(ad => {
+  allAds.filter(ad => !ad.weather && ad.pinId && Date.parse(ad.story_until) > now).forEach(ad => {
     (map[ad.pinId] = map[ad.pinId] || []).push(ad);
   });
   Object.values(map).forEach(list => list.sort((a, b) => a.created_at.localeCompare(b.created_at)));

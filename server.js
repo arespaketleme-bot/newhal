@@ -1321,7 +1321,7 @@ async function loadMersinWeatherStory() {
     const nextMidnight = new Date(new Date(`${day}T21:00:00.000Z`).getTime() + DAY_MS);
     mersinWeatherStory = {
       id: `mersin-weather-${day}`, pinId: pin.id, created_at: new Date().toISOString(), story_until: nextMidnight.toISOString(),
-      active: true, title: 'Mersin Günlük Hava Durumu',
+      active: true, featured: true, title: 'Mersin Günlük Hava Durumu',
       body: `${description} · En yüksek ${weather.high}°C, en düşük ${weather.low}°C${weather.wind === null ? '' : ` · En yüksek rüzgâr ${weather.wind} km/sa`} · Tahmin düzenlenmiştir · MET Norway, CC BY 4.0`,
       images: [], weather
     };
