@@ -104,7 +104,7 @@ async function loadAll() {
   await Promise.all([loadStats(), loadPending(), loadApproved(), loadRejected(), loadCategories(), loadReports(), loadLogs(), loadClaims(), loadBusinessLevelRules(), loadEconomyRules(), loadEconomyLedger()]);
 }
 
-const ECONOMY_LABELS = { ad_created: 'İlan ekledi', follow_given: 'Takip etti', followed_received: 'Takip edildi' };
+const ECONOMY_LABELS = { ad_created: 'İlan ekledi', follow_given: 'Takip etti', followed_received: 'Takip edildi', new_user: 'Yeni kullanıcı kaydı', daily_login: 'Günlük giriş', referral: 'Davet ödülü' };
 
 async function loadEconomyLedger() {
   const res = await api('/api/admin/economy-ledger');
@@ -118,7 +118,7 @@ async function loadEconomyLedger() {
     const rows = data.entries || [];
     empty.style.display = rows.length ? 'none' : 'block';
     rows.forEach(row => {
-      const reason = String(row.created_by || '').replace(/^economy:/, '');
+      const reason = String(row.activity || '');
       const date = new Date(row.created_at).toLocaleString('tr-TR');
       body.insertAdjacentHTML('beforeend', `<tr><td><strong>${esc(row.user_name)}</strong> <small>#${Number(row.user_id)}</small></td><td>${esc(ECONOMY_LABELS[reason] || reason)}</td><td style="color:var(--green-400);font-weight:700;">+${Number(row.amount || 0).toLocaleString('tr-TR')}</td><td>${esc(date)}</td></tr>`);
     });

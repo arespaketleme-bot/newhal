@@ -1405,18 +1405,23 @@ app.put('/api/admin/economy-rules', requireAdmin, async (req, res) => {
 
 app.get('/api/admin/economy-ledger', requireAdmin, async (req, res) => {
   const { data: rows, error } = await db.supabase.from('newhal_points_ledger')
-    .select('user_id,amount,created_by,created_at,idempotency_key')
-    .like('created_by', 'economy:%').order('created_at', { ascending: false }).limit(200);
+    .select('user_id,amount,reason,created_by,created_at,idempotency_key')
+    .or('created_by.like.economy:%,reason.in.(daily_login,referral)')
+    .order('created_at', { ascending: false }).limit(200);
   if (error) return res.status(500).json({ error: 'Ekonomi kayıtları alınamadı' });
   const userIds = [...new Set((rows || []).map(row => row.user_id))];
   let users = [];
   if (userIds.length) {
-    const result = await db.supabase.from('users').select('id,name').in('id', userIds);
+    const result = await db.supabase.from('users').select('id,name,created_at').in('id', userIds);
     if (result.error) return res.status(500).json({ error: 'Kullanıcılar alınamadı' });
     users = result.data || [];
   }
-  const names = new Map(users.map(user => [Number(user.id), user.name]));
-  const entries = (rows || []).map(row => ({ ...row, user_name: names.get(Number(row.user_id)) || `Kullanıcı #${row.user_id}` }));
+  const usersById = new Map(users.map(user => [Number(user.id), user]));
+  const entries = (rows || []).map(row => {
+    const user = usersById.get(Number(row.user_id));
+    const isWelcome = row.reason === 'daily_login' && user && Math.abs(Date.parse(row.created_at) - Date.parse(user.created_at)) < 5 * 60 * 1000;
+    return { ...row, user_name: user?.name || `Kullanıcı #${row.user_id}`, activity: row.created_by?.replace(/^economy:/, '') || (isWelcome ? 'new_user' : row.reason) };
+  });
   res.json({ total_distributed: entries.reduce((total, row) => total + Number(row.amount || 0), 0), entries });
 });
 
