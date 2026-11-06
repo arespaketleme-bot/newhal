@@ -1152,8 +1152,6 @@ button, a { cursor: pointer; text-decoration: none; border: none; background: no
 .install-banner-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .install-banner-text strong { font-size: 14px; color: var(--text-1); }
 .install-banner-text span { font-size: 12px; color: var(--text-3); line-height: 1.35; }
-.install-banner-btn { padding: 8px 16px; font-size: 13px; border-radius: 999px; flex-shrink: 0; }
-.install-banner-btn[hidden] { display: none; }
 .install-banner-close {
   background: none; border: none; color: var(--text-3); font-size: 14px; cursor: pointer;
   padding: 4px; flex-shrink: 0; line-height: 1;
@@ -2079,6 +2077,7 @@ a.logo:hover img.logo-icon { transform: scale(1.06); }
 
 /* WhatsApp grubu: İlan Ver'in solunda küçük tuş */
 .ads-btn-row { display: flex; align-items: center; gap: 8px; }
+.ads-install-btn { min-height: 44px; padding: 0 14px; border-radius: 999px; white-space: nowrap; flex: 0 0 auto; }
 .ads-wa-btn {
   display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 999px;
   background: #25D366; color: #053b1d; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap;

@@ -2045,7 +2045,6 @@ function showInstallBanner(iosMode) {
   const banner = document.getElementById('installBanner');
   if (iosMode) {
     document.getElementById('installBannerHint').textContent = 'Alttaki Paylaş ⬆️ simgesine, sonra "Ana Ekrana Ekle"ye dokun';
-    document.getElementById('installBannerBtn').hidden = true;
   }
   banner.hidden = false;
 }
@@ -2089,7 +2088,6 @@ async function installFromMenu() {
   try { localStorage.removeItem('installDismissedUntil'); } catch {}
   const banner = document.getElementById('installBanner');
   const hint = document.getElementById('installBannerHint');
-  document.getElementById('installBannerBtn').hidden = true;
   if (isIos()) {
     hint.textContent = 'Safari\'de alttaki Paylaş ⬆️ simgesine, sonra "Ana Ekrana Ekle"ye dokun';
   } else if (/android/i.test(navigator.userAgent)) {
