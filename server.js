@@ -1355,6 +1355,53 @@ app.get('/api/ads', async (req, res) => {
 
 // ── Kullanıcı ilanları: giriş yapan herkes verebilir, hemen yayınlanır (yönetici gizleyip silebilir) ──
 const USER_MAX_ADS_PER_DAY = 10;
+const ECONOMY_DEFAULTS = Object.freeze({ adCreated: 25, followGiven: 5, followedReceived: 10 });
+let economyRulesCache = null;
+let economyRulesCacheAt = 0;
+
+function normalizeEconomyRules(input = {}) {
+  const rules = {};
+  for (const [key, fallback] of Object.entries(ECONOMY_DEFAULTS)) {
+    const value = Number(input[key]);
+    rules[key] = Number.isInteger(value) && value >= 0 && value <= 100000 ? value : fallback;
+  }
+  return rules;
+}
+
+async function getEconomyRules() {
+  if (economyRulesCache && Date.now() - economyRulesCacheAt < 60_000) return economyRulesCache;
+  economyRulesCache = normalizeEconomyRules(await db.getPrivateJson('economy-rules.json'));
+  economyRulesCacheAt = Date.now();
+  return economyRulesCache;
+}
+
+async function awardEconomyPoints(userId, reason, idempotencyKey) {
+  const ruleForReason = { ad_created: 'adCreated', follow_given: 'followGiven', followed_received: 'followedReceived' };
+  const amount = (await getEconomyRules())[ruleForReason[reason]] || 0;
+  if (!amount) return { awarded: false, amount: 0 };
+  // Mevcut Para Puan muhasebe şemasıyla uyumlu kalır; ödül kaynağı denetim alanında korunur.
+  const { error } = await db.supabase.from('newhal_points_ledger').insert({
+    user_id: userId, amount, reason: 'admin_credit', idempotency_key: idempotencyKey, created_by: `economy:${reason}`,
+  });
+  if (error && error.code !== '23505') {
+    console.error('Ekonomi puanı verilemedi:', error.message);
+    return { awarded: false, amount: 0 };
+  }
+  return { awarded: !error, amount: error ? 0 : amount };
+}
+
+app.get('/api/admin/economy-rules', requireAdmin, async (req, res) => res.json(await getEconomyRules()));
+app.put('/api/admin/economy-rules', requireAdmin, async (req, res) => {
+  const rules = normalizeEconomyRules(req.body);
+  for (const key of Object.keys(ECONOMY_DEFAULTS)) {
+    if (!Number.isInteger(Number(req.body && req.body[key])) || Number(req.body[key]) < 0 || Number(req.body[key]) > 100000) {
+      return res.status(400).json({ error: 'Her ekonomi kuralı 0 ile 100.000 arasında tam sayı olmalı' });
+    }
+  }
+  if (!(await db.savePrivateJson('economy-rules.json', rules))) return res.status(500).json({ error: 'Ekonomi kuralları kaydedilemedi' });
+  economyRulesCache = rules; economyRulesCacheAt = Date.now();
+  res.json(rules);
+});
 
 app.post('/api/ads', requireAuth, async (req, res) => {
   if (req.user.role !== 'user' || !req.user.id) return res.status(403).json({ error: 'Google ile giriş yapmalısınız' });
@@ -1379,7 +1426,8 @@ app.post('/api/ads', requireAuth, async (req, res) => {
   };
   setAdStory(created, await userStoryPin(req.user.id, req.body.pinId));
   if (!(await db.saveAds([created, ...ads]))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
-  res.status(201).json({ id: created.id, story: !!created.pinId, message: 'İlanınız yayınlandı' });
+  const reward = await awardEconomyPoints(req.user.id, 'ad_created', `ad:${created.id}`);
+  res.status(201).json({ id: created.id, story: !!created.pinId, points_awarded: reward.amount, message: 'İlanınız yayınlandı' });
 });
 
 // Kullanıcının sahibi olduğu dükkanlar (ilanı hangi dükkan adına vereceğini seçer)
@@ -1823,7 +1871,7 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
 const accounts = require('./accounts')(app, { db, supabase: db.supabase, jwt, JWT_SECRET, requireAuth, getIp, notifyNewMember });
 require('./social')(app, {
   supabase: db.supabase, jwt, JWT_SECRET, requireAuth, sendBrowserPush,
-  sendNotificationEmail: emailNotifications.sendNotificationEmail,
+  sendNotificationEmail: emailNotifications.sendNotificationEmail, awardEconomyPoints,
 });
 
 // ── Hesabımı sil: kullanıcının hesabı ve kişisel verileri kalıcı olarak silinir ──

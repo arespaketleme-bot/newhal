@@ -3,7 +3,7 @@ const MESSAGE_MAX = 2000;
 const MESSAGE_TRIES = 30;
 const WINDOW_MS = 60 * 1000;
 
-module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_SECRET, sendBrowserPush, sendNotificationEmail }) {
+module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_SECRET, sendBrowserPush, sendNotificationEmail, awardEconomyPoints }) {
   const sends = new Map();
   const requireUser = (req, res, next) => requireAuth(req, res, () => {
     if (req.user.role !== 'user' || !userId(req.user.id)) return res.status(403).json({ error: 'Kullanıcı girişi gerekli' });
@@ -47,8 +47,16 @@ module.exports = function registerSocial(app, { supabase, requireAuth, jwt, JWT_
     if (!person) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
     const { error } = await supabase.from('user_follows').insert({ follower_id: me, following_id: target });
     if (error && error.code !== '23505') return tableError(res);
-    if (!error) await notify(target, me, 'follow', null, req.user.name || 'Bir NewHal üyesi', person.email);
-    res.json({ following: true });
+    let rewards = { follower: 0, followed: 0 };
+    if (!error) {
+      await notify(target, me, 'follow', null, req.user.name || 'Bir NewHal üyesi', person.email);
+      const [follower, followed] = await Promise.all([
+        awardEconomyPoints(me, 'follow_given', `follow-given:${me}:${target}`),
+        awardEconomyPoints(target, 'followed_received', `follow-received:${me}:${target}`),
+      ]);
+      rewards = { follower: follower.amount, followed: followed.amount };
+    }
+    res.json({ following: true, rewards });
   });
 
   app.delete('/api/users/:id/follow', requireUser, async (req, res) => {

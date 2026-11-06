@@ -50,6 +50,7 @@ Supabase ve Google giriş anahtarları buradan okunur. `.env` asla GitHub'a gön
 - 📱 Google Play uygulaması için doğrulanmış Android App Links; adres çubuğu olmadan açılış
 - ⭐ Ana sayfanın üstünde öne çıkan vitrin ve güncel ilan şeridi
 - 📱 Mobil ilan ekranında üst menü için gereksiz boşluk olmadan başlangıç
+- 💰 Yönetici tarafından ayarlanabilen ilan ve takip Para Puan ekonomisi
 
 ## 🗂 Proje Yapısı
 

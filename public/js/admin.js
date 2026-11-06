@@ -95,7 +95,36 @@ async function api(path, opts = {}) {
 // ── Load All Data ──────────────────────────────────────────────
 async function loadAll() {
   api('/api/admin/ads').then(r => r && r.json()).then(ads => ads && updateAdsBadge(ads)).catch(() => {});
-  await Promise.all([loadStats(), loadPending(), loadApproved(), loadRejected(), loadCategories(), loadReports(), loadLogs(), loadClaims(), loadBusinessLevelRules()]);
+  await Promise.all([loadStats(), loadPending(), loadApproved(), loadRejected(), loadCategories(), loadReports(), loadLogs(), loadClaims(), loadBusinessLevelRules(), loadEconomyRules()]);
+}
+
+async function loadEconomyRules() {
+  const res = await api('/api/admin/economy-rules');
+  if (!res || !res.ok) return;
+  const rules = await res.json();
+  document.getElementById('economyAdCreated').value = Number(rules.adCreated) || 0;
+  document.getElementById('economyFollowGiven').value = Number(rules.followGiven) || 0;
+  document.getElementById('economyFollowedReceived').value = Number(rules.followedReceived) || 0;
+}
+
+async function saveEconomyRules(event) {
+  event.preventDefault();
+  const payload = {
+    adCreated: Number(document.getElementById('economyAdCreated').value),
+    followGiven: Number(document.getElementById('economyFollowGiven').value),
+    followedReceived: Number(document.getElementById('economyFollowedReceived').value),
+  };
+  if (Object.values(payload).some(value => !Number.isInteger(value) || value < 0 || value > 100000)) return showToast('Her ödül 0 ile 100.000 arasında tam sayı olmalı', 'error');
+  const button = document.getElementById('economyRulesSave');
+  button.disabled = true;
+  try {
+    const res = await api('/api/admin/economy-rules', { method: 'PUT', body: JSON.stringify(payload) });
+    const data = res && await res.json();
+    if (!res || !res.ok) throw new Error((data && data.error) || 'Ekonomi kuralları kaydedilemedi');
+    await loadEconomyRules();
+    showToast('Ekonomi kuralları kaydedildi', 'success');
+  } catch (err) { showToast(err.message || 'Ekonomi kuralları kaydedilemedi', 'error'); }
+  finally { button.disabled = false; }
 }
 
 async function loadBusinessLevelRules() {
@@ -394,6 +423,7 @@ const sectionTitles = {
   reports:   'Hata Bildirimleri',
   claims:    'Dükkan Sahipleri',
   users:     'Kullanıcılar',
+  economy:   'Ekonomi',
   broadcast: 'Toplu Bildirim',
   stats:     'İstatistikler',
   logs:      'Aktivite Logları'
@@ -415,6 +445,8 @@ function showSection(name) {
     loadLogs();
   } else if (name === 'users') {
     loadUsers();
+  } else if (name === 'economy') {
+    loadEconomyRules();
   } else if (name === 'claims') {
     loadClaims();
   }

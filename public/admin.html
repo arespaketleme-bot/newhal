@@ -100,6 +100,10 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Kullanıcılar
         </button>
+        <button class="nav-item" id="navEconomy" onclick="showSection('economy')">
+          <span aria-hidden="true">💰</span>
+          Ekonomi
+        </button>
         <button class="nav-item" id="navBroadcast" onclick="showSection('broadcast')">
           <span aria-hidden="true">📣</span>
           Toplu Bildirim
@@ -451,6 +455,24 @@
             <tbody id="usersBody"></tbody>
           </table>
           <div class="empty-table" id="usersEmpty">Henüz kayıtlı kullanıcı yok</div>
+        </div>
+      </section>
+
+      <!-- ── EKONOMİ ── -->
+      <section class="section" id="sectionEconomy">
+        <div class="section-head">
+          <h1>Ekonomi</h1>
+          <p>Üyelerin hangi hareketten kaç Para Puan kazanacağını belirleyin. 0 yazmak ödülü kapatır.</p>
+        </div>
+        <div class="broadcast-card">
+          <form id="economyRulesForm" onsubmit="saveEconomyRules(event)">
+            <div class="form-group"><label for="economyAdCreated">İlan ekleyene</label><input id="economyAdCreated" type="number" min="0" max="100000" step="1" required inputmode="numeric" /><small>Her yeni ilan için, ilan sahibine verilir.</small></div>
+            <div class="form-group"><label for="economyFollowGiven">Takip edene</label><input id="economyFollowGiven" type="number" min="0" max="100000" step="1" required inputmode="numeric" /><small>Bir üyeyi ilk kez takip eden kullanıcıya verilir.</small></div>
+            <div class="form-group"><label for="economyFollowedReceived">Takip edilene</label><input id="economyFollowedReceived" type="number" min="0" max="100000" step="1" required inputmode="numeric" /><small>Yeni bir takipçi kazanan kullanıcıya verilir.</small></div>
+            <p class="broadcast-note">Takibi bırakıp yeniden takip ederek ya da aynı ilanı tekrar kaydederek ek puan kazanılamaz.</p>
+            <button class="btn-login broadcast-send" id="economyRulesSave" type="submit">💾 Ekonomi Kurallarını Kaydet</button>
+            <p class="broadcast-status" id="economyRulesStatus" aria-live="polite"></p>
+          </form>
         </div>
       </section>
 
