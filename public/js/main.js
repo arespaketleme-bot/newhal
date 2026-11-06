@@ -4023,12 +4023,28 @@ async function loadMyAds() {
       del.className = 'my-ad-delete';
       del.textContent = 'Sil';
       del.onclick = () => deleteMyAd(ad.id);
-      row.append(thumb, info, del);
+      const vitrin = document.createElement('button');
+      vitrin.type = 'button'; vitrin.className = 'my-ad-vitrin';
+      vitrin.textContent = ad.featured ? '⭐ Vitrinde' : ad.featured_request_status === 'pending' ? '⏳ Başvuru bekliyor' : '⭐ Vitrine başvur · 1.000 PP';
+      vitrin.disabled = !!ad.featured || ad.featured_request_status === 'pending' || ad.status !== 'live';
+      vitrin.onclick = () => applyMyAdToVitrin(ad.id);
+      row.append(thumb, info, vitrin, del);
       list.appendChild(row);
     });
   } catch {
     box.hidden = true;
   }
+}
+
+async function applyMyAdToVitrin(id) {
+  if (!confirm('Bu ilan için vitrin başvurusu yapılsın mı? 1.000 Para Puan hesabınızdan düşer.')) return;
+  try {
+    const res = await fetch(`/api/my-ads/${encodeURIComponent(id)}/vitrin-application`, { method: 'POST', headers: { Authorization: 'Bearer ' + localStorage.getItem('userToken') } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Vitrin başvurusu yapılamadı');
+    showToast(`${data.points_spent.toLocaleString('tr-TR')} Para Puan kullanıldı. Başvurunuz yöneticinin onayını bekliyor.`, 'success');
+    loadMyAds();
+  } catch (err) { showToast(err.message, 'error'); }
 }
 
 async function deleteMyAd(id) {

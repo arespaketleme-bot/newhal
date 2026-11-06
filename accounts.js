@@ -169,13 +169,13 @@ module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET,
   async function getPointsBalance(userId) {
     let balance = 0;
     for (let offset = 0; ; offset += 1000) {
-      const { data, error } = await supabase.from('newhal_points_ledger').select('amount')
+      const { data, error } = await supabase.from('newhal_points_ledger').select('amount,created_by')
         .eq('user_id', userId).order('id', { ascending: true }).range(offset, offset + 999);
       if (error) {
         console.error('Para Puan bakiyesi alınamadı:', error.message);
         return balance;
       }
-      (data || []).forEach(row => { balance += Number(row.amount || 0); });
+      (data || []).forEach(row => { balance += row.created_by === 'economy:vitrin_purchase' ? -Math.abs(Number(row.amount || 0)) : Number(row.amount || 0); });
       if (!data || data.length < 1000) break;
     }
     return balance;
@@ -192,12 +192,12 @@ module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET,
     const labels = {
       ad_created: ['📢', 'İlan ekledi'], ad_like: ['♥', 'İlan beğendi'], ad_comment: ['💬', 'İlana yorum yaptı'],
       follow_given: ['👥', 'Bir üyeyi takip etti'], followed_received: ['👤', 'Yeni takipçi kazandı'],
-      daily_login: ['☀️', 'Günlük giriş yaptı'], referral: ['🎁', 'Davet ödülü kazandı'],
+      daily_login: ['☀️', 'Günlük giriş yaptı'], referral: ['🎁', 'Davet ödülü kazandı'], vitrin_purchase: ['⭐', 'Vitrin başvurusu yaptı'],
     };
     return (data || []).map(row => {
       const type = String(row.created_by || '').replace(/^economy:/, '') || row.reason;
       const [icon, label] = labels[type] || ['💰', 'Para Puan kazandı'];
-      return { type, icon, label, points: Number(row.amount || 0), created_at: row.created_at };
+      return { type, icon, label, points: type === 'vitrin_purchase' ? -Math.abs(Number(row.amount || 0)) : Number(row.amount || 0), created_at: row.created_at };
     });
   }
 

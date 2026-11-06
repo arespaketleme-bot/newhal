@@ -57,6 +57,7 @@ Supabase ve Google giriş anahtarları buradan okunur. `.env` asla GitHub'a gön
 - ❤️ İlanlara giriş yapan üyelerin beğeni bırakabildiği ve yorum yazabildiği etkileşim alanı
 - 💰 İlan beğenisi ve yorumu için yönetici tarafından ayarlanabilen Para Puan ödülleri
 - 🕘 Kullanıcı profilinde son Para Puan kazandıran hareketleri gösteren Aktivitelerim listesi
+- ⭐ Kullanıcı ilanları için 1.000 Para Puan karşılığında yönetici onaylı vitrin başvurusu
 - ↗️ İlan kartlarında seçenekleri açılan paylaşım menüsü
 
 ## 🗂 Proje Yapısı

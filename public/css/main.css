@@ -1744,6 +1744,8 @@ img.ad-media.ad-logo-media {
   flex-shrink: 0; min-height: 34px; padding: 0 12px; border-radius: 8px; cursor: pointer; font-size: 12px;
   background: none; border: 1px solid rgba(248,113,113,0.35); color: #f87171;
 }
+.my-ad-vitrin { flex-shrink: 0; min-height: 34px; padding: 0 10px; border-radius: 8px; cursor: pointer; font-size: 11px; background: rgba(251,191,36,.09); border: 1px solid rgba(251,191,36,.4); color: #fcd34d; }
+.my-ad-vitrin:disabled { opacity: .65; cursor: default; }
 @media (max-width: 768px) {
   .ads-head-actions { flex: 1 1 100%; justify-content: stretch; }
   .ads-post-btn { flex: 1 1 100%; justify-content: center; }

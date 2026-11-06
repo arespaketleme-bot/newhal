@@ -182,9 +182,9 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
   const balances = new Map();
   for (let offset = 0; ; offset += 1000) {
     const { data, error } = await db.supabase.from('newhal_points_ledger')
-      .select('user_id,amount').order('id', { ascending: true }).range(offset, offset + 999);
+    .select('user_id,amount,created_by').order('id', { ascending: true }).range(offset, offset + 999);
     if (error) return res.status(500).json({ error: 'Kullanıcı puanları alınamadı' });
-    (data || []).forEach(row => balances.set(row.user_id, (balances.get(row.user_id) || 0) + Number(row.amount || 0)));
+    (data || []).forEach(row => balances.set(row.user_id, (balances.get(row.user_id) || 0) + (row.created_by === 'economy:vitrin_purchase' ? -Math.abs(Number(row.amount || 0)) : Number(row.amount || 0))));
     if (!data || data.length < 1000) break;
   }
   const users = await db.getAllUsers();
@@ -1567,8 +1567,40 @@ app.get('/api/my-ads', requireAuth, async (req, res) => {
   const ads = (await db.getAds()).filter(a => a.owner && a.owner.id === req.user.id);
   res.json(ads.sort((a, b) => b.created_at.localeCompare(a.created_at)).map(a => ({
     id: a.id, no: a.no, title: a.title, body: a.body, images: a.images, video: a.video, created_at: a.created_at,
-    status: a.pending ? 'pending' : a.active === false ? 'hidden' : 'live',
+    status: a.pending ? 'pending' : a.active === false ? 'hidden' : 'live', featured: !!a.featured,
+    featured_request_status: a.featured_request_status || '',
   })));
+});
+
+const VITRIN_APPLICATION_POINTS = 1000;
+const ledgerAmount = row => row.created_by === 'economy:vitrin_purchase' ? -Math.abs(Number(row.amount || 0)) : Number(row.amount || 0);
+
+async function userPointsBalance(userId) {
+  const { data, error } = await db.supabase.from('newhal_points_ledger').select('amount,created_by').eq('user_id', userId);
+  if (error) throw error;
+  return (data || []).reduce((sum, row) => sum + ledgerAmount(row), 0);
+}
+
+app.post('/api/my-ads/:id/vitrin-application', requireAuth, async (req, res) => {
+  if (req.user.role !== 'user') return res.status(403).json({ error: 'Kullanıcı girişi gerekli' });
+  const ads = await db.getAds();
+  const ad = ads.find(item => item.id === req.params.id && item.owner && Number(item.owner.id) === Number(req.user.id));
+  if (!ad) return res.status(404).json({ error: 'İlan bulunamadı' });
+  if (ad.active === false || ad.pending) return res.status(400).json({ error: 'Yayında olan bir ilan için başvuru yapabilirsiniz' });
+  if (ad.featured) return res.status(400).json({ error: 'Bu ilan zaten vitrinde' });
+  if (ad.featured_request_status === 'pending') return res.status(409).json({ error: 'Bu ilan için vitrin başvurusu zaten bekliyor' });
+  let balance;
+  try { balance = await userPointsBalance(req.user.id); } catch { return res.status(500).json({ error: 'Para Puan bakiyesi alınamadı' }); }
+  if (balance < VITRIN_APPLICATION_POINTS) return res.status(400).json({ error: `Vitrin başvurusu için ${VITRIN_APPLICATION_POINTS.toLocaleString('tr-TR')} Para Puan gerekir` });
+  const { error } = await db.supabase.from('newhal_points_ledger').insert({
+    user_id: req.user.id, amount: VITRIN_APPLICATION_POINTS, reason: 'admin_credit',
+    idempotency_key: `vitrin-request:${ad.id}`, created_by: 'economy:vitrin_purchase',
+  });
+  if (error && error.code !== '23505') return res.status(500).json({ error: 'Para Puan kullanılamadı' });
+  if (error) return res.status(409).json({ error: 'Bu ilan için vitrin başvurusu zaten yapıldı' });
+  ad.featured_request_status = 'pending'; ad.featured_requested_at = new Date().toISOString();
+  if (!(await db.saveAds(ads))) return res.status(500).json({ error: 'Başvuru kaydedilemedi' });
+  res.status(201).json({ message: 'Vitrin başvurunuz alındı', points_spent: VITRIN_APPLICATION_POINTS, balance: balance - VITRIN_APPLICATION_POINTS });
 });
 
 app.delete('/api/my-ads/:id', requireAuth, async (req, res) => {
@@ -1647,6 +1679,7 @@ app.patch('/api/admin/ads/:id', requireAdmin, async (req, res) => {
   if ('active' in req.body) ad.active = !!req.body.active;
   if (ad.active) delete ad.pending;   // yayına alınan kullanıcı ilanı artık onaylıdır
   if ('featured' in req.body) setFeatured(ad, !!req.body.featured, req.body.featured_days);
+  if (req.body.featured) { ad.featured_request_status = 'approved'; ad.featured_approved_at = new Date().toISOString(); }
   if (req.body.whatsapp_sent) ad.whatsapp_sent_at = new Date().toISOString();
   if (!(await db.saveAds(ads))) return res.status(500).json({ error: 'Kaydedilemedi' });
   res.json(ad);
