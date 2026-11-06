@@ -1808,8 +1808,10 @@ app.delete('/api/admin/chat', requireAdmin, async (req, res) => {
 // ANDROID_SHA256 ortam değişkenine virgülle yazılır.
 const ANDROID_PACKAGE = 'com.newhal.app';
 const ANDROID_UPLOAD_SHA256 = '8E:D1:A2:6D:8E:9E:67:D5:E3:52:01:2A:B4:32:B8:17:22:AF:2A:83:7D:0C:C4:04:BA:46:D9:0B:41:CF:DD:D8';
+// Google Play'in dağıttığı Android App Bundle sürümlerinin imza sertifikası.
+const ANDROID_PLAY_SHA256 = '23:65:24:47:69:8F:CF:93:9A:A2:38:B1:47:79:58:19:D8:47:30:F6:93:BE:28:E8:EF:5D:4C:00:5E:8E:F0:1F';
 app.get('/.well-known/assetlinks.json', (req, res) => {
-  const prints = [ANDROID_UPLOAD_SHA256, ...String(process.env.ANDROID_SHA256 || '').split(',')]
+  const prints = [ANDROID_UPLOAD_SHA256, ANDROID_PLAY_SHA256, ...String(process.env.ANDROID_SHA256 || '').split(',')]
     .map(s => s.trim().toUpperCase()).filter(Boolean);
   res.json([{
     relation: ['delegate_permission/common.handle_all_urls'],

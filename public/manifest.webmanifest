@@ -6,7 +6,7 @@
   "id": "/",
   "start_url": "/?kaynak=uygulama",
   "scope": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "portrait",
   "background_color": "#080b10",
   "theme_color": "#080c16",

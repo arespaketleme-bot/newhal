@@ -1158,7 +1158,7 @@ button, a { cursor: pointer; text-decoration: none; border: none; background: no
 }
 
 /* Uygulama olarak açıldığında çentik/durum çubuğu boşluğu */
-@media (display-mode: standalone) {
+@media (display-mode: standalone), (display-mode: fullscreen) {
   body { padding-top: env(safe-area-inset-top); }
 }
 @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
@@ -1315,6 +1315,14 @@ button, a { cursor: pointer; text-decoration: none; border: none; background: no
   }
   .bottom-nav-add svg { width: 24px; height: 24px; }
   .bottom-nav-add:active { transform: scale(0.94); }
+}
+
+/* Telefonda üstteki site başlığı yer kaplamaz. */
+@media (max-width: 768px) {
+  .header { display: none; }
+  .hero { padding-top: 32px; }
+  .ads-section.ads-top { padding-top: 16px; }
+  #hero, #mapSection, #listSection { scroll-margin-top: 0; }
 }
 
 @keyframes slideUpSheet { from { transform: translateY(100%); } to { transform: none; } }

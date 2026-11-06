@@ -47,6 +47,7 @@ Supabase ve Google giriş anahtarları buradan okunur. `.env` asla GitHub'a gön
 - 🏅 Her 1.000 Para Puanda bir artan üye seviyesi
 - 🔔 Takip, mesaj ve duyurular için tarayıcı push bildirimi
 - 🌙 Dark mode tasarım, glassmorphism efektler
+- 📱 Google Play uygulaması için doğrulanmış Android App Links; adres çubuğu olmadan açılış
 
 ## 🗂 Proje Yapısı
 
