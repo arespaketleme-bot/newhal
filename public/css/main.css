@@ -1788,6 +1788,7 @@ img.ad-media.ad-logo-media {
 
 .ad-engagement { display: flex; flex-direction: column; gap: 10px; padding-top: 2px; }
 .ad-engagement-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ad-engagement-actions .ad-share { padding: 0; margin: 0; border-top: 0; }
 .ad-like-btn.is-liked { color: #fb7185; border-color: rgba(251,113,133,0.55); background: rgba(251,113,133,0.11); }
 .ad-like-btn:hover { color: #fb7185; border-color: rgba(251,113,133,0.6); }
 .ad-comments { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }

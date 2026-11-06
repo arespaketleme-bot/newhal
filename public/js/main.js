@@ -2332,7 +2332,6 @@ function buildAdCard(ad) {
   }
   body.appendChild(adMetaLine(ad));
   body.appendChild(buildAdEngagement(ad));
-  body.appendChild(buildShareBar(ad));
   card.appendChild(body);
   if (ad.featured) {
     card.classList.add('is-featured');
@@ -2429,6 +2428,7 @@ function buildAdEngagement(ad, detailed = false) {
   comment.textContent = `💬 Yorum${ad.comments?.length ? ` (${ad.comments.length})` : ''}`;
   comment.onclick = () => openAdViewer(ad, 0);
   actions.appendChild(comment);
+  actions.appendChild(buildShareBar(ad, detailed));
   section.appendChild(actions);
 
   if (!detailed) return section;
@@ -2627,7 +2627,6 @@ function renderAdViewer() {
   }
   info.appendChild(adMetaLine(ad));
   info.appendChild(buildAdEngagement(ad, true));
-  info.appendChild(buildShareBar(ad, true));
 }
 
 document.addEventListener('keydown', (e) => {
