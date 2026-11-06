@@ -3340,14 +3340,30 @@ function storyState(pinId) {
 function storyQueue() {
   const map = storyAdsByPin();
   const seen = readSeenStories();
+  const weekCutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const weeklyAds = allAds
+    .filter(ad => !ad.weather && Date.parse(ad.created_at) >= weekCutoff && Date.parse(ad.created_at) <= Date.now())
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const weekly = [];
+  const weeklyGroupSize = 10;
+  for (let i = 0; i < weeklyAds.length; i += weeklyGroupSize) {
+    const number = weekly.length + 1;
+    weekly.push({
+      pin: { id: `weekly-${number}`, title: `İlanlar ${number}`, category: '', images: [] },
+      ads: weeklyAds.slice(i, i + weeklyGroupSize),
+      weekly: true,
+      fresh: weeklyAds.slice(i, i + weeklyGroupSize).some(ad => !seen.has(ad.id)),
+    });
+  }
   const shops = Object.keys(map).map(Number)
     .map(id => ({ pin: allPins.find(p => p.id === id), ads: map[id] }))
     .filter(s => s.pin)
     .map(s => ({ ...s, fresh: s.ads.some(ad => !seen.has(ad.id)) }))
     .sort((a, b) => (b.fresh - a.fresh) || b.ads[b.ads.length - 1].created_at.localeCompare(a.ads[a.ads.length - 1].created_at));
   // Facebook sayfasının hikayeleri hep en sonda (şeridin en sağında)
-  if (!fbStories.ads.length) return shops;
-  return [...shops, { pin: FB_STORY_PIN, ads: fbStories.ads, fb: true, fresh: fbStories.ads.some(ad => !seen.has(ad.id)) }];
+  const queue = [...weekly, ...shops];
+  if (!fbStories.ads.length) return queue;
+  return [...queue, { pin: FB_STORY_PIN, ads: fbStories.ads, fb: true, fresh: fbStories.ads.some(ad => !seen.has(ad.id)) }];
 }
 
 // ── Facebook sayfasının hikayeleri (halkompleksi33) ──
@@ -3453,6 +3469,7 @@ function ensureStoryDom() {
     const entry = story && story.queue[story.pinIndex];
     if (!entry) return;
     if (entry.fb) { pauseStory(true); if (fbStories.page) window.open(fbStories.page.url, '_blank', 'noopener'); return; }
+    if (entry.weekly) { const ad = currentStoryAd(); closeStories(() => openAdViewer(ad, 0)); return; }
     closeStories(() => showPinDetail(entry.pin.id));
   };
   // Dokun: sağ ileri, sol geri; basılı tut: dur
@@ -3673,12 +3690,14 @@ function showStoryItem() {
     call.onclick = () => pauseStory(true);
     actions.appendChild(call);
   }
-  const shopBtn = document.createElement('button');
-  shopBtn.type = 'button';
-  shopBtn.className = 'story-action';
-  shopBtn.textContent = '🏪 Dükkan';
-  shopBtn.onclick = () => closeStories(() => showPinDetail(pin.id));
-  actions.appendChild(shopBtn);
+  if (!entry.weekly) {
+    const shopBtn = document.createElement('button');
+    shopBtn.type = 'button';
+    shopBtn.className = 'story-action';
+    shopBtn.textContent = '🏪 Dükkan';
+    shopBtn.onclick = () => closeStories(() => showPinDetail(pin.id));
+    actions.appendChild(shopBtn);
+  }
 
   story.elapsed = 0;
   story.startedAt = performance.now();
