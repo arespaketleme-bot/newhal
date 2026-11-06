@@ -2763,6 +2763,28 @@ async function openProfileModal() {
   add.classList.add('accent');
   ads.appendChild(add);
 
+  const activities = document.getElementById('profileActivities');
+  activities.innerHTML = '';
+  const recentActivities = myProfile.activities || [];
+  if (!recentActivities.length) {
+    const empty = document.createElement('p');
+    empty.className = 'profile-activities-empty';
+    empty.textContent = 'Henüz gösterilecek bir aktivite yok.';
+    activities.appendChild(empty);
+  } else {
+    recentActivities.forEach(activity => {
+      const item = document.createElement('div');
+      item.className = 'profile-activity';
+      const text = document.createElement('span');
+      text.textContent = `${activity.icon || '•'} ${activity.label || 'Aktivite'}`;
+      const meta = document.createElement('small');
+      const date = new Date(activity.created_at).toLocaleString('tr-TR');
+      meta.textContent = `${activity.points ? `+${Number(activity.points).toLocaleString('tr-TR')} Para Puan · ` : ''}${date}`;
+      item.append(text, meta);
+      activities.appendChild(item);
+    });
+  }
+
   document.getElementById('profileModal').classList.add('open');
 }
 

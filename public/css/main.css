@@ -2170,6 +2170,10 @@ a.logo:hover img.logo-icon { transform: scale(1.06); }
 .profile-section summary { cursor: pointer; font-weight: 600; color: var(--text-2); margin-bottom: 8px; }
 .profile-section[hidden] { display: none; }
 .profile-links { display: flex; flex-direction: column; gap: 6px; }
+.profile-activities { display: flex; flex-direction: column; gap: 6px; max-height: 230px; overflow-y: auto; }
+.profile-activity { display: flex; flex-direction: column; gap: 3px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 10px; background: rgba(255,255,255,0.035); color: var(--text-1); font-size: 13px; }
+.profile-activity small, .profile-activities-empty { color: var(--text-3); font-size: 12px; }
+.profile-activities-empty { margin: 0; padding: 8px 0; }
 .profile-link {
   text-align: left; padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 14px; font-family: var(--font-body);
   background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text-1);

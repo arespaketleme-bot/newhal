@@ -153,7 +153,7 @@ module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET,
     const [accounts, profiles, shops] = await Promise.all([load(ACCOUNTS_FILE), load(PROFILES_FILE), db.getPinsByOwner(user.id)]);
     const account = accounts[user.id];
     const profile = profiles[user.id] || {};
-    const pointsBalance = await getPointsBalance(user.id);
+    const [pointsBalance, activities] = await Promise.all([getPointsBalance(user.id), getRecentActivities(user.id)]);
     const level = Math.floor(pointsBalance / 1000) + 1;
     const levelProgress = pointsBalance % 1000;
     res.json({
@@ -162,7 +162,7 @@ module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET,
       login: account ? 'telefon' : 'google',
       login_phone: account ? prettyPhone(account.phone) : '',
       about: profile.about || '', contact_phone: profile.contact_phone || '', show_phone: !!profile.show_phone,
-      created_at: user.created_at, shops,
+      created_at: user.created_at, shops, activities,
     });
   });
 
@@ -179,6 +179,26 @@ module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET,
       if (!data || data.length < 1000) break;
     }
     return balance;
+  }
+
+  async function getRecentActivities(userId) {
+    const { data, error } = await supabase.from('newhal_points_ledger')
+      .select('amount,reason,created_by,created_at').eq('user_id', userId)
+      .order('created_at', { ascending: false }).limit(20);
+    if (error) {
+      console.error('Profil aktiviteleri alınamadı:', error.message);
+      return [];
+    }
+    const labels = {
+      ad_created: ['📢', 'İlan ekledi'], ad_like: ['♥', 'İlan beğendi'], ad_comment: ['💬', 'İlana yorum yaptı'],
+      follow_given: ['👥', 'Bir üyeyi takip etti'], followed_received: ['👤', 'Yeni takipçi kazandı'],
+      daily_login: ['☀️', 'Günlük giriş yaptı'], referral: ['🎁', 'Davet ödülü kazandı'],
+    };
+    return (data || []).map(row => {
+      const type = String(row.created_by || '').replace(/^economy:/, '') || row.reason;
+      const [icon, label] = labels[type] || ['💰', 'Para Puan kazandı'];
+      return { type, icon, label, points: Number(row.amount || 0), created_at: row.created_at };
+    });
   }
 
   app.put('/api/profile/me', requireAuth, async (req, res) => {

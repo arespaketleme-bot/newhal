@@ -56,6 +56,7 @@ Supabase ve Google giriş anahtarları buradan okunur. `.env` asla GitHub'a gön
 - 🌦️ Günlük Mersin hava durumu yalnızca Vitrin'de gösterilir
 - ❤️ İlanlara giriş yapan üyelerin beğeni bırakabildiği ve yorum yazabildiği etkileşim alanı
 - 💰 İlan beğenisi ve yorumu için yönetici tarafından ayarlanabilen Para Puan ödülleri
+- 🕘 Kullanıcı profilinde son Para Puan kazandıran hareketleri gösteren Aktivitelerim listesi
 - ↗️ İlan kartlarında seçenekleri açılan paylaşım menüsü
 
 ## 🗂 Proje Yapısı
