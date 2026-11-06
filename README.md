@@ -48,6 +48,7 @@ Supabase ve Google giriş anahtarları buradan okunur. `.env` asla GitHub'a gön
 - 🔔 Takip, mesaj ve duyurular için tarayıcı push bildirimi
 - 🌙 Dark mode tasarım, glassmorphism efektler
 - 📱 Google Play uygulaması için doğrulanmış Android App Links; adres çubuğu olmadan açılış
+- ⭐ Ana sayfanın üstünde öne çıkan vitrin ve güncel ilan şeridi
 
 ## 🗂 Proje Yapısı
 

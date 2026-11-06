@@ -108,6 +108,22 @@
 
   <!-- ── İLANLAR ────────────────────────────────────────────────────────── -->
   <section class="ads-section ads-top" id="adsSection">
+    <!-- Kayan ilan şeridi ve vitrin, sayfa açılır açılmaz görünür. -->
+    <div class="ads-ticker" id="adsTicker" hidden>
+      <span class="ads-ticker-label">📢 Son ilanlar</span>
+      <div class="ads-ticker-viewport"><div class="ads-ticker-track" id="adsTickerTrack"></div></div>
+    </div>
+    <div class="vitrin" id="vitrin" hidden>
+      <div class="vitrin-head">
+        <span class="vitrin-title">⭐ Vitrin</span>
+        <div class="vitrin-controls">
+          <button type="button" class="vitrin-arrow" onclick="vitrinStep(-1)" aria-label="Önceki vitrin ilanı">‹</button>
+          <button type="button" class="vitrin-arrow" onclick="vitrinStep(1)" aria-label="Sonraki vitrin ilanı">›</button>
+        </div>
+      </div>
+      <div class="vitrin-track" id="vitrinTrack"></div>
+      <div class="vitrin-dots" id="vitrinDots"></div>
+    </div>
     <div class="ads-head">
       <div>
         <h2>📢 İlanlar</h2>
@@ -133,23 +149,6 @@
       <div class="ads-empty-icon">📢</div>
       <strong>Henüz ilan yok</strong>
       <span>İlk ilanı sen ver: ürününü, aracını ya da ihtiyacını duyur.</span>
-    </div>
-    <!-- Vitrin: öne çıkan ilanlar -->
-    <!-- Kayan ilan şeridi: ilan başlıkları sağdan sola akar -->
-    <div class="ads-ticker" id="adsTicker" hidden>
-      <span class="ads-ticker-label">📢 Son ilanlar</span>
-      <div class="ads-ticker-viewport"><div class="ads-ticker-track" id="adsTickerTrack"></div></div>
-    </div>
-    <div class="vitrin" id="vitrin" hidden>
-      <div class="vitrin-head">
-        <span class="vitrin-title">⭐ Vitrin</span>
-        <div class="vitrin-controls">
-          <button type="button" class="vitrin-arrow" onclick="vitrinStep(-1)" aria-label="Önceki vitrin ilanı">‹</button>
-          <button type="button" class="vitrin-arrow" onclick="vitrinStep(1)" aria-label="Sonraki vitrin ilanı">›</button>
-        </div>
-      </div>
-      <div class="vitrin-track" id="vitrinTrack"></div>
-      <div class="vitrin-dots" id="vitrinDots"></div>
     </div>
     <div class="ads-search-info" id="adsSearchInfo" hidden></div>
     <div class="ads-grid" id="adsGrid"></div>
