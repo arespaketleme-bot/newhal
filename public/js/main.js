@@ -2107,8 +2107,16 @@ if (isStandaloneApp()) {
 // ── İlanlar (yönetici ekler, herkes görür) ────────────────────
 async function loadAds() {
   try {
-    const res = await fetch('/api/ads');
+    const [res, settingsRes] = await Promise.all([fetch('/api/ads'), fetch('/api/ad-story-settings').catch(() => null)]);
     if (!res.ok) return;
+    if (settingsRes && settingsRes.ok) {
+      const settings = await settingsRes.json();
+      adStorySettings = {
+        enabled: settings.enabled !== false,
+        days: Math.min(30, Math.max(1, Number(settings.days) || 7)),
+        groupSize: Math.min(50, Math.max(1, Number(settings.groupSize) || 10)),
+      };
+    }
     renderAds(await res.json());
     openAdFromLink();
   } catch (err) {
@@ -2136,6 +2144,7 @@ function showAds() {
 }
 
 let allAds = [];
+let adStorySettings = { enabled: true, days: 7, groupSize: 10 };
 let adsQuery = '';
 
 function renderAds(ads) {
@@ -3340,12 +3349,13 @@ function storyState(pinId) {
 function storyQueue() {
   const map = storyAdsByPin();
   const seen = readSeenStories();
-  const weekCutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const weeklyAds = allAds
-    .filter(ad => !ad.weather && Date.parse(ad.created_at) >= weekCutoff && Date.parse(ad.created_at) <= Date.now())
-    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const now = Date.now();
+  const weekCutoff = now - adStorySettings.days * 24 * 60 * 60 * 1000;
+  const weeklyAds = adStorySettings.enabled ? allAds
+    .filter(ad => !ad.weather && Date.parse(ad.created_at) >= weekCutoff && Date.parse(ad.created_at) <= now)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at)) : [];
   const weekly = [];
-  const weeklyGroupSize = 10;
+  const weeklyGroupSize = adStorySettings.groupSize;
   for (let i = 0; i < weeklyAds.length; i += weeklyGroupSize) {
     const number = weekly.length + 1;
     weekly.push({

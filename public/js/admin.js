@@ -1185,14 +1185,42 @@ async function loadAds() {
   loadFacebookStatus();
   loadWaTemplate();
   await loadAdStats();
-  const res = await api('/api/admin/ads');
+  const [res, settingsRes] = await Promise.all([api('/api/admin/ads'), api('/api/admin/ad-story-settings')]);
   if (!res) return;
   const ads = await res.json();
+  if (settingsRes && settingsRes.ok) {
+    const settings = await settingsRes.json();
+    document.getElementById('adStoryEnabled').checked = settings.enabled !== false;
+    document.getElementById('adStoryDays').value = Number(settings.days) || 7;
+    document.getElementById('adStoryGroupSize').value = Number(settings.groupSize) || 10;
+  }
   // Onay bekleyenler en üstte
   ads.sort((a, b) => (b.pending ? 1 : 0) - (a.pending ? 1 : 0));
   renderAdList(ads);
   renderAdPhotos();
   updateAdsBadge(ads);
+}
+
+async function saveAdStorySettings() {
+  const payload = {
+    enabled: document.getElementById('adStoryEnabled').checked,
+    days: Number(document.getElementById('adStoryDays').value),
+    groupSize: Number(document.getElementById('adStoryGroupSize').value),
+  };
+  if (!Number.isInteger(payload.days) || payload.days < 1 || payload.days > 30
+    || !Number.isInteger(payload.groupSize) || payload.groupSize < 1 || payload.groupSize > 50) {
+    showToast('Gün sayısı 1-30, hikaye başına ilan sayısı 1-50 arasında olmalı', 'error');
+    return;
+  }
+  const button = document.getElementById('saveAdStorySettings');
+  button.disabled = true;
+  try {
+    const res = await api('/api/admin/ad-story-settings', { method: 'PUT', body: JSON.stringify(payload) });
+    const data = res && await readApiJson(res, 'Hikaye ayarları kaydedilirken geçersiz yanıt alındı');
+    if (!res || !res.ok) throw new Error((data && data.error) || 'Hikaye ayarları kaydedilemedi');
+    showToast('Harita hikayesi ayarları kaydedildi', 'success');
+  } catch (err) { showToast(err.message || 'Hikaye ayarları kaydedilemedi', 'error'); }
+  finally { button.disabled = false; }
 }
 
 function updateAdsBadge(ads) {

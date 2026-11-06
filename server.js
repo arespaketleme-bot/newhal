@@ -1183,6 +1183,27 @@ const FEATURED_DEFAULT_DAYS = 7;
 const FEATURED_MAX_DAYS = 90;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const featuredDays = v => Math.min(FEATURED_MAX_DAYS, Math.max(1, Math.round(Number(v) || FEATURED_DEFAULT_DAYS)));
+const DEFAULT_AD_STORY_SETTINGS = Object.freeze({ enabled: true, days: 7, groupSize: 10 });
+let adStorySettingsCache = { ...DEFAULT_AD_STORY_SETTINGS };
+let adStorySettingsCacheAt = 0;
+
+async function getAdStorySettings() {
+  if (Date.now() - adStorySettingsCacheAt < 30_000) return adStorySettingsCache;
+  try {
+    const saved = await db.getPrivateJson('ad-story-settings.json');
+    const days = Number(saved && saved.days);
+    const groupSize = Number(saved && saved.groupSize);
+    adStorySettingsCache = {
+      enabled: saved && typeof saved.enabled === 'boolean' ? saved.enabled : DEFAULT_AD_STORY_SETTINGS.enabled,
+      days: Number.isInteger(days) && days >= 1 && days <= 30 ? days : DEFAULT_AD_STORY_SETTINGS.days,
+      groupSize: Number.isInteger(groupSize) && groupSize >= 1 && groupSize <= 50 ? groupSize : DEFAULT_AD_STORY_SETTINGS.groupSize,
+    };
+  } catch (err) {
+    console.error('Haftalık ilan hikayesi ayarları okunamadı:', err.message);
+  }
+  adStorySettingsCacheAt = Date.now();
+  return adStorySettingsCache;
+}
 
 // Süresiz vitrin ilanına varsayılan süre verir, süresi dolanı vitrinden indirir; değişiklik olduysa kaydeder
 async function getAdsWithFeaturedExpiry() {
@@ -1391,6 +1412,10 @@ function scheduleMersinWeatherRefresh() {
     scheduleMersinWeatherRefresh();
   }, delay).unref?.();
 }
+
+app.get('/api/ad-story-settings', async (req, res) => {
+  res.json(await getAdStorySettings());
+});
 
 app.get('/api/ads', async (req, res) => {
   const ads = (await getAdsWithFeaturedExpiry()).filter(a => a.active !== false && !a.pending);
@@ -1616,6 +1641,25 @@ app.delete('/api/my-ads/:id', requireAuth, async (req, res) => {
 app.get('/api/admin/ads', requireAdmin, async (req, res) => {
   const ads = await getAdsWithFeaturedExpiry();
   res.json([...ads].sort((a, b) => b.created_at.localeCompare(a.created_at)));
+});
+
+app.get('/api/admin/ad-story-settings', requireAdmin, async (req, res) => {
+  res.json(await getAdStorySettings());
+});
+
+app.put('/api/admin/ad-story-settings', requireAdmin, async (req, res) => {
+  const { enabled, days, groupSize } = req.body || {};
+  if (typeof enabled !== 'boolean' || !Number.isInteger(days) || days < 1 || days > 30
+    || !Number.isInteger(groupSize) || groupSize < 1 || groupSize > 50) {
+    return res.status(400).json({ error: 'Gösterim seçimi, 1-30 gün ve grup başına 1-50 ilan girin' });
+  }
+  const settings = { enabled, days, groupSize };
+  if (!(await db.savePrivateJson('ad-story-settings.json', settings))) {
+    return res.status(500).json({ error: 'Hikaye ayarları kaydedilemedi' });
+  }
+  adStorySettingsCache = settings;
+  adStorySettingsCacheAt = Date.now();
+  res.json(settings);
 });
 
 // Resim/video tarayıcıdan doğrudan depoya yüklenir; sunucu sadece tek kullanımlık adres verir

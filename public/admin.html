@@ -293,6 +293,23 @@
           </div>
         </div>
 
+        <div class="level-rules-card ad-story-settings-card">
+          <div>
+            <h3>Harita hikayeleri</h3>
+            <p>Yakın zamanda yüklenen ilanları haritanın üstündeki hikaye şeridinde gruplar halinde gösterin.</p>
+          </div>
+          <div class="ad-story-settings-fields">
+            <label class="ad-story-enabled"><input id="adStoryEnabled" type="checkbox" checked /> Haritada göster</label>
+            <label for="adStoryDays">Son
+              <span class="level-rules-input"><input id="adStoryDays" type="number" min="1" max="30" step="1" value="7" inputmode="numeric" /><span>gün</span></span>
+            </label>
+            <label for="adStoryGroupSize">Her hikayede
+              <span class="level-rules-input"><input id="adStoryGroupSize" type="number" min="1" max="50" step="1" value="10" inputmode="numeric" /><span>ilan</span></span>
+            </label>
+            <button class="btn-sm btn-approve" id="saveAdStorySettings" onclick="saveAdStorySettings()">Kaydet</button>
+          </div>
+        </div>
+
         <!-- Facebook sayfa bağlantısı -->
         <div class="fb-card" id="fbCard">
           <div class="fb-card-head">
