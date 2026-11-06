@@ -2053,7 +2053,7 @@ body.story-open { overflow: hidden; }
 .ads-section.ads-top { padding-top: 104px; }
 .ads-top ~ .hero { min-height: 0; padding-top: 64px; }
 @media (max-width: 768px) {
-  .ads-section.ads-top { padding-top: 76px; }
+  .ads-section.ads-top { padding-top: 16px; }
   .ads-top ~ .hero { padding-top: 40px; padding-bottom: 48px; }
 }
 
