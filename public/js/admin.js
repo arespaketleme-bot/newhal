@@ -92,6 +92,12 @@ async function api(path, opts = {}) {
   return res;
 }
 
+async function readApiJson(res, fallbackMessage = 'Sunucu geçerli bir yanıt vermedi') {
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) throw new Error(fallbackMessage);
+  return res.json();
+}
+
 // ── Load All Data ──────────────────────────────────────────────
 async function loadAll() {
   api('/api/admin/ads').then(r => r && r.json()).then(ads => ads && updateAdsBadge(ads)).catch(() => {});
@@ -101,10 +107,15 @@ async function loadAll() {
 async function loadEconomyRules() {
   const res = await api('/api/admin/economy-rules');
   if (!res || !res.ok) return;
-  const rules = await res.json();
-  document.getElementById('economyAdCreated').value = Number(rules.adCreated) || 0;
-  document.getElementById('economyFollowGiven').value = Number(rules.followGiven) || 0;
-  document.getElementById('economyFollowedReceived').value = Number(rules.followedReceived) || 0;
+  try {
+    const rules = await readApiJson(res, 'Ekonomi ayarları şu an yüklenemedi. Lütfen tekrar deneyin.');
+    document.getElementById('economyAdCreated').value = Number(rules.adCreated) || 0;
+    document.getElementById('economyFollowGiven').value = Number(rules.followGiven) || 0;
+    document.getElementById('economyFollowedReceived').value = Number(rules.followedReceived) || 0;
+  } catch (err) {
+    console.error(err);
+    showToast(err.message, 'error');
+  }
 }
 
 async function saveEconomyRules(event) {
@@ -119,7 +130,7 @@ async function saveEconomyRules(event) {
   button.disabled = true;
   try {
     const res = await api('/api/admin/economy-rules', { method: 'PUT', body: JSON.stringify(payload) });
-    const data = res && await res.json();
+    const data = res && await readApiJson(res, 'Ekonomi ayarları kaydedilirken geçersiz yanıt alındı');
     if (!res || !res.ok) throw new Error((data && data.error) || 'Ekonomi kuralları kaydedilemedi');
     await loadEconomyRules();
     showToast('Ekonomi kuralları kaydedildi', 'success');
