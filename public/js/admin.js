@@ -101,7 +101,28 @@ async function readApiJson(res, fallbackMessage = 'Sunucu geçerli bir yanıt ve
 // ── Load All Data ──────────────────────────────────────────────
 async function loadAll() {
   api('/api/admin/ads').then(r => r && r.json()).then(ads => ads && updateAdsBadge(ads)).catch(() => {});
-  await Promise.all([loadStats(), loadPending(), loadApproved(), loadRejected(), loadCategories(), loadReports(), loadLogs(), loadClaims(), loadBusinessLevelRules(), loadEconomyRules()]);
+  await Promise.all([loadStats(), loadPending(), loadApproved(), loadRejected(), loadCategories(), loadReports(), loadLogs(), loadClaims(), loadBusinessLevelRules(), loadEconomyRules(), loadEconomyLedger()]);
+}
+
+const ECONOMY_LABELS = { ad_created: 'İlan ekledi', follow_given: 'Takip etti', followed_received: 'Takip edildi' };
+
+async function loadEconomyLedger() {
+  const res = await api('/api/admin/economy-ledger');
+  if (!res || !res.ok) return;
+  try {
+    const data = await readApiJson(res, 'Ekonomi kayıtları şu an yüklenemedi.');
+    document.getElementById('economyTotalDistributed').textContent = Number(data.total_distributed || 0).toLocaleString('tr-TR');
+    const body = document.getElementById('economyLedgerBody');
+    const empty = document.getElementById('economyLedgerEmpty');
+    body.innerHTML = '';
+    const rows = data.entries || [];
+    empty.style.display = rows.length ? 'none' : 'block';
+    rows.forEach(row => {
+      const reason = String(row.created_by || '').replace(/^economy:/, '');
+      const date = new Date(row.created_at).toLocaleString('tr-TR');
+      body.insertAdjacentHTML('beforeend', `<tr><td><strong>${esc(row.user_name)}</strong> <small>#${Number(row.user_id)}</small></td><td>${esc(ECONOMY_LABELS[reason] || reason)}</td><td style="color:var(--green-400);font-weight:700;">+${Number(row.amount || 0).toLocaleString('tr-TR')}</td><td>${esc(date)}</td></tr>`);
+    });
+  } catch (err) { console.error(err); showToast(err.message, 'error'); }
 }
 
 async function loadEconomyRules() {
@@ -458,6 +479,7 @@ function showSection(name) {
     loadUsers();
   } else if (name === 'economy') {
     loadEconomyRules();
+    loadEconomyLedger();
   } else if (name === 'claims') {
     loadClaims();
   }

@@ -51,6 +51,7 @@ Supabase ve Google giriş anahtarları buradan okunur. `.env` asla GitHub'a gön
 - ⭐ Ana sayfanın üstünde öne çıkan vitrin ve güncel ilan şeridi
 - 📱 Mobil ilan ekranında üst menü için gereksiz boşluk olmadan başlangıç
 - 💰 Yönetici tarafından ayarlanabilen ilan ve takip Para Puan ekonomisi
+- 📊 Ekonomi ekranında toplam dağıtım özeti ve ödül günlüğü
 
 ## 🗂 Proje Yapısı
 

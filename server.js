@@ -1403,6 +1403,23 @@ app.put('/api/admin/economy-rules', requireAdmin, async (req, res) => {
   res.json(rules);
 });
 
+app.get('/api/admin/economy-ledger', requireAdmin, async (req, res) => {
+  const { data: rows, error } = await db.supabase.from('newhal_points_ledger')
+    .select('user_id,amount,created_by,created_at,idempotency_key')
+    .like('created_by', 'economy:%').order('created_at', { ascending: false }).limit(200);
+  if (error) return res.status(500).json({ error: 'Ekonomi kayıtları alınamadı' });
+  const userIds = [...new Set((rows || []).map(row => row.user_id))];
+  let users = [];
+  if (userIds.length) {
+    const result = await db.supabase.from('users').select('id,name').in('id', userIds);
+    if (result.error) return res.status(500).json({ error: 'Kullanıcılar alınamadı' });
+    users = result.data || [];
+  }
+  const names = new Map(users.map(user => [Number(user.id), user.name]));
+  const entries = (rows || []).map(row => ({ ...row, user_name: names.get(Number(row.user_id)) || `Kullanıcı #${row.user_id}` }));
+  res.json({ total_distributed: entries.reduce((total, row) => total + Number(row.amount || 0), 0), entries });
+});
+
 app.post('/api/ads', requireAuth, async (req, res) => {
   if (req.user.role !== 'user' || !req.user.id) return res.status(403).json({ error: 'Google ile giriş yapmalısınız' });
   const ad = cleanAd(req.body, { allowVideoFile: false });

@@ -464,6 +464,13 @@
           <h1>Ekonomi</h1>
           <p>Üyelerin hangi hareketten kaç Para Puan kazanacağını belirleyin. 0 yazmak ödülü kapatır.</p>
         </div>
+        <div class="stats-grid" style="margin-bottom:24px;">
+          <div class="stat-card stat-total" style="border-left-color:#fbbf24;">
+            <div class="stat-card-icon">💰</div>
+            <div class="stat-card-val" id="economyTotalDistributed">0</div>
+            <div class="stat-card-label">Toplam Dağıtılan Para Puan</div>
+          </div>
+        </div>
         <div class="broadcast-card">
           <form id="economyRulesForm" onsubmit="saveEconomyRules(event)">
             <div class="form-group"><label for="economyAdCreated">İlan ekleyene</label><input id="economyAdCreated" type="number" min="0" max="100000" step="1" required inputmode="numeric" /><small>Her yeni ilan için, ilan sahibine verilir.</small></div>
@@ -473,6 +480,13 @@
             <button class="btn-login broadcast-send" id="economyRulesSave" type="submit">💾 Ekonomi Kurallarını Kaydet</button>
             <p class="broadcast-status" id="economyRulesStatus" aria-live="polite"></p>
           </form>
+        </div>
+        <div class="recent-section" style="margin-top:24px;">
+          <div class="recent-header"><h3>Verilen Para Puan Kayıtları</h3></div>
+          <div class="pins-table-wrap">
+            <table class="pins-table"><thead><tr><th>Kullanıcı</th><th>Hareket</th><th>Para Puan</th><th>Tarih</th></tr></thead><tbody id="economyLedgerBody"></tbody></table>
+            <div class="empty-table" id="economyLedgerEmpty">Henüz ekonomi ödülü verilmedi</div>
+          </div>
         </div>
       </section>
 
