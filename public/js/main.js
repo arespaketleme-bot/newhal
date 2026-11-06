@@ -2331,6 +2331,7 @@ function buildAdCard(ad) {
     body.appendChild(text);
   }
   body.appendChild(adMetaLine(ad));
+  body.appendChild(buildAdEngagement(ad));
   body.appendChild(buildShareBar(ad));
   card.appendChild(body);
   if (ad.featured) {
@@ -2353,6 +2354,119 @@ function buildAdCard(ad) {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAdViewer(ad, 0); }
   });
   return card;
+}
+
+function updateAdEngagement(ad, update) {
+  Object.assign(ad, update);
+  const matching = allAds.find(item => item.id === ad.id);
+  if (matching && matching !== ad) Object.assign(matching, update);
+}
+
+async function toggleAdLike(ad) {
+  const token = readToken('userToken');
+  if (!token) return openAuthModal();
+  const liked = !ad.liked_by_me;
+  try {
+    const res = await fetch(`/api/ads/${encodeURIComponent(ad.id)}/likes`, {
+      method: liked ? 'POST' : 'DELETE',
+      headers: { Authorization: `Bearer ${token.token}` },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) return openAuthModal();
+    if (!res.ok) throw new Error(data.error || 'Beğeni güncellenemedi');
+    updateAdEngagement(ad, { liked_by_me: data.liked, like_count: data.like_count });
+    renderAdsGrid();
+    if (adViewer && adViewer.ad.id === ad.id) renderAdViewer();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function submitAdComment(ad, input, button) {
+  const token = readToken('userToken');
+  if (!token) return openAuthModal();
+  const message = input.value.trim();
+  if (!message) return showToast('Önce bir yorum yazın', 'error');
+  button.disabled = true;
+  try {
+    const res = await fetch(`/api/ads/${encodeURIComponent(ad.id)}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token.token}` },
+      body: JSON.stringify({ message }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) return openAuthModal();
+    if (!res.ok) throw new Error(data.error || 'Yorum gönderilemedi');
+    updateAdEngagement(ad, { comments: [data.comment, ...(ad.comments || [])] });
+    renderAdsGrid();
+    renderAdViewer();
+    showToast('Yorumunuz eklendi', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function buildAdEngagement(ad, detailed = false) {
+  const section = document.createElement('section');
+  section.className = `ad-engagement${detailed ? ' detailed' : ''}`;
+  section.addEventListener('click', event => event.stopPropagation());
+  if (ad.weather) return section;
+
+  const actions = document.createElement('div');
+  actions.className = 'ad-engagement-actions';
+  const like = document.createElement('button');
+  like.type = 'button';
+  like.className = `ad-like-btn${ad.liked_by_me ? ' is-liked' : ''}`;
+  like.textContent = `${ad.liked_by_me ? '♥' : '♡'} Beğen${ad.like_count ? ` (${ad.like_count})` : ''}`;
+  like.onclick = () => toggleAdLike(ad);
+  actions.appendChild(like);
+
+  const comment = document.createElement('button');
+  comment.type = 'button';
+  comment.className = 'ad-comment-btn';
+  comment.textContent = `💬 Yorum${ad.comments?.length ? ` (${ad.comments.length})` : ''}`;
+  comment.onclick = () => openAdViewer(ad, 0);
+  actions.appendChild(comment);
+  section.appendChild(actions);
+
+  if (!detailed) return section;
+  const comments = document.createElement('div');
+  comments.className = 'ad-comments';
+  const rows = ad.comments || [];
+  if (!rows.length) {
+    const empty = document.createElement('p');
+    empty.className = 'ad-comments-empty';
+    empty.textContent = 'Henüz yorum yok. İlk yorumu sen yap.';
+    comments.appendChild(empty);
+  } else {
+    rows.forEach(row => {
+      const item = document.createElement('div');
+      item.className = 'ad-comment';
+      const name = document.createElement('strong');
+      name.textContent = row.name || 'Kullanıcı';
+      const message = document.createElement('span');
+      message.textContent = row.message;
+      item.append(name, message);
+      comments.appendChild(item);
+    });
+  }
+  section.appendChild(comments);
+
+  const form = document.createElement('form');
+  form.className = 'ad-comment-form';
+  const input = document.createElement('input');
+  input.maxLength = 500;
+  input.placeholder = 'Yorumunuzu yazın';
+  input.setAttribute('aria-label', 'Yorumunuz');
+  const send = document.createElement('button');
+  send.type = 'submit';
+  send.textContent = 'Gönder';
+  form.append(input, send);
+  form.onsubmit = event => { event.preventDefault(); submitAdComment(ad, input, send); };
+  section.appendChild(form);
+  return section;
 }
 
 // Resimsiz ilanlarda gösterilen NewHal logosu
@@ -2512,6 +2626,7 @@ function renderAdViewer() {
     info.appendChild(p);
   }
   info.appendChild(adMetaLine(ad));
+  info.appendChild(buildAdEngagement(ad, true));
   info.appendChild(buildShareBar(ad, true));
 }
 
@@ -3965,10 +4080,18 @@ function buildShareBar(ad, large) {
     ['x', 'X', `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`],
     ['telegram', 'Telegram', `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`],
   ];
-  const label = document.createElement('span');
-  label.className = 'ad-share-label';
-  label.textContent = 'Paylaş:';
-  bar.appendChild(label);
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'ad-share-toggle';
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.innerHTML = `${SHARE_ICONS.more}<span>Paylaş</span>`;
+  toggle.onclick = () => {
+    const open = bar.classList.toggle('is-open');
+    toggle.setAttribute('aria-expanded', String(open));
+  };
+  const options = document.createElement('div');
+  options.className = 'ad-share-options';
+  bar.append(toggle, options);
   targets.forEach(([key, name, href]) => {
     const a = document.createElement('a');
     a.className = `ad-share-btn ${key}`;
@@ -3979,7 +4102,7 @@ function buildShareBar(ad, large) {
     a.setAttribute('aria-label', `${name}'ta paylaş`);
     a.innerHTML = SHARE_ICONS[key];
     a.addEventListener('click', () => track({ type: 'share', adId: ad.id, channel: key }));
-    bar.appendChild(a);
+    options.appendChild(a);
   });
 
   const copy = document.createElement('button');
@@ -3997,7 +4120,7 @@ function buildShareBar(ad, large) {
       prompt('Bağlantıyı kopyalayın:', url);
     }
   };
-  bar.appendChild(copy);
+  options.appendChild(copy);
 
   // Telefonda Instagram, Messenger vb. için cihazın kendi paylaş menüsü
   if (navigator.share) {
@@ -4011,7 +4134,7 @@ function buildShareBar(ad, large) {
       track({ type: 'share', adId: ad.id, channel: 'more' });
       navigator.share({ title: text, text, url }).catch(() => {});
     };
-    bar.appendChild(more);
+    options.appendChild(more);
   }
   return bar;
 }

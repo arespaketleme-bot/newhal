@@ -1761,7 +1761,15 @@ img.ad-media.ad-logo-media {
 .vitrin-badges { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 
 .ad-share { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding-top: 10px; margin-top: 2px; border-top: 1px solid var(--border); }
-.ad-share-label { font-size: 12px; color: var(--text-3); margin-right: 2px; }
+.ad-share-toggle, .ad-like-btn, .ad-comment-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 0 11px;
+  border: 1px solid var(--border); border-radius: 18px; background: rgba(255,255,255,0.04); color: var(--text-2); cursor: pointer;
+  font: inherit; font-size: 12px; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.ad-share-toggle svg { width: 15px; height: 15px; }
+.ad-share-toggle:hover, .ad-comment-btn:hover { color: #fff; border-color: var(--green-500); background: rgba(34,197,94,0.12); }
+.ad-share-options { display: none; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ad-share.is-open .ad-share-options { display: flex; }
 .ad-share-btn {
   width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
   border: 1px solid var(--border); background: rgba(255,255,255,0.04); color: var(--text-2); cursor: pointer;
@@ -1776,11 +1784,25 @@ img.ad-media.ad-logo-media {
 .ad-share-btn.copy:hover, .ad-share-btn.more:hover { background: var(--green-600); border-color: var(--green-600); }
 .ad-share.large .ad-share-btn { width: 42px; height: 42px; }
 .ad-share.large .ad-share-btn svg { width: 20px; height: 20px; }
+.ad-share.large .ad-share-toggle { min-height: 42px; padding: 0 14px; font-size: 14px; }
+
+.ad-engagement { display: flex; flex-direction: column; gap: 10px; padding-top: 2px; }
+.ad-engagement-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ad-like-btn.is-liked { color: #fb7185; border-color: rgba(251,113,133,0.55); background: rgba(251,113,133,0.11); }
+.ad-like-btn:hover { color: #fb7185; border-color: rgba(251,113,133,0.6); }
+.ad-comments { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
+.ad-comment { display: flex; flex-direction: column; gap: 3px; padding: 9px 10px; border-radius: 10px; background: rgba(255,255,255,0.045); font-size: 13px; color: var(--text-2); overflow-wrap: anywhere; }
+.ad-comment strong { color: var(--text-1); font-size: 12px; }
+.ad-comments-empty { margin: 0; color: var(--text-3); font-size: 13px; }
+.ad-comment-form { display: flex; gap: 8px; }
+.ad-comment-form input { min-width: 0; flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; color: var(--text-1); background: rgba(255,255,255,0.04); font: inherit; }
+.ad-comment-form button { padding: 0 13px; border: 0; border-radius: 10px; background: var(--green-600); color: #fff; cursor: pointer; font: inherit; font-size: 13px; }
+.ad-comment-form button:disabled { opacity: .6; cursor: wait; }
 @media (hover: none) {
   .ad-share-btn.whatsapp { color: #25d366; } .ad-share-btn.facebook { color: #4b9bff; }
   .ad-share-btn.telegram { color: #229ed9; } .ad-share-btn.x { color: #e5e7eb; }
 }
-@media (max-width: 768px) { .ad-share-btn { width: 38px; height: 38px; } }
+@media (max-width: 768px) { .ad-share-btn { width: 38px; height: 38px; } .ad-comment-form { flex-wrap: wrap; } .ad-comment-form button { min-height: 40px; } }
 @media (prefers-reduced-motion: reduce) { .ad-share-btn { transition: none; } }
 
 .install-nav-link[hidden] { display: none !important; }

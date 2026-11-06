@@ -1257,6 +1257,51 @@ async function deleteAdFiles(ad) {
 // Herkese açık ilan: ekleyenin hesap kimliği gösterilmez
 const publicAd = ({ owner, ...ad }) => (owner ? { ...ad, owner_name: owner.name, owner_id: owner.id } : ad);
 
+// İlan etkileşimleri ilanların kendisi gibi özel veri deposunda tutulur. Böylece
+// ilanlar için yeni bir SQL migration gerekmez ve eski ilanlar da desteklenir.
+const AD_INTERACTIONS_FILE = 'ad-interactions.json';
+const AD_COMMENT_MAX_LENGTH = 500;
+let adInteractionsCache = null;
+
+async function getAdInteractions() {
+  if (adInteractionsCache) return adInteractionsCache;
+  const saved = await db.getPrivateJson(AD_INTERACTIONS_FILE);
+  adInteractionsCache = saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
+  return adInteractionsCache;
+}
+
+async function saveAdInteractions(interactions) {
+  adInteractionsCache = interactions;
+  if (!(await db.savePrivateJson(AD_INTERACTIONS_FILE, interactions))) {
+    throw new Error('İlan etkileşimleri kaydedilemedi');
+  }
+}
+
+function adEngagement(ad, interactions, viewerId) {
+  const entry = interactions[ad.id] || {};
+  const likes = entry.likes && typeof entry.likes === 'object' ? entry.likes : {};
+  const comments = Array.isArray(entry.comments) ? entry.comments : [];
+  return {
+    ...ad,
+    like_count: Object.keys(likes).length,
+    liked_by_me: !!(viewerId && likes[String(viewerId)]),
+    comments: comments.map(comment => ({
+      id: comment.id, name: comment.name || 'Kullanıcı', message: comment.message,
+      created_at: comment.created_at,
+    })),
+  };
+}
+
+async function publicAdsWithEngagement(ads, viewerId) {
+  const interactions = await getAdInteractions();
+  return ads.map(ad => ad.weather ? ad : adEngagement(ad, interactions, viewerId));
+}
+
+async function activeAdForEngagement(id) {
+  const ads = await getAdsWithFeaturedExpiry();
+  return ads.find(ad => ad.id === id && ad.active !== false && !ad.pending);
+}
+
 // Mersin Hal için her gün otomatik hava durumu hikayesi.
 const WEATHER_TZ = 'Europe/Istanbul';
 let mersinWeatherStory = null;
@@ -1350,7 +1395,65 @@ app.get('/api/ads', async (req, res) => {
   const ads = (await getAdsWithFeaturedExpiry()).filter(a => a.active !== false && !a.pending);
   const weatherStory = await loadMersinWeatherStory();
   if (weatherStory && Date.parse(weatherStory.story_until) > Date.now()) ads.push(weatherStory);
-  res.json(ads.sort((a, b) => b.created_at.localeCompare(a.created_at)).map(publicAd));
+  const withEngagement = await publicAdsWithEngagement(ads, optionalViewerId(req));
+  res.json(withEngagement.sort((a, b) => b.created_at.localeCompare(a.created_at)).map(publicAd));
+});
+
+app.post('/api/ads/:id/likes', requireAuth, async (req, res) => {
+  const ad = await activeAdForEngagement(req.params.id);
+  if (!ad) return res.status(404).json({ error: 'İlan bulunamadı' });
+  if (ad.owner && String(ad.owner.id) === String(req.user.id)) return res.status(400).json({ error: 'Kendi ilanınızı beğenemezsiniz' });
+  try {
+    const interactions = await getAdInteractions();
+    const entry = interactions[ad.id] || { likes: {}, comments: [] };
+    entry.likes = entry.likes && typeof entry.likes === 'object' ? entry.likes : {};
+    entry.likes[String(req.user.id)] = { name: req.user.name || 'Kullanıcı', created_at: new Date().toISOString() };
+    interactions[ad.id] = entry;
+    await saveAdInteractions(interactions);
+    res.json({ liked: true, like_count: Object.keys(entry.likes).length });
+  } catch (err) {
+    console.error('İlan beğenisi kaydedilemedi:', err.message);
+    res.status(500).json({ error: 'Beğeni kaydedilemedi' });
+  }
+});
+
+app.delete('/api/ads/:id/likes', requireAuth, async (req, res) => {
+  const ad = await activeAdForEngagement(req.params.id);
+  if (!ad) return res.status(404).json({ error: 'İlan bulunamadı' });
+  try {
+    const interactions = await getAdInteractions();
+    const entry = interactions[ad.id] || { likes: {}, comments: [] };
+    entry.likes = entry.likes && typeof entry.likes === 'object' ? entry.likes : {};
+    delete entry.likes[String(req.user.id)];
+    interactions[ad.id] = entry;
+    await saveAdInteractions(interactions);
+    res.json({ liked: false, like_count: Object.keys(entry.likes).length });
+  } catch (err) {
+    console.error('İlan beğenisi silinemedi:', err.message);
+    res.status(500).json({ error: 'Beğeni geri alınamadı' });
+  }
+});
+
+app.post('/api/ads/:id/comments', requireAuth, async (req, res) => {
+  const ad = await activeAdForEngagement(req.params.id);
+  if (!ad) return res.status(404).json({ error: 'İlan bulunamadı' });
+  const message = String(req.body?.message || '').trim();
+  if (!message || message.length > AD_COMMENT_MAX_LENGTH) {
+    return res.status(400).json({ error: `Yorum 1 ile ${AD_COMMENT_MAX_LENGTH} karakter arasında olmalı` });
+  }
+  try {
+    const interactions = await getAdInteractions();
+    const entry = interactions[ad.id] || { likes: {}, comments: [] };
+    entry.comments = Array.isArray(entry.comments) ? entry.comments : [];
+    const comment = { id: crypto.randomUUID(), name: req.user.name || 'Kullanıcı', message, created_at: new Date().toISOString() };
+    entry.comments.unshift(comment);
+    interactions[ad.id] = entry;
+    await saveAdInteractions(interactions);
+    res.status(201).json({ comment, comment_count: entry.comments.length });
+  } catch (err) {
+    console.error('İlan yorumu kaydedilemedi:', err.message);
+    res.status(500).json({ error: 'Yorum kaydedilemedi' });
+  }
 });
 
 // ── Kullanıcı ilanları: giriş yapan herkes verebilir, hemen yayınlanır (yönetici gizleyip silebilir) ──

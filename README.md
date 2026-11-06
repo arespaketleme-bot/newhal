@@ -54,6 +54,8 @@ Supabase ve Google giriş anahtarları buradan okunur. `.env` asla GitHub'a gön
 - 📊 Ekonomi ekranında toplam dağıtım özeti ve ödül günlüğü
 - 👋 Yeni kullanıcı, günlük giriş ve davet Para Puanları ekonomi günlüğünde ayrı görünür
 - 🌦️ Günlük Mersin hava durumu yalnızca Vitrin'de gösterilir
+- ❤️ İlanlara giriş yapan üyelerin beğeni bırakabildiği ve yorum yazabildiği etkileşim alanı
+- ↗️ İlan kartlarında seçenekleri açılan paylaşım menüsü
 
 ## 🗂 Proje Yapısı
 
