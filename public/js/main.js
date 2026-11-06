@@ -2376,6 +2376,7 @@ async function toggleAdLike(ad) {
     updateAdEngagement(ad, { liked_by_me: data.liked, like_count: data.like_count });
     renderAdsGrid();
     if (adViewer && adViewer.ad.id === ad.id) renderAdViewer();
+    if (data.liked && data.points_awarded) showToast(`Beğeni için ${data.points_awarded} Para Puan kazandın!`, 'success');
   } catch (err) {
     showToast(err.message, 'error');
   }
@@ -2399,7 +2400,7 @@ async function submitAdComment(ad, input, button) {
     updateAdEngagement(ad, { comments: [data.comment, ...(ad.comments || [])] });
     renderAdsGrid();
     renderAdViewer();
-    showToast('Yorumunuz eklendi', 'success');
+    showToast(data.points_awarded ? `Yorumun için ${data.points_awarded} Para Puan kazandın!` : 'Yorumunuz eklendi', 'success');
   } catch (err) {
     showToast(err.message, 'error');
   } finally {

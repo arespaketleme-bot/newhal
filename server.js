@@ -1410,7 +1410,8 @@ app.post('/api/ads/:id/likes', requireAuth, async (req, res) => {
     entry.likes[String(req.user.id)] = { name: req.user.name || 'Kullanıcı', created_at: new Date().toISOString() };
     interactions[ad.id] = entry;
     await saveAdInteractions(interactions);
-    res.json({ liked: true, like_count: Object.keys(entry.likes).length });
+    const reward = await awardEconomyPoints(req.user.id, 'ad_like', `ad-like:${ad.id}:${req.user.id}`);
+    res.json({ liked: true, like_count: Object.keys(entry.likes).length, points_awarded: reward.amount });
   } catch (err) {
     console.error('İlan beğenisi kaydedilemedi:', err.message);
     res.status(500).json({ error: 'Beğeni kaydedilemedi' });
@@ -1449,7 +1450,8 @@ app.post('/api/ads/:id/comments', requireAuth, async (req, res) => {
     entry.comments.unshift(comment);
     interactions[ad.id] = entry;
     await saveAdInteractions(interactions);
-    res.status(201).json({ comment, comment_count: entry.comments.length });
+    const reward = await awardEconomyPoints(req.user.id, 'ad_comment', `ad-comment:${comment.id}`);
+    res.status(201).json({ comment, comment_count: entry.comments.length, points_awarded: reward.amount });
   } catch (err) {
     console.error('İlan yorumu kaydedilemedi:', err.message);
     res.status(500).json({ error: 'Yorum kaydedilemedi' });
@@ -1458,7 +1460,7 @@ app.post('/api/ads/:id/comments', requireAuth, async (req, res) => {
 
 // ── Kullanıcı ilanları: giriş yapan herkes verebilir, hemen yayınlanır (yönetici gizleyip silebilir) ──
 const USER_MAX_ADS_PER_DAY = 10;
-const ECONOMY_DEFAULTS = Object.freeze({ adCreated: 25, followGiven: 5, followedReceived: 10 });
+const ECONOMY_DEFAULTS = Object.freeze({ adCreated: 25, followGiven: 5, followedReceived: 10, adLike: 2, adComment: 5 });
 let economyRulesCache = null;
 let economyRulesCacheAt = 0;
 
@@ -1479,7 +1481,7 @@ async function getEconomyRules() {
 }
 
 async function awardEconomyPoints(userId, reason, idempotencyKey) {
-  const ruleForReason = { ad_created: 'adCreated', follow_given: 'followGiven', followed_received: 'followedReceived' };
+  const ruleForReason = { ad_created: 'adCreated', follow_given: 'followGiven', followed_received: 'followedReceived', ad_like: 'adLike', ad_comment: 'adComment' };
   const amount = (await getEconomyRules())[ruleForReason[reason]] || 0;
   if (!amount) return { awarded: false, amount: 0 };
   // Mevcut Para Puan muhasebe şemasıyla uyumlu kalır; ödül kaynağı denetim alanında korunur.

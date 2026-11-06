@@ -104,7 +104,7 @@ async function loadAll() {
   await Promise.all([loadStats(), loadPending(), loadApproved(), loadRejected(), loadCategories(), loadReports(), loadLogs(), loadClaims(), loadBusinessLevelRules(), loadEconomyRules(), loadEconomyLedger()]);
 }
 
-const ECONOMY_LABELS = { ad_created: 'İlan ekledi', follow_given: 'Takip etti', followed_received: 'Takip edildi', new_user: 'Yeni kullanıcı kaydı', daily_login: 'Günlük giriş', referral: 'Davet ödülü' };
+const ECONOMY_LABELS = { ad_created: 'İlan ekledi', ad_like: 'İlan beğendi', ad_comment: 'İlana yorum yaptı', follow_given: 'Takip etti', followed_received: 'Takip edildi', new_user: 'Yeni kullanıcı kaydı', daily_login: 'Günlük giriş', referral: 'Davet ödülü' };
 
 async function loadEconomyLedger() {
   const res = await api('/api/admin/economy-ledger');
@@ -131,6 +131,8 @@ async function loadEconomyRules() {
   try {
     const rules = await readApiJson(res, 'Ekonomi ayarları şu an yüklenemedi. Lütfen tekrar deneyin.');
     document.getElementById('economyAdCreated').value = Number(rules.adCreated) || 0;
+    document.getElementById('economyAdLike').value = Number(rules.adLike) || 0;
+    document.getElementById('economyAdComment').value = Number(rules.adComment) || 0;
     document.getElementById('economyFollowGiven').value = Number(rules.followGiven) || 0;
     document.getElementById('economyFollowedReceived').value = Number(rules.followedReceived) || 0;
   } catch (err) {
@@ -143,6 +145,8 @@ async function saveEconomyRules(event) {
   event.preventDefault();
   const payload = {
     adCreated: Number(document.getElementById('economyAdCreated').value),
+    adLike: Number(document.getElementById('economyAdLike').value),
+    adComment: Number(document.getElementById('economyAdComment').value),
     followGiven: Number(document.getElementById('economyFollowGiven').value),
     followedReceived: Number(document.getElementById('economyFollowedReceived').value),
   };

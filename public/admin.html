@@ -474,6 +474,8 @@
         <div class="broadcast-card">
           <form id="economyRulesForm" onsubmit="saveEconomyRules(event)">
             <div class="form-group"><label for="economyAdCreated">İlan ekleyene</label><input id="economyAdCreated" type="number" min="0" max="100000" step="1" required inputmode="numeric" /><small>Her yeni ilan için, ilan sahibine verilir.</small></div>
+            <div class="form-group"><label for="economyAdLike">İlan beğenene</label><input id="economyAdLike" type="number" min="0" max="100000" step="1" required inputmode="numeric" /><small>Bir ilanı ilk kez beğenen kullanıcıya verilir.</small></div>
+            <div class="form-group"><label for="economyAdComment">İlana yorum yapana</label><input id="economyAdComment" type="number" min="0" max="100000" step="1" required inputmode="numeric" /><small>Gönderilen her ilan yorumu için yorum sahibine verilir.</small></div>
             <div class="form-group"><label for="economyFollowGiven">Takip edene</label><input id="economyFollowGiven" type="number" min="0" max="100000" step="1" required inputmode="numeric" /><small>Bir üyeyi ilk kez takip eden kullanıcıya verilir.</small></div>
             <div class="form-group"><label for="economyFollowedReceived">Takip edilene</label><input id="economyFollowedReceived" type="number" min="0" max="100000" step="1" required inputmode="numeric" /><small>Yeni bir takipçi kazanan kullanıcıya verilir.</small></div>
             <p class="broadcast-note">Takibi bırakıp yeniden takip ederek ya da aynı ilanı tekrar kaydederek ek puan kazanılamaz.</p>
