@@ -3410,9 +3410,31 @@ function showStoryItem() {
   story.duration = STORY_IMAGE_MS;
   story.video = null;
   const caption = el.querySelector('.story-caption');
-  const textOnly = !(ad.images && ad.images.length) && !ad.video;
+  const weatherCard = ad.weather && typeof ad.weather === 'object';
+  const textOnly = !weatherCard && !(ad.images && ad.images.length) && !ad.video;
 
-  if (ad.video && ad.video.type === 'file') {
+  if (weatherCard) {
+    stage.classList.add('weather-card');
+    const panel = document.createElement('div');
+    panel.className = 'weather-story-panel';
+    const city = document.createElement('span');
+    city.className = 'weather-story-city';
+    city.textContent = 'MERSİN';
+    const date = document.createElement('span');
+    date.className = 'weather-story-date';
+    date.textContent = String(ad.weather.formattedDate || 'Bugün');
+    const icon = document.createElement('span');
+    icon.className = 'weather-story-icon';
+    icon.textContent = String(ad.weather.icon || '🌤️');
+    const description = document.createElement('strong');
+    description.className = 'weather-story-description';
+    description.textContent = String(ad.weather.description || 'Hava durumu');
+    const temperatures = document.createElement('div');
+    temperatures.className = 'weather-story-temperatures';
+    temperatures.innerHTML = `<span>↑ ${Number(ad.weather.high)}°</span><span>↓ ${Number(ad.weather.low)}°</span>`;
+    panel.append(city, date, icon, description, temperatures);
+    stage.appendChild(panel);
+  } else if (ad.video && ad.video.type === 'file') {
     const v = document.createElement('video');
     v.src = ad.video.url;
     v.playsInline = true;
@@ -3452,6 +3474,30 @@ function showStoryItem() {
   // Alttaki tuşlar: ilanı aç, ara, dükkan
   const actions = el.querySelector('.story-actions');
   actions.innerHTML = '';
+  if (weatherCard) {
+    const sourceBtn = document.createElement('a');
+    sourceBtn.className = 'story-action primary';
+    sourceBtn.href = 'https://api.met.no/weatherapi/locationforecast/2.0/documentation';
+    sourceBtn.target = '_blank';
+    sourceBtn.rel = 'noopener';
+    sourceBtn.textContent = '🌦️ MET Norway kaynağı';
+    sourceBtn.onclick = () => pauseStory(true);
+    actions.appendChild(sourceBtn);
+    const licenseBtn = document.createElement('a');
+    licenseBtn.className = 'story-action';
+    licenseBtn.href = 'https://creativecommons.org/licenses/by/4.0/';
+    licenseBtn.target = '_blank';
+    licenseBtn.rel = 'noopener';
+    licenseBtn.textContent = 'CC BY 4.0';
+    licenseBtn.onclick = () => pauseStory(true);
+    actions.appendChild(licenseBtn);
+    story.elapsed = 0;
+    story.startedAt = performance.now();
+    story.paused = false;
+    cancelAnimationFrame(story.raf);
+    story.raf = requestAnimationFrame(tickStory);
+    return;
+  }
   if (ad.fb) {
     const fbBtn = document.createElement('a');
     fbBtn.className = 'story-action primary';

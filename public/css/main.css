@@ -1942,6 +1942,13 @@ body.story-open { overflow: hidden; }
 .story-stage iframe { width: 100%; aspect-ratio: 16 / 9; border: 0; }
 .story-blur { position: absolute; inset: -20px; background-size: cover; background-position: center; filter: blur(24px) brightness(0.55); }
 .story-stage.text-card { background: radial-gradient(circle at 20% 15%, #7c3aed 0%, transparent 55%), radial-gradient(circle at 85% 90%, #db2777 0%, transparent 55%), linear-gradient(160deg, #1e1b4b, #0f172a); }
+.story-stage.weather-card { align-items: flex-start; background: radial-gradient(circle at 80% 28%, rgba(255,255,255,0.78), transparent 20%), radial-gradient(circle at 18% 72%, rgba(244,190,74,0.5), transparent 32%), linear-gradient(155deg, #d7f0ed 0%, #89c8bb 48%, #367b63 100%); color: #123f35; }
+.weather-story-panel { width: 100%; margin-top: 28%; display: flex; flex-direction: column; align-items: center; text-align: center; text-shadow: 0 2px 16px rgba(255,255,255,0.5); }
+.weather-story-city { font-size: 13px; font-weight: 800; letter-spacing: 0.22em; }
+.weather-story-date { margin-top: 5px; font-size: 15px; font-weight: 600; opacity: 0.8; }
+.weather-story-icon { margin-top: 16px; font-size: 88px; line-height: 1.15; filter: drop-shadow(0 8px 10px rgba(24,70,53,0.14)); }
+.weather-story-description { margin-top: 8px; font-size: 25px; }
+.weather-story-temperatures { display: flex; gap: 22px; margin-top: 16px; font-size: 22px; font-weight: 800; }
 .story-shade { position: absolute; left: 0; right: 0; pointer-events: none; }
 .story-shade.top { top: 0; height: 120px; background: linear-gradient(rgba(0,0,0,0.65), transparent); }
 .story-shade.bottom { bottom: 0; height: 45%; background: linear-gradient(transparent, rgba(0,0,0,0.8)); }

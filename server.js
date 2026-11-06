@@ -1257,8 +1257,99 @@ async function deleteAdFiles(ad) {
 // Herkese açık ilan: ekleyenin hesap kimliği gösterilmez
 const publicAd = ({ owner, ...ad }) => (owner ? { ...ad, owner_name: owner.name, owner_id: owner.id } : ad);
 
+// Mersin Hal için her gün otomatik hava durumu hikayesi.
+const WEATHER_TZ = 'Europe/Istanbul';
+let mersinWeatherStory = null;
+let mersinWeatherLoading = null;
+let mersinWeatherLastAttempt = 0;
+
+function localWeatherDay(date = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: WEATHER_TZ, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(date);
+}
+
+function weatherDescription(code) {
+  const value = String(code || '').toLowerCase();
+  if (value.includes('thunder')) return ['Gök gürültülü fırtına', '⛈️'];
+  if (value.includes('snow') || value.includes('sleet')) return ['Karlı', '🌨️'];
+  if (value.includes('rain') || value.includes('shower')) return ['Yağmurlu', '🌧️'];
+  if (value.includes('fog')) return ['Sisli', '🌫️'];
+  if (value.includes('partlycloudy')) return ['Parçalı bulutlu', '⛅'];
+  if (value.includes('cloudy')) return ['Bulutlu', '☁️'];
+  if (value.startsWith('fair')) return ['Az bulutlu', '🌤️'];
+  if (value.startsWith('clearsky')) return ['Açık', '☀️'];
+  return ['Hava durumu', '🌤️'];
+}
+
+async function loadMersinWeatherStory() {
+  const day = localWeatherDay();
+  if (mersinWeatherStory && mersinWeatherStory.weather.date === day) return mersinWeatherStory;
+  if (mersinWeatherLoading) return mersinWeatherLoading;
+  if (Date.now() - mersinWeatherLastAttempt < 5 * 60 * 1000) return null;
+  mersinWeatherLastAttempt = Date.now();
+  mersinWeatherLoading = (async () => {
+    const pins = await db.getApprovedPins();
+    const pin = pins.find(item => String(item.title || '').trim().toLocaleLowerCase('tr-TR') === 'mersin hal');
+    if (!pin) throw new Error('Mersin Hal işletmesi bulunamadı');
+    const params = new URLSearchParams({ lat: Number(pin.lat).toFixed(4), lon: Number(pin.lng).toFixed(4) });
+    const response = await fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?${params}`, {
+      headers: { 'User-Agent': 'NewHal/1.0 (https://newhal.com)' }, signal: AbortSignal.timeout(10000)
+    });
+    if (!response.ok) throw new Error(`Hava durumu servisi ${response.status} yanıtı verdi`);
+    const forecast = await response.json();
+    const timeseries = forecast.properties && forecast.properties.timeseries;
+    const todayPoints = Array.isArray(timeseries) ? timeseries.filter(point => localWeatherDay(new Date(point.time)) === day) : [];
+    const temperatures = todayPoints.map(point => Number(point.data?.instant?.details?.air_temperature)).filter(Number.isFinite);
+    if (!todayPoints.length || !temperatures.length) {
+      throw new Error('Günlük hava tahmini eksik geldi');
+    }
+    const midday = todayPoints.reduce((best, point) => {
+      const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: WEATHER_TZ, hour: '2-digit', hourCycle: 'h23' }).format(new Date(point.time)));
+      const bestHour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: WEATHER_TZ, hour: '2-digit', hourCycle: 'h23' }).format(new Date(best.time)));
+      return Math.abs(hour - 12) < Math.abs(bestHour - 12) ? point : best;
+    });
+    const middayDetails = midday.data?.next_1_hours || midday.data?.next_6_hours || midday.data?.next_12_hours;
+    const [description, icon] = weatherDescription(middayDetails?.summary?.symbol_code);
+    const formattedDate = new Intl.DateTimeFormat('tr-TR', { timeZone: WEATHER_TZ, day: 'numeric', month: 'long' }).format(new Date(`${day}T12:00:00+03:00`));
+    const winds = todayPoints.map(point => Number(point.data?.instant?.details?.wind_speed)).filter(Number.isFinite);
+    const weather = {
+      date: day, formattedDate, description, icon,
+      high: Math.round(Math.max(...temperatures)), low: Math.round(Math.min(...temperatures)),
+      wind: winds.length ? Math.round(Math.max(...winds) * 3.6) : null
+    };
+    const nextMidnight = new Date(new Date(`${day}T21:00:00.000Z`).getTime() + DAY_MS);
+    mersinWeatherStory = {
+      id: `mersin-weather-${day}`, pinId: pin.id, created_at: new Date().toISOString(), story_until: nextMidnight.toISOString(),
+      active: true, title: 'Mersin Günlük Hava Durumu',
+      body: `${description} · En yüksek ${weather.high}°C, en düşük ${weather.low}°C${weather.wind === null ? '' : ` · En yüksek rüzgâr ${weather.wind} km/sa`} · Tahmin düzenlenmiştir · MET Norway, CC BY 4.0`,
+      images: [], weather
+    };
+    return mersinWeatherStory;
+  })().catch(err => {
+    console.error('Mersin hava durumu hikayesi hazırlanamadı:', err.message);
+    return null;
+  }).finally(() => { mersinWeatherLoading = null; });
+  return mersinWeatherLoading;
+}
+
+function scheduleMersinWeatherRefresh() {
+  const day = localWeatherDay();
+  // Türkiye saatiyle 00.05'te yeni günlük hikayeyi hazırla.
+  const next = new Date(`${day}T21:05:00.000Z`).getTime();
+  const delay = Math.max(1000, next - Date.now());
+  setTimeout(async () => {
+    mersinWeatherStory = null;
+    mersinWeatherLastAttempt = 0;
+    await loadMersinWeatherStory();
+    scheduleMersinWeatherRefresh();
+  }, delay).unref?.();
+}
+
 app.get('/api/ads', async (req, res) => {
   const ads = (await getAdsWithFeaturedExpiry()).filter(a => a.active !== false && !a.pending);
+  const weatherStory = await loadMersinWeatherStory();
+  if (weatherStory && Date.parse(weatherStory.story_until) > Date.now()) ads.push(weatherStory);
   res.json(ads.sort((a, b) => b.created_at.localeCompare(a.created_at)).map(publicAd));
 });
 
@@ -1784,4 +1875,6 @@ app.listen(PORT, () => {
   console.log(`\n✅ NewHal sunucusu çalışıyor!`);
   console.log(`🌐 Ana site   : http://localhost:${PORT}`);
   console.log(`🔐 Admin panel: http://localhost:${PORT}/admin\n`);
+  loadMersinWeatherStory();
+  scheduleMersinWeatherRefresh();
 });
