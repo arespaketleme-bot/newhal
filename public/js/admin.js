@@ -607,6 +607,7 @@ async function loadUsers() {
           <td><strong>#${Number(u.id)}</strong></td>
           <td><strong>${esc(u.name)}</strong></td>
           <td>${esc(u.email)}</td>
+          <td>${u.phone_number ? `<a href="tel:${esc(String(u.phone_number).replace(/\D/g, ''))}">${esc(u.phone_number)}</a>` : '—'}</td>
           <td style="color:var(--text-3); font-family:monospace; font-size:12px;">${esc(u.googleId) || '-'}</td>
           <td><strong id="userPointsBalance-${Number(u.id)}" data-balance="${Number(u.points_balance || 0)}">${Number(u.points_balance || 0).toLocaleString('tr-TR')} Para Puan</strong></td>
           <td><strong id="userLevel-${Number(u.id)}">Seviye ${Number(u.level || 1)}</strong></td>

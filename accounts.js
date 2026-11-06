@@ -263,5 +263,15 @@ module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET,
     }
   }
 
-  return { forgetUser };
+  // Admin kullanıcı listesinde iletişim telefonu varsa onu, yoksa telefonla giriş numarasını göster.
+  async function getAdminPhones(userIds) {
+    const [accounts, profiles] = await Promise.all([load(ACCOUNTS_FILE), load(PROFILES_FILE)]);
+    return Object.fromEntries(userIds.map(id => {
+      const profilePhone = profiles[id] && profiles[id].contact_phone;
+      const loginPhone = accounts[id] && accounts[id].phone;
+      return [id, prettyPhone(profilePhone || loginPhone || '')];
+    }));
+  }
+
+  return { forgetUser, getAdminPhones };
 };

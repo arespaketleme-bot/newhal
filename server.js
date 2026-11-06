@@ -188,9 +188,10 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
     if (!data || data.length < 1000) break;
   }
   const users = await db.getAllUsers();
+  const phoneNumbers = await accounts.getAdminPhones(users.map(user => user.id));
   res.json(users.map(user => {
     const pointsBalance = balances.get(user.id) || 0;
-    return { ...user, points_balance: pointsBalance, level: Math.floor(pointsBalance / 1000) + 1 };
+    return { ...user, phone_number: phoneNumbers[user.id] || '', points_balance: pointsBalance, level: Math.floor(pointsBalance / 1000) + 1 };
   }));
 });
 
