@@ -340,7 +340,7 @@ function renderApprovedTable(pins) {
       <td>${esc(p.category)}</td>
       <td style="max-width:180px;word-break:break-word">${esc(p.address)}</td>
       <td>
-        ${p.phone  ? `<div style="font-size:12px">📞 ${esc(p.phone)}</div>` : ''}
+        ${p.phone  ? `<div class="pin-phone-action"><span style="font-size:12px">📞 ${esc(p.phone)}</span><button type="button" class="btn-sm btn-wa btn-pin-invite">💬 WhatsApp'tan Davet Et</button></div>` : ''}
         ${p.email  ? `<div style="font-size:12px">✉ ${esc(p.email)}</div>` : ''}
         ${p.website? `<div style="font-size:12px">🌐 ${esc(p.website)}</div>` : ''}
         ${!p.phone && !p.email && !p.website ? '<span style="color:var(--text-3)">—</span>' : ''}
@@ -359,6 +359,8 @@ function renderApprovedTable(pins) {
         </div>
       </td>
     `;
+    const inviteButton = tr.querySelector('.btn-pin-invite');
+    if (inviteButton) inviteButton.onclick = () => inviteBusinessWhatsapp(p);
     tbody.appendChild(tr);
   });
 }
@@ -1596,6 +1598,37 @@ async function deleteAd(id, title) {
 // ── WhatsApp'tan ilan sahibine mesaj ──────────────────────────
 // Mesaj, bu bilgisayarda açık olan WhatsApp'ta (Mersin Manşet numarası) hazır açılır; gönder tuşuna yönetici basar.
 const SITE_URL = 'https://newhal.com';
+function whatsappBusinessNumber(value) {
+  const raw = String(value || '').trim();
+  let digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.startsWith('90') && digits.length >= 12 && digits.length <= 15) return digits;
+  if (digits.startsWith('0') && digits.length === 11) return `90${digits.slice(1)}`;
+  if (digits.length === 10) return `90${digits}`;
+  if (raw.startsWith('+') && digits.length >= 8 && digits.length <= 15) return digits;
+  return null;
+}
+
+function inviteBusinessWhatsapp(pin) {
+  const phone = whatsappBusinessNumber(pin.phone);
+  if (!phone) return showToast('Telefon numarası WhatsApp bağlantısına uygun değil', 'error');
+  const trMap = { ç: 'c', ğ: 'g', ı: 'i', İ: 'i', ö: 'o', ş: 's', ü: 'u', Ç: 'c', Ğ: 'g', Ö: 'o', Ş: 's', Ü: 'u' };
+  const slug = String(pin.title || 'isletme')
+    .replace(/[çğıİöşüÇĞÖŞÜ]/g, ch => trMap[ch])
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 70) || 'isletme';
+  const link = `${SITE_URL}/isletme/${Number(pin.id)}-${slug}`;
+  const message = [
+    'Merhaba 👋',
+    '',
+    `${pin.title} işletmeniz NewHal Mersin Hal rehberinde yer alıyor. İşletme profilinizi sahiplenip bilgilerinizi güncellemek ve ücretsiz ilan paylaşmak için sizi NewHal’e davet ediyoruz.`,
+    '',
+    `📍 İşletme sayfanız: ${link}`,
+    '',
+    'NewHal · Mersin Hal Kompleksi Rehberi',
+  ].join('\n');
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
+}
+
 const DEFAULT_WA_TEMPLATE = [
   'Merhaba 👋',
   '',

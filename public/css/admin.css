@@ -561,6 +561,9 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 .wa-btn { background: #25d366 !important; color: #052e16 !important; }
 .ad-item-actions .btn-sm.btn-wa { color: #4ade80; border-color: rgba(37,211,102,0.45); }
 .ad-item-actions .btn-sm.btn-wa:hover { background: rgba(37,211,102,0.14); color: #fff; }
+.pin-phone-action { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.pin-phone-action .btn-wa { padding: 5px 8px; border: 1px solid rgba(37,211,102,0.45); border-radius: 7px; background: rgba(37,211,102,0.05); color: #4ade80; font: 600 11px var(--font); cursor: pointer; white-space: nowrap; }
+.pin-phone-action .btn-wa:hover { background: rgba(37,211,102,0.14); color: #fff; }
 .ad-wa-done { margin-top: 4px; font-size: 12px; color: #4ade80; }
 @media (max-width: 640px) { .wa-body textarea { font-size: 16px; } }
 
