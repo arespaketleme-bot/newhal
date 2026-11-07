@@ -76,7 +76,7 @@ ${(jsonLd || []).map(d => `<script type="application/ld+json">${JSON.stringify(d
 <main>
 <a class="top" href="/"><img src="/icons/icon-192.png" alt="" />NewHal · Mersin Hal Kompleksi Rehberi</a>
 ${body}
-<footer><a href="/">Ana sayfa</a> · <a href="/isletmeler">Tüm işletmeler</a> · <a href="/gizlilik">Gizlilik</a></footer>
+<footer><a href="/">Ana sayfa</a> · <a href="/isletmeler">Tüm işletmeler</a> · <a href="/hakkimizda">Hakkımızda</a> · <a href="/iletisim">İletişim</a> · <a href="/kullanim-sartlari">Kullanım Şartları</a> · <a href="/gizlilik">Gizlilik</a></footer>
 </main>
 </body>
 </html>`;
@@ -198,6 +198,9 @@ ${names.map(n => `<h2>${esc(icons[n] || '📦')} ${esc(n)} (${groups[n].length})
         ...pins.map(p => ({ loc: pinPath(p), freq: 'weekly', pri: '0.8', mod: day(p.reviewed_at || p.created_at) })),
         ...ads.filter(a => a.active !== false && !a.pending)
           .map(a => ({ loc: `/?ilan=${encodeURIComponent(a.id)}`, freq: 'weekly', pri: '0.6', mod: day(a.updated_at || a.created_at) })),
+        { loc: '/hakkimizda', freq: 'monthly', pri: '0.4' },
+        { loc: '/iletisim', freq: 'monthly', pri: '0.4' },
+        { loc: '/kullanim-sartlari', freq: 'yearly', pri: '0.2' },
         { loc: '/gizlilik', freq: 'yearly', pri: '0.2' },
       ];
       sitemapCache = {
