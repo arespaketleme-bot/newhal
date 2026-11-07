@@ -220,6 +220,7 @@ async function loadPending() {
 }
 
 async function loadApproved() {
+  loadWaInviteTemplate();
   const res = await api('/api/admin/pins?status=approved');
   if (!res) return;
   const pins = await res.json();
@@ -1657,16 +1658,50 @@ function inviteBusinessWhatsapp(pin) {
     .replace(/[çğıİöşüÇĞÖŞÜ]/g, ch => trMap[ch])
     .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 70) || 'isletme';
   const link = `${SITE_URL}/isletme/${Number(pin.id)}-${slug}`;
-  const message = [
-    'Merhaba 👋',
-    '',
-    `${pin.title} işletmeniz NewHal Mersin Hal rehberinde yer alıyor. İşletme profilinizi sahiplenip bilgilerinizi güncellemek ve ücretsiz ilan paylaşmak için sizi NewHal’e davet ediyoruz.`,
-    '',
-    `📍 İşletme sayfanız: ${link}`,
-    '',
-    'NewHal · Mersin Hal Kompleksi Rehberi',
-  ].join('\n');
-  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
+  const message = waInviteTemplate
+    .split('{isletme}').join(pin.title || '')
+    .split('{link}').join(link)
+    .split('{site}').join(SITE_URL);
+  window.open(waSendUrl(phone, message), '_blank', 'noopener');
+}
+
+// wa.me yönlendirmesi bazı WhatsApp uygulamalarında emojileri "?" yapıyor; doğrudan api.whatsapp.com kullanılır
+function waSendUrl(phone, message) {
+  return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+}
+
+const DEFAULT_WA_INVITE_TEMPLATE = [
+  'Merhaba 👋',
+  '',
+  '{isletme} işletmeniz NewHal Mersin Hal rehberinde yer alıyor. İşletme profilinizi sahiplenip bilgilerinizi güncellemek ve ücretsiz ilan paylaşmak için sizi NewHal’e davet ediyoruz.',
+  '',
+  '📍 İşletme sayfanız: {link}',
+  '',
+  'NewHal · Mersin Hal Kompleksi Rehberi',
+].join('\n');
+let waInviteTemplate = DEFAULT_WA_INVITE_TEMPLATE;
+
+async function loadWaInviteTemplate() {
+  const res = await api('/api/admin/whatsapp-invite-template');
+  if (!res) return;
+  const d = await res.json();
+  waInviteTemplate = d.template || DEFAULT_WA_INVITE_TEMPLATE;
+  const box = document.getElementById('waInviteTemplate');
+  if (box && document.activeElement !== box) box.value = waInviteTemplate;
+}
+
+async function saveWaInviteTemplate() {
+  const template = document.getElementById('waInviteTemplate').value.trim();
+  if (!template) return showToast('Şablon boş olamaz', 'error');
+  const res = await api('/api/admin/whatsapp-invite-template', { method: 'PUT', body: JSON.stringify({ template }) });
+  if (!res || !res.ok) return showToast('Şablon kaydedilemedi', 'error');
+  waInviteTemplate = template;
+  showToast('💬 Davet şablonu kaydedildi', 'success');
+}
+
+function resetWaInviteTemplate() {
+  document.getElementById('waInviteTemplate').value = DEFAULT_WA_INVITE_TEMPLATE;
+  showToast('Varsayılan şablon yüklendi, kaydetmeyi unutmayın', 'success');
 }
 
 const DEFAULT_WA_TEMPLATE = [
@@ -1722,7 +1757,7 @@ async function sendAdWhatsapp(ad) {
   const phone = adWhatsappNumber(ad);
   if (!phone) return showToast('Bu ilanda cep telefonu numarası bulunamadı', 'error');
   if (ad.whatsapp_sent_at && !confirm('Bu ilan sahibine daha önce WhatsApp mesajı gönderildi. Tekrar açılsın mı?')) return;
-  const url = `https://wa.me/${phone}?text=${encodeURIComponent(buildWaMessage(ad))}`;
+  const url = waSendUrl(phone, buildWaMessage(ad));
   window.open(url, '_blank', 'noopener');
   // "Gönderildi" olarak işaretle (mesajın gönder tuşuna WhatsApp'ta yönetici basar)
   const res = await api(`/api/admin/ads/${encodeURIComponent(ad.id)}`, { method: 'PATCH', body: JSON.stringify({ whatsapp_sent: true }) });

@@ -1970,6 +1970,21 @@ app.put('/api/admin/whatsapp-template', requireAdmin, async (req, res) => {
   res.json({ template });
 });
 
+const WA_INVITE_FILE = 'whatsapp_davet.json';
+app.get('/api/admin/whatsapp-invite-template', requireAdmin, async (req, res) => {
+  const saved = await db.getPrivateJson(WA_INVITE_FILE);
+  res.json({ template: saved && saved.template ? saved.template : null });
+});
+
+app.put('/api/admin/whatsapp-invite-template', requireAdmin, async (req, res) => {
+  const template = String(req.body.template || '').trim().slice(0, WA_TEMPLATE_MAX);
+  if (!template) return res.status(400).json({ error: 'Şablon boş olamaz' });
+  if (!(await db.savePrivateJson(WA_INVITE_FILE, { template, updated_at: new Date().toISOString() }))) {
+    return res.status(500).json({ error: 'Şablon kaydedilemedi' });
+  }
+  res.json({ template });
+});
+
 app.delete('/api/admin/facebook', requireAdmin, async (req, res) => {
   await db.deletePrivateJson(FB_CONFIG_FILE);
   res.json({ connected: false });

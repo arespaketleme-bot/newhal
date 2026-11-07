@@ -238,6 +238,20 @@
             <button class="btn-sm btn-approve" id="saveBusinessLevelRules" onclick="saveBusinessLevelRules()">Kaydet</button>
           </div>
         </div>
+        <details class="wa-card" id="waInviteCard">
+          <summary>
+            <span class="wa-logo">💬</span>
+            <span class="wa-card-text"><strong>WhatsApp davet şablonu</strong><span>İşletmelere "WhatsApp ile davet et" düğmesiyle bu mesaj hazırlanır</span></span>
+          </summary>
+          <div class="wa-body">
+            <textarea id="waInviteTemplate" rows="9" maxlength="1500"></textarea>
+            <p class="ad-hint">Yer tutucular: <code>{isletme}</code> işletmenin adı · <code>{link}</code> işletme sayfası · <code>{site}</code> NewHal ana sayfası</p>
+            <div class="ad-actions">
+              <button type="button" class="btn-ghost-sm" onclick="resetWaInviteTemplate()">Varsayılana dön</button>
+              <button type="button" class="btn-publish wa-btn" onclick="saveWaInviteTemplate()">Şablonu Kaydet</button>
+            </div>
+          </div>
+        </details>
         <div class="pins-table-wrap">
           <table class="pins-table">
             <thead>
