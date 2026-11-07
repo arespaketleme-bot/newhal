@@ -4142,7 +4142,7 @@ function buildShareBar(ad, large) {
   const url = adShareUrl(ad);
   const text = adShareText(ad);
   const targets = [
-    ['whatsapp', 'WhatsApp', `https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`],
+    ['whatsapp', 'WhatsApp', `https://api.whatsapp.com/send?text=${encodeURIComponent(`${text}\n${url}`)}`],
     ['facebook', 'Facebook', `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`],
     ['x', 'X', `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`],
     ['telegram', 'Telegram', `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`],
