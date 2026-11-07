@@ -227,6 +227,18 @@ async function loadApproved() {
   renderApprovedTable(pins);
 }
 
+async function refreshApproved() {
+  const btn = document.getElementById('refreshApproved');
+  btn.disabled = true;
+  btn.textContent = 'Yenileniyor...';
+  try {
+    await Promise.all([loadApproved(), loadStats()]);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔄 Yenile';
+  }
+}
+
 async function loadRejected() {
   const res = await api('/api/admin/pins?status=rejected');
   if (!res) return;
