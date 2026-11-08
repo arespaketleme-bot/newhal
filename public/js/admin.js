@@ -2029,3 +2029,11 @@ function hslToRgb(h, s, l) {
   };
   return [f(0), f(8), f(4)];
 }
+
+async function refreshLogs() {
+  const btn = document.getElementById('refreshLogsBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Yenileniyor...'; }
+  try { await loadLogs(); } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Yenile'; }
+  }
+}

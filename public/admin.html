@@ -616,7 +616,7 @@
             <h1>Aktivite Logları</h1>
             <p>Gerçek ziyaretçilerin harita üzerindeki hareketleri ve işlemleri</p>
           </div>
-          <button class="btn-sm btn-reject" onclick="clearLogs()" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); font-weight: 600; cursor: pointer; border: none; background: #dc2626; color: white;">🗑️ Logları Temizle</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-sm btn-approve" id="refreshLogsBtn" onclick="refreshLogs()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);font-weight:600;cursor:pointer">🔄 Yenile</button><button class="btn-sm btn-reject" onclick="clearLogs()" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); font-weight: 600; cursor: pointer; border: none; background: #dc2626; color: white;">🗑️ Logları Temizle</button></div>
         </div>
         <div class="pins-table-wrap" style="margin-top: 20px;">
           <table class="pins-table">
