@@ -2158,6 +2158,33 @@ const LOG_PER_IP_MIN = 20;
 const LOG_KEEP = 2000;
 const logRate = new Map();
 let logWrites = 0;
+
+// Yeni aktiviteler Telegram'a dakikada en fazla bir toplu mesajla gider (sohbet dolmasın, Telegram sınırına takılmasın)
+const TG_LOG_MAX_QUEUE = 200;
+const TG_LOG_MAX_CHARS = 3500;
+let tgLogQueue = [];
+let tgLogDropped = 0;
+function queueLogForTelegram(message) {
+  if (tgLogQueue.length >= TG_LOG_MAX_QUEUE) { tgLogDropped++; return; }
+  const time = new Date().toLocaleTimeString('tr-TR', { timeZone: 'Europe/Istanbul', hour: '2-digit', minute: '2-digit' });
+  tgLogQueue.push(`${tgEsc(time)} · ${tgEsc(message)}`);
+}
+async function flushLogsToTelegram() {
+  if (!tgLogQueue.length) return;
+  const lines = [];
+  let size = 0;
+  while (tgLogQueue.length && size + tgLogQueue[0].length < TG_LOG_MAX_CHARS) {
+    size += tgLogQueue[0].length + 1;
+    lines.push(tgLogQueue.shift());
+  }
+  const notes = tgLogDropped ? ['', `ℹ️ ${tgLogDropped} kayıt yoğunluk yüzünden atlandı.`] : [];
+  tgLogDropped = 0;
+  await sendTelegram(['🧾 <b>Yeni aktiviteler</b>', '', ...lines, ...notes].join('
+'));
+}
+setInterval(() => {
+  flushLogsToTelegram().catch(err => console.error('Aktivite Telegram bildirimi gönderilemedi:', err.message));
+}, 60 * 1000).unref();
 app.post('/api/logs', async (req, res) => {
   const message = String((req.body && req.body.action) || '').replace(/[\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
   if (!message) return res.status(400).json({ error: 'Eylem boş' });
@@ -2170,6 +2197,7 @@ app.post('/api/logs', async (req, res) => {
   res.status(204).end();
   try {
     const row = await db.logActivity(message, false);
+    queueLogForTelegram(message);
     if (row && ++logWrites % 100 === 0) await db.supabase.from('logs').delete().lt('id', row.id - LOG_KEEP);
   } catch (err) {
     console.error('Aktivite kaydedilemedi:', err.message);
