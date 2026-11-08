@@ -1626,6 +1626,7 @@ function renderMapCategoryBar(categories) {
     b.textContent = label;
     b.onclick = () => {
       filterPins(cat, b);
+      logEvent(cat === 'all' ? 'Haritada tüm kategorileri gösterdi' : `Haritada '${cat}' kategorisini seçti`);
       b.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     };
     bar.appendChild(b);
@@ -2661,6 +2662,7 @@ function setAuthTab(tab) {
 }
 
 function onLoggedIn({ token, name, pointsAwarded, referralAwarded }, message) {
+  logEvent(/açıldı/.test(message || '') ? 'Yeni üye oldu' : 'Üye girişi yaptı');
   localStorage.setItem('userToken', token);
   localStorage.setItem('userName', name);
   updateAuthUI(name);
@@ -4010,6 +4012,7 @@ async function submitUserAd(e) {
     if (res.status === 401) { closeUserAdModal(); openAuthModal(); throw new Error('Oturum süresi doldu, tekrar giriş yapın'); }
     if (!res.ok) throw new Error(data.error || 'İlan gönderilemedi');
     showToast(data.story ? '✅ İlanınız yayınlandı, 24 saat haritada dükkanınızda görünecek' : '✅ İlanınız yayınlandı', 'success');
+    logEvent(`Yeni ilan verdi: '${String(payload.title || payload.body || '').split(/\n/)[0].slice(0, 60)}'`);
     const shop = document.getElementById('userAdShop').value;
     document.getElementById('userAdForm').reset();
     document.getElementById('userAdShop').value = shop;
@@ -4234,6 +4237,7 @@ const statQueue = [];
 const STAT_FLUSH_MS = 5000;
 
 function track(ev) {
+  logTrackedEvent(ev);
   statQueue.push(ev);
   if (statQueue.length >= 20) flushStats();
 }
@@ -4322,3 +4326,36 @@ function trackSearch(source, q, immediate) {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
   window.addEventListener('pagehide', flush);
 })();
+
+// ── Aktivite Logları için ayrıntılı olaylar ───────────────────
+// Kişi bilgisi gönderilmez; sadece ne yapıldığı kısa bir cümleyle yazılır.
+function logEvent(text) {
+  if (window.self !== window.top) return;   // yönetim panelindeki önizleme sayılmaz
+  saveActivityToBackend(text);
+}
+
+const SEARCH_PLACE = { map: 'haritada', ads: 'ilanlarda' };
+const SHARE_PLACE = { whatsapp: "WhatsApp'ta", facebook: "Facebook'ta", telegram: "Telegram'da", x: "X'te", copy: 'bağlantısını kopyalayarak', more: 'telefonundan' };
+function adLabel(adId) {
+  const ad = (typeof allAds !== 'undefined' ? allAds : []).find(a => a.id === adId);
+  if (!ad) return 'bir ilanı';
+  const title = String(ad.title || ad.body || '').split(/\n/)[0].slice(0, 50);
+  return `#${ad.no || ''} '${title}' ilanını`;
+}
+function logTrackedEvent(ev) {
+  if (!ev) return;
+  if (ev.type === 'search') logEvent(`${SEARCH_PLACE[ev.source] || ''} '${ev.q}' aradı`.trim());
+  else if (ev.type === 'open') logEvent(`${adLabel(ev.adId)} açtı`);
+  else if (ev.type === 'share') logEvent(`${adLabel(ev.adId)} ${SHARE_PLACE[ev.channel] || ''} paylaştı`.replace(/\s+/g, ' '));
+}
+
+// Telefon ve yol tarifi bağlantıları
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[href]');
+  if (!a) return;
+  const href = a.getAttribute('href') || '';
+  const detail = document.getElementById('detailTitle');
+  const pinName = detail && detail.closest && a.closest('#pinDetailModal') ? (detail.firstChild ? detail.firstChild.textContent : '') : '';
+  if (href.startsWith('tel:')) logEvent(`${pinName ? `'${pinName.trim().slice(0, 60)}' işletmesini` : href.slice(4)} telefonla aradı`);
+  else if (/google\.com\/maps|maps\.apple|yandex/.test(href)) logEvent(`${pinName ? `'${pinName.trim().slice(0, 60)}' için ` : ''}yol tarifi aldı`);
+}, true);
