@@ -4029,6 +4029,7 @@ async function submitUserAd(e) {
     if (!res.ok) throw new Error(data.error || 'İlan gönderilemedi');
     showToast(data.story ? '✅ İlanınız yayınlandı, 24 saat haritada dükkanınızda görünecek' : '✅ İlanınız yayınlandı', 'success');
     logEvent(`Yeni ilan verdi: '${String(payload.title || payload.body || '').split(/\n/)[0].slice(0, 60)}'`);
+    if (window.newhalOlcum) window.newhalOlcum('ilan');
     const shop = document.getElementById('userAdShop').value;
     document.getElementById('userAdForm').reset();
     document.getElementById('userAdShop').value = shop;

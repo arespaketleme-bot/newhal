@@ -20,6 +20,7 @@
     if (!v) return;
     set(v);
     box.remove();
+    if (v === 'kabul' && window.newhalOlcumBaslat) window.newhalOlcumBaslat();
   });
   document.body.appendChild(box);
 })();
