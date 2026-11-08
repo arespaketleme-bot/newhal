@@ -1957,6 +1957,8 @@ function closeWelcomePopupOnBg(e) {
 
 // ── Canlı Aktivite Log Akışı (Activity Logger) ───────────────────────
 function logActivity(text, isReal = false) {
+  // Kayıt, ekranda gösterim kutusu olmasa da yönetim paneline gönderilir
+  if (isReal) saveActivityToBackend(text);
   const container = document.getElementById('activityLogger');
   if (!container) return;
 
@@ -1980,9 +1982,6 @@ function logActivity(text, isReal = false) {
     items[0].remove();
   }
 
-  if (isReal) {
-    saveActivityToBackend(text);
-  }
 }
 
 async function saveActivityToBackend(text) {
