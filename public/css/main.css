@@ -2291,3 +2291,28 @@ a.logo:hover img.logo-icon { transform: scale(1.06); }
 @media (prefers-reduced-motion: reduce) { .ads-ticker-track { animation-duration: 400s !important; } }
 
 .profile-delete { color: #f87171 !important; opacity: 0.8; font-size: 12px; }
+
+/* Tam ekranda "Küçült / İlanlara Geç" düğmesi: parlayan, nabız atan, ışık süzülen */
+.map-panel.map-fullscreen .map-fs-btn {
+  position: absolute; overflow: hidden; color: #04120c; font-weight: 700;
+  background: linear-gradient(120deg, #00ff87, #10b981, #34d399, #00ff87);
+  background-size: 300% 100%; border-color: transparent;
+  animation: fsGrad 4s ease infinite, fsPulse 2s ease-in-out infinite;
+  transition: transform .2s ease;
+}
+.map-panel.map-fullscreen .map-fs-btn::after {
+  content: ""; position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.75), transparent);
+  transform: skewX(-20deg); animation: fsShine 2.8s ease-in-out infinite; pointer-events: none;
+}
+.map-panel.map-fullscreen .map-fs-btn:hover { transform: translateY(-2px) scale(1.05); color: #04120c; }
+.map-panel.map-fullscreen .map-fs-btn:active { transform: scale(.96); }
+@keyframes fsGrad { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@keyframes fsPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(0,255,135,.55), 0 4px 14px rgba(0,0,0,.35); }
+  50% { box-shadow: 0 0 0 10px rgba(0,255,135,0), 0 4px 14px rgba(0,0,0,.35); }
+}
+@keyframes fsShine { 0% { left: -60%; } 60%,100% { left: 130%; } }
+@media (prefers-reduced-motion: reduce) {
+  .map-panel.map-fullscreen .map-fs-btn, .map-panel.map-fullscreen .map-fs-btn::after { animation: none; }
+}
