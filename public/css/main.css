@@ -2316,3 +2316,7 @@ a.logo:hover img.logo-icon { transform: scale(1.06); }
 @media (prefers-reduced-motion: reduce) {
   .map-panel.map-fullscreen .map-fs-btn, .map-panel.map-fullscreen .map-fs-btn::after { animation: none; }
 }
+
+/* Konumum düğmesi Uydu / Açık Renk'in üstünde, tam genişlik */
+.map-layer-selector { flex-wrap: wrap; max-width: 180px; }
+#locateMeBtn { order: -1; flex-basis: 100%; }
