@@ -222,6 +222,23 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && isMapFullscreen()) toggleMapFullscreen(false);
 });
 
+let myLocMarker = null;
+function goToMyLocation() {
+  const btn = document.getElementById('locateMeBtn');
+  if (!navigator.geolocation) { alert('Tarayıcınız konum bulmayı desteklemiyor.'); return; }
+  btn.textContent = '⏳ Bulunuyor';
+  navigator.geolocation.getCurrentPosition(pos => {
+    btn.textContent = '📍 Konumum';
+    const ll = [pos.coords.latitude, pos.coords.longitude];
+    if (myLocMarker) myLocMarker.setLatLng(ll);
+    else myLocMarker = L.circleMarker(ll, { radius: 9, color: '#fff', weight: 3, fillColor: '#2563eb', fillOpacity: 1 }).addTo(map).bindPopup('Buradasınız');
+    map.setView(ll, 17);
+  }, () => {
+    btn.textContent = '📍 Konumum';
+    alert('Konumunuz alınamadı. Konum iznini açıp tekrar deneyin.');
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+}
+
 function setMapLayer(type) {
   if (!layers[type]) return;
   if (currentLayer) map.removeLayer(currentLayer);
