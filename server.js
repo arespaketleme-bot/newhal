@@ -2072,6 +2072,70 @@ const AUDIT_REPORT = {
 };
 app.get('/api/admin/audit-report', requireAdmin, (req, res) => res.json(AUDIT_REPORT));
 
+// ── Tıklama yoğunluk haritası ─────────────────────────────────
+// Ekran 60x40 kareye bölünür; her karedeki tıklama sayısı cihaz türüne göre tutulur.
+const HEATMAP_FILE = 'heatmap.json';
+const HEATMAP_COLS = 60, HEATMAP_ROWS = 40;
+const HEATMAP_PER_IP_MIN = 300;
+let heatmap = null, heatmapDirty = false;
+const heatmapRate = new Map();
+const emptyHeat = () => ({ clicks: 0, grid: new Array(HEATMAP_COLS * HEATMAP_ROWS).fill(0) });
+async function loadHeatmap() {
+  if (!heatmap) {
+    const saved = await db.getPrivateJson(HEATMAP_FILE);
+    heatmap = { since: (saved && saved.since) || new Date().toISOString() };
+    for (const d of ['desktop', 'mobile']) {
+      const g = saved && saved[d];
+      heatmap[d] = g && Array.isArray(g.grid) && g.grid.length === HEATMAP_COLS * HEATMAP_ROWS ? g : emptyHeat();
+    }
+  }
+  return heatmap;
+}
+setInterval(async () => {
+  if (!heatmapDirty || !heatmap) return;
+  heatmapDirty = false;
+  if (!(await db.savePrivateJson(HEATMAP_FILE, heatmap))) heatmapDirty = true;
+}, 30 * 1000).unref();
+setInterval(() => {
+  const minuteAgo = Date.now() - 60 * 1000;
+  for (const [ip, r] of heatmapRate) if (r.at < minuteAgo) heatmapRate.delete(ip);
+}, 10 * 60 * 1000).unref();
+
+app.post('/api/heatmap', express.text({ type: '*/*', limit: '20kb' }), async (req, res) => {
+  let body = req.body;
+  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = null; } }
+  const device = body && (body.device === 'mobile' ? 'mobile' : body.device === 'desktop' ? 'desktop' : null);
+  const points = body && Array.isArray(body.points) ? body.points.slice(0, 100) : [];
+  if (!device || !points.length) return res.status(204).end();
+  const ip = String(getIp(req)).split(',')[0].trim();
+  const now = Date.now();
+  const rate = heatmapRate.get(ip);
+  const bucket = rate && now - rate.at < 60000 ? rate : { at: now, n: 0 };
+  bucket.n += points.length;
+  heatmapRate.set(ip, bucket);
+  if (bucket.n > HEATMAP_PER_IP_MIN) return res.status(204).end();
+  const h = await loadHeatmap();
+  for (const p of points) {
+    const x = Array.isArray(p) ? Number(p[0]) : NaN, y = Array.isArray(p) ? Number(p[1]) : NaN;
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= HEATMAP_COLS || y >= HEATMAP_ROWS) continue;
+    h[device].grid[y * HEATMAP_COLS + x]++;
+    h[device].clicks++;
+    heatmapDirty = true;
+  }
+  res.status(204).end();
+});
+
+app.get('/api/admin/heatmap', requireAdmin, async (req, res) => {
+  res.json({ cols: HEATMAP_COLS, rows: HEATMAP_ROWS, ...(await loadHeatmap()) });
+});
+
+app.delete('/api/admin/heatmap', requireAdmin, async (req, res) => {
+  heatmap = { since: new Date().toISOString(), desktop: emptyHeat(), mobile: emptyHeat() };
+  if (!(await db.savePrivateJson(HEATMAP_FILE, heatmap))) return res.status(500).json({ error: 'Sıfırlanamadı' });
+  heatmapDirty = false;
+  res.json({ ok: true });
+});
+
 // ── PUBLIC: Ziyaretçi hareketleri (Aktivite Logları) ───────────
 // Kişisel bilgi tutulmaz: sadece kısa eylem metni. IP başına dakikada 20 kayıt, tablo son 2000 kayıtla sınırlı.
 const LOG_PER_IP_MIN = 20;

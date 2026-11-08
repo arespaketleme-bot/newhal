@@ -481,7 +481,8 @@ const sectionTitles = {
   broadcast: 'Toplu Bildirim',
   stats:     'İstatistikler',
   logs:      'Aktivite Logları',
-  audit:     'Raporlar'
+  audit:     'Raporlar',
+  heatmap:   'Tıklama Haritası'
 };
 
 function showSection(name) {
@@ -505,6 +506,8 @@ function showSection(name) {
     loadEconomyLedger();
   } else if (name === 'claims') {
     loadClaims();
+  } else if (name === 'heatmap') {
+    loadHeatmap();
   } else if (name === 'audit') {
     loadAuditReport();
   }
@@ -1914,4 +1917,93 @@ async function loadAuditReport() {
   } catch {
     box.textContent = 'Rapor yüklenemedi';
   }
+}
+
+// ── Tıklama Haritası: sitenin görüntüsü üzerine renkli yoğunluk katmanı ──
+let heatmapData = null;
+let heatmapDevice = 'desktop';
+const HEAT_VIEW = { desktop: [1366, 768], mobile: [390, 844] };
+
+async function loadHeatmap() {
+  const res = await api('/api/admin/heatmap');
+  if (!res || !res.ok) return showToast('Tıklama haritası yüklenemedi', 'error');
+  heatmapData = await res.json();
+  drawHeatmap();
+}
+
+function setHeatmapDevice(device) {
+  heatmapDevice = device;
+  document.getElementById('heatBtnDesktop').classList.toggle('btn-approve', device === 'desktop');
+  document.getElementById('heatBtnMobile').classList.toggle('btn-approve', device === 'mobile');
+  drawHeatmap();
+}
+
+async function resetHeatmap() {
+  if (!confirm('Tüm tıklama verisi silinecek. Emin misiniz?')) return;
+  const res = await api('/api/admin/heatmap', { method: 'DELETE' });
+  if (!res || !res.ok) return showToast('Sıfırlanamadı', 'error');
+  showToast('Tıklama haritası sıfırlandı', 'success');
+  loadHeatmap();
+}
+
+function drawHeatmap() {
+  if (!heatmapData) return;
+  const [vw, vh] = HEAT_VIEW[heatmapDevice];
+  const stage = document.getElementById('heatmapStage');
+  const maxW = Math.min(stage.parentElement.clientWidth || vw, heatmapDevice === 'mobile' ? 360 : 1100);
+  const scale = maxW / vw;
+  stage.style.width = `${Math.round(vw * scale)}px`;
+  stage.style.height = `${Math.round(vh * scale)}px`;
+
+  const box = document.getElementById('heatmapFrameBox');
+  if (box.dataset.device !== heatmapDevice) {
+    box.dataset.device = heatmapDevice;
+    box.innerHTML = `<iframe src="/" title="Site görüntüsü" tabindex="-1" style="width:${vw}px;height:${vh}px;border:0;display:block"></iframe>`;
+  }
+  box.style.transform = `scale(${scale})`;
+
+  const d = heatmapData[heatmapDevice] || { clicks: 0, grid: [] };
+  const since = heatmapData.since ? new Date(heatmapData.since).toLocaleDateString('tr-TR') : '';
+  document.getElementById('heatmapMeta').textContent =
+    `${heatmapDevice === 'mobile' ? 'Telefon' : 'Bilgisayar'} · ${Number(d.clicks || 0).toLocaleString('tr-TR')} tıklama${since ? ` · ${since} tarihinden beri` : ''}`;
+
+  const canvas = document.getElementById('heatmapCanvas');
+  const W = canvas.width = Math.round(vw * scale), H = canvas.height = Math.round(vh * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  const { cols, rows } = heatmapData;
+  const max = Math.max(1, ...d.grid);
+  if (!d.clicks) return;
+  // Önce yoğunluk gri tonla çizilir, sonra renge çevrilir
+  const cw = W / cols, ch = H / rows, r = Math.max(cw, ch) * 1.6;
+  ctx.globalCompositeOperation = 'lighter';
+  d.grid.forEach((n, i) => {
+    if (!n) return;
+    const x = (i % cols + 0.5) * cw, y = (Math.floor(i / cols) + 0.5) * ch;
+    const a = Math.min(1, 0.15 + 0.85 * Math.sqrt(n / max));
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(255,255,255,${a * 0.6})`);
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  });
+  ctx.globalCompositeOperation = 'source-over';
+  const img = ctx.getImageData(0, 0, W, H), px = img.data;
+  for (let i = 0; i < px.length; i += 4) {
+    const v = Math.min(1, px[i] / 255);
+    if (v < 0.02) { px[i + 3] = 0; continue; }
+    // mavi → yeşil → sarı → kırmızı
+    const hue = (1 - v) * 240;
+    const [rr, gg, bb] = hslToRgb(hue / 360, 1, 0.5);
+    px[i] = rr; px[i + 1] = gg; px[i + 2] = bb; px[i + 3] = Math.round(90 + v * 140);
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function hslToRgb(h, s, l) {
+  const f = n => {
+    const k = (n + h * 12) % 12, a = s * Math.min(l, 1 - l);
+    return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))));
+  };
+  return [f(0), f(8), f(4)];
 }

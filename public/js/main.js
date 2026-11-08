@@ -650,6 +650,8 @@ async function initPresence() {
   // Ziyaret, tarayıcı oturumu başına bir kez sayılır
   let counted = false;
   try { counted = sessionStorage.getItem('visitCounted') === '1'; } catch {}
+  // Yönetim panelindeki önizleme (çerçeve içi) ziyaret sayılmaz
+  if (window.self !== window.top) counted = true;
   if (!counted) {
     try {
       // Ziyaret bilgisi (yöneticiye Telegram bildirimi için): nereden geldi, hangi sayfa, cihaz
@@ -4287,3 +4289,32 @@ function trackSearch(source, q, immediate) {
   };
   if (immediate) run(); else searchTimers[source] = setTimeout(run, 1500);
 }
+
+// ── Tıklama yoğunluk haritası ─────────────────────────────────
+// Sadece ölçüm çerezine "Kabul et" diyen ziyaretçide çalışır. Kim olduğu değil,
+// sadece ekranın neresine tıklandığı (ekran boyuna oranla) gönderilir.
+(function setupClickHeatmap() {
+  const COLS = 60, ROWS = 40;
+  let queue = [];
+  const allowed = () => typeof window.newhalCerezTercihi === 'function' && window.newhalCerezTercihi() === 'kabul';
+  const device = () => (window.innerWidth < 768 ? 'mobile' : 'desktop');
+  document.addEventListener('pointerdown', e => {
+    if (!allowed() || !e.isPrimary) return;
+    const x = Math.min(COLS - 1, Math.max(0, Math.floor(e.clientX / window.innerWidth * COLS)));
+    const y = Math.min(ROWS - 1, Math.max(0, Math.floor(e.clientY / window.innerHeight * ROWS)));
+    queue.push([x, y]);
+    if (queue.length >= 40) flush();
+  }, { passive: true, capture: true });
+  function flush() {
+    if (!queue.length) return;
+    const body = JSON.stringify({ device: device(), points: queue.splice(0, 100) });
+    try {
+      if (!navigator.sendBeacon || !navigator.sendBeacon('/api/heatmap', new Blob([body], { type: 'application/json' }))) {
+        fetch('/api/heatmap', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+      }
+    } catch {}
+  }
+  setInterval(flush, 15000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
+  window.addEventListener('pagehide', flush);
+})();
