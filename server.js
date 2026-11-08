@@ -2072,6 +2072,34 @@ const AUDIT_REPORT = {
 };
 app.get('/api/admin/audit-report', requireAdmin, (req, res) => res.json(AUDIT_REPORT));
 
+// ── PUBLIC: Ziyaretçi hareketleri (Aktivite Logları) ───────────
+// Kişisel bilgi tutulmaz: sadece kısa eylem metni. IP başına dakikada 20 kayıt, tablo son 2000 kayıtla sınırlı.
+const LOG_PER_IP_MIN = 20;
+const LOG_KEEP = 2000;
+const logRate = new Map();
+let logWrites = 0;
+app.post('/api/logs', async (req, res) => {
+  const message = String((req.body && req.body.action) || '').replace(/[\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+  if (!message) return res.status(400).json({ error: 'Eylem boş' });
+  const ip = String(getIp(req)).split(',')[0].trim();
+  const minuteAgo = Date.now() - 60 * 1000;
+  const recent = (logRate.get(ip) || []).filter(t => t > minuteAgo);
+  if (recent.length >= LOG_PER_IP_MIN) return res.status(429).end();
+  recent.push(Date.now());
+  logRate.set(ip, recent);
+  res.status(204).end();
+  try {
+    const row = await db.logActivity(message, false);
+    if (row && ++logWrites % 100 === 0) await db.supabase.from('logs').delete().lt('id', row.id - LOG_KEEP);
+  } catch (err) {
+    console.error('Aktivite kaydedilemedi:', err.message);
+  }
+});
+setInterval(() => {
+  const minuteAgo = Date.now() - 60 * 1000;
+  for (const [ip, times] of logRate) if (!times.some(t => t > minuteAgo)) logRate.delete(ip);
+}, 10 * 60 * 1000).unref();
+
 // ── ADMIN: Etkinlik Kayıtları ─────────────────────────────────
 app.get('/api/admin/logs', requireAdmin, async (req, res) => {
   res.json(await db.getLogs());

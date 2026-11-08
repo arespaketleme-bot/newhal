@@ -1136,9 +1136,7 @@ function renderLogsTable(logs) {
   if (empty) empty.style.display = 'none';
 
   // En yeni loglar en üstte görünsün
-  const reversedLogs = [...logs].reverse();
-
-  reversedLogs.forEach(log => {
+  logs.forEach(log => {
     const tr = document.createElement('tr');
     
     let timeStr = '';
@@ -1150,8 +1148,8 @@ function renderLogsTable(logs) {
     }
 
     tr.innerHTML = `
-      <td style="font-family: monospace; font-size: 12px; color: var(--text-3); width: 140px;">🔌 ${esc(log.ip)}</td>
-      <td style="font-weight: 500; color: var(--text-1);">${esc(log.action)}</td>
+      <td style="font-size: 12px; color: var(--text-3); width: 140px;">${log.is_admin ? '🛡️ Yönetim' : '👤 Ziyaretçi'}</td>
+      <td style="font-weight: 500; color: var(--text-1);">${esc(log.message || log.action || '')}</td>
       <td style="font-size: 12px; color: var(--text-3); width: 180px;">${timeStr}</td>
     `;
     tbody.appendChild(tr);
