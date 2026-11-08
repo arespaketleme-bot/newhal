@@ -373,7 +373,10 @@ function renderApprovedTable(pins) {
       </td>
     `;
     const inviteButton = tr.querySelector('.btn-pin-invite');
-    if (inviteButton) inviteButton.onclick = () => inviteBusinessWhatsapp(p);
+    if (inviteButton) {
+      if (waInvitedIds().has(Number(p.id))) markInviteSent(inviteButton);
+      inviteButton.onclick = () => { if (inviteBusinessWhatsapp(p)) markInviteSent(inviteButton); };
+    }
     tbody.appendChild(tr);
   });
 }
@@ -1666,6 +1669,21 @@ function inviteBusinessWhatsapp(pin) {
     .split('{link}').join(link)
     .split('{site}').join(SITE_URL);
   window.open(waSendUrl(phone, message), '_blank', 'noopener');
+  const ids = waInvitedIds(); ids.add(Number(pin.id));
+  try { localStorage.setItem('waInvitedIds', JSON.stringify([...ids])); } catch {}
+  return true;
+}
+
+// Davet gönderilen işletmeler bu tarayıcıda hatırlanır; buton griye döner
+function waInvitedIds() {
+  try { return new Set(JSON.parse(localStorage.getItem('waInvitedIds') || '[]').map(Number)); } catch { return new Set(); }
+}
+function markInviteSent(btn) {
+  btn.textContent = '✅ Davet Gönderildi';
+  btn.title = 'Tekrar göndermek için tıklayın';
+  btn.style.background = '#64748b';
+  btn.style.borderColor = '#64748b';
+  btn.style.color = '#fff';
 }
 
 // wa.me yönlendirmesi bazı WhatsApp uygulamalarında emojileri "?" yapıyor; doğrudan api.whatsapp.com kullanılır
