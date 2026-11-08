@@ -591,6 +591,8 @@ async function notifyNewVisitor(req, visits) {
     location ? `📍 Konum: ${tgEsc(location)}` : null,
     `${tgEsc(describeDevice(ua))}${info.app ? ' · 📲 uygulamadan' : ''}`,
     `↪️ Geldiği yer: ${tgEsc(describeReferrer(info.referrer))}`,
+    info.referrer ? `🔙 Geldiği adres: ${tgEsc(String(info.referrer).slice(0, 300))}` : null,
+    `🔗 Girdiği link: ${tgEsc('https://newhal.com' + page)}`,
     `📄 Açtığı sayfa: ${tgEsc(pageText)}`,
   ].filter(line => line !== null);
   if (info.screen) lines.push(`🖥 Ekran: ${tgEsc(String(info.screen).slice(0, 15))}${info.lang ? ` · Dil: ${tgEsc(String(info.lang).slice(0, 10))}` : ''}`);
