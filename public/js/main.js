@@ -1626,7 +1626,6 @@ function renderMapCategoryBar(categories) {
     b.textContent = label;
     b.onclick = () => {
       filterPins(cat, b);
-      logEvent(cat === 'all' ? 'Haritada tüm kategorileri gösterdi' : `Haritada '${cat}' kategorisini seçti`);
       b.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     };
     bar.appendChild(b);
@@ -4334,7 +4333,7 @@ function logEvent(text) {
   saveActivityToBackend(text);
 }
 
-const SEARCH_PLACE = { map: 'haritada', ads: 'ilanlarda' };
+const SEARCH_PLACE = { map: 'Haritada', ads: 'İlanlarda' };
 const SHARE_PLACE = { whatsapp: "WhatsApp'ta", facebook: "Facebook'ta", telegram: "Telegram'da", x: "X'te", copy: 'bağlantısını kopyalayarak', more: 'telefonundan' };
 function adLabel(adId) {
   const ad = (typeof allAds !== 'undefined' ? allAds : []).find(a => a.id === adId);
