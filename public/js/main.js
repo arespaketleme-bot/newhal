@@ -4296,7 +4296,11 @@ function trackSearch(source, q, immediate) {
 (function setupClickHeatmap() {
   const COLS = 60, ROWS = 40;
   let queue = [];
-  const allowed = () => typeof window.newhalCerezTercihi === 'function' && window.newhalCerezTercihi() === 'kabul';
+  let enabled = false;   // yönetim panelinden açılıp kapatılır
+  if (window.self === window.top) {
+    fetch('/api/heatmap/status').then(r => r.json()).then(s => { enabled = !!(s && s.enabled); }).catch(() => {});
+  }
+  const allowed = () => enabled && typeof window.newhalCerezTercihi === 'function' && window.newhalCerezTercihi() === 'kabul';
   const device = () => (window.innerWidth < 768 ? 'mobile' : 'desktop');
   document.addEventListener('pointerdown', e => {
     if (!allowed() || !e.isPrimary) return;

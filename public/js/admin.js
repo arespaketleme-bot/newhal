@@ -1928,7 +1928,29 @@ async function loadHeatmap() {
   const res = await api('/api/admin/heatmap');
   if (!res || !res.ok) return showToast('Tıklama haritası yüklenemedi', 'error');
   heatmapData = await res.json();
+  renderHeatmapToggle();
   drawHeatmap();
+}
+
+function renderHeatmapToggle() {
+  const btn = document.getElementById('heatToggle');
+  if (!btn || !heatmapData) return;
+  const on = heatmapData.enabled !== false;
+  btn.textContent = on ? '🟢 Açık · Kapat' : '⏸️ Kapalı · Aç';
+  btn.title = on ? 'Tıklama toplamayı durdur' : 'Tıklama toplamayı başlat';
+  btn.style.background = on ? '#16a34a' : '#64748b';
+  btn.style.color = '#fff';
+  btn.style.border = 'none';
+}
+
+async function toggleHeatmapEnabled() {
+  if (!heatmapData) return;
+  const next = heatmapData.enabled === false;
+  const res = await api('/api/admin/heatmap/enabled', { method: 'PUT', body: JSON.stringify({ enabled: next }) });
+  if (!res || !res.ok) return showToast('Ayar kaydedilemedi', 'error');
+  heatmapData.enabled = (await res.json()).enabled;
+  renderHeatmapToggle();
+  showToast(heatmapData.enabled ? 'Tıklama haritası devreye alındı' : 'Tıklama haritası devre dışı bırakıldı', 'success');
 }
 
 function setHeatmapDevice(device) {

@@ -2083,7 +2083,7 @@ const emptyHeat = () => ({ clicks: 0, grid: new Array(HEATMAP_COLS * HEATMAP_ROW
 async function loadHeatmap() {
   if (!heatmap) {
     const saved = await db.getPrivateJson(HEATMAP_FILE);
-    heatmap = { since: (saved && saved.since) || new Date().toISOString() };
+    heatmap = { since: (saved && saved.since) || new Date().toISOString(), enabled: !saved || saved.enabled !== false };
     for (const d of ['desktop', 'mobile']) {
       const g = saved && saved[d];
       heatmap[d] = g && Array.isArray(g.grid) && g.grid.length === HEATMAP_COLS * HEATMAP_ROWS ? g : emptyHeat();
@@ -2107,6 +2107,7 @@ app.post('/api/heatmap', express.text({ type: '*/*', limit: '20kb' }), async (re
   const device = body && (body.device === 'mobile' ? 'mobile' : body.device === 'desktop' ? 'desktop' : null);
   const points = body && Array.isArray(body.points) ? body.points.slice(0, 100) : [];
   if (!device || !points.length) return res.status(204).end();
+  if (!(await loadHeatmap()).enabled) return res.status(204).end();
   const ip = String(getIp(req)).split(',')[0].trim();
   const now = Date.now();
   const rate = heatmapRate.get(ip);
@@ -2129,8 +2130,21 @@ app.get('/api/admin/heatmap', requireAdmin, async (req, res) => {
   res.json({ cols: HEATMAP_COLS, rows: HEATMAP_ROWS, ...(await loadHeatmap()) });
 });
 
+// Ziyaretçi sayfası toplamanın açık olup olmadığını buradan öğrenir
+app.get('/api/heatmap/status', async (req, res) => {
+  res.set('Cache-Control', 'public, max-age=60').json({ enabled: (await loadHeatmap()).enabled });
+});
+
+app.put('/api/admin/heatmap/enabled', requireAdmin, async (req, res) => {
+  const h = await loadHeatmap();
+  h.enabled = !!(req.body && req.body.enabled);
+  if (!(await db.savePrivateJson(HEATMAP_FILE, h))) return res.status(500).json({ error: 'Kaydedilemedi' });
+  heatmapDirty = false;
+  res.json({ enabled: h.enabled });
+});
+
 app.delete('/api/admin/heatmap', requireAdmin, async (req, res) => {
-  heatmap = { since: new Date().toISOString(), desktop: emptyHeat(), mobile: emptyHeat() };
+  heatmap = { since: new Date().toISOString(), enabled: heatmap ? heatmap.enabled : true, desktop: emptyHeat(), mobile: emptyHeat() };
   if (!(await db.savePrivateJson(HEATMAP_FILE, heatmap))) return res.status(500).json({ error: 'Sıfırlanamadı' });
   heatmapDirty = false;
   res.json({ ok: true });
