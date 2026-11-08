@@ -480,7 +480,8 @@ const sectionTitles = {
   economy:   'Ekonomi',
   broadcast: 'Toplu Bildirim',
   stats:     'İstatistikler',
-  logs:      'Aktivite Logları'
+  logs:      'Aktivite Logları',
+  audit:     'Raporlar'
 };
 
 function showSection(name) {
@@ -504,6 +505,8 @@ function showSection(name) {
     loadEconomyLedger();
   } else if (name === 'claims') {
     loadClaims();
+  } else if (name === 'audit') {
+    loadAuditReport();
   }
 }
 
@@ -1892,4 +1895,25 @@ async function loadStatsOverview() {
         <div class="st-row-meta">${fmt(s.count)} arama · haritada ${fmt(s.map)}, ilanlarda ${fmt(s.ads)} · son: ${esc(new Date(s.last).toLocaleDateString('tr-TR'))}</div>
       </div>
     </div>`).join('') : '<div class="st-empty">Henüz arama yapılmadı.</div>';
+}
+
+// ── Raporlar: kod denetimi bulguları (sunucudan, sadece yöneticiye) ──
+async function loadAuditReport() {
+  const box = document.getElementById('auditList');
+  if (!box) return;
+  try {
+    const res = await api('/api/admin/audit-report');
+    if (!res || !res.ok) throw new Error();
+    const r = await res.json();
+    const colors = { 'Önemli': '#dc2626', 'Orta': '#f59e0b', 'Küçük': '#64748b' };
+    document.getElementById('auditMeta').textContent = `Kod denetimi · ${r.date} · ${r.items.length} bulgu`;
+    box.innerHTML = `<p style="font-size:13px;margin:0 0 12px">${esc(r.note)}</p>` + r.items.map((it, i) => `
+      <div style="border-left:4px solid ${colors[it.level] || '#64748b'};background:var(--bg-panel);padding:12px 14px;border-radius:8px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:${colors[it.level] || '#64748b'};text-transform:uppercase;margin-bottom:4px">${esc(it.level)}</div>
+        <div style="font-weight:700;margin-bottom:4px">${i + 1}. ${esc(it.title)}</div>
+        <div style="font-size:13px;color:var(--text-1);opacity:.8">${esc(it.detail)}</div>
+      </div>`).join('');
+  } catch {
+    box.textContent = 'Rapor yüklenemedi';
+  }
 }

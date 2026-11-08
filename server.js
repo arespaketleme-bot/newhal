@@ -2054,6 +2054,24 @@ app.post('/api/admin/ads/:id/facebook', requireAdmin, async (req, res) => {
   }
 });
 
+// ── ADMIN: Kod denetimi raporu (sadece yöneticiye gösterilir) ──
+const AUDIT_REPORT = {
+  date: '8 Kasım 2026',
+  note: 'Sitenin tüm kodu tarandı. Ziyaretçi yazılarıyla siteye zarar verme açığı bulunmadı; yazılar güvenli gösteriliyor.',
+  items: [
+    ['Önemli', 'İlan ekleyip silerek sınırsız Para Puan kazanılabiliyor.', 'Her ilan 25 puan veriyor, günde 10 ilan sınırı var. Ama sınır sadece duran ilanları sayıyor. İlanını silen biri tekrar ekleyip tekrar puan alabiliyor.'],
+    ['Önemli', 'İlanlara yorum yazarak sınırsız puan kazanılabiliyor.', 'Her yorum 5 puan veriyor ve bir sınırı yok. 200 kısa yorum 1.000 puan ediyor, bu da bir vitrin başvurusu demek.'],
+    ['Önemli', 'Sahte hesap açıp davet puanı toplanabiliyor.', 'Kayıtta telefon numarası doğrulanmıyor. Saatte 5 kayıt sınırı da kolayca aşılabiliyor. Biri kendi davet koduyla yüzlerce sahte hesap açıp puan toplayabilir.'],
+    ['Önemli', 'Bir hata olunca site tamamen kapanabiliyor.', 'Sunucu tarafında yakalanmayan bir hata çıkınca site çöküp yeniden başlıyor. Veri bağlantısı bir an koparsa haritayı açan herkes birkaç saniye boş sayfa görebilir.'],
+    ['Önemli', 'Yönetim girişi için kontrol edilmesi gereken bir şey var.', 'Sitenin barındırıldığı yerde (Render) yönetim kullanıcı adı ve şifresi tanımlı değilse site hazır gelen varsayılan şifreyle açılıyor. Yanlış şifre denemelerine de bir sınır yok.'],
+    ['Orta', 'Vitrin başvurusu reddedilirse puan geri verilmiyor.', 'Ayrıca vitrin süresi biten bir ilan için tekrar başvuru yapılamıyor.'],
+    ['Orta', 'Aynı anda yapılan işlemlerde ilan verisi kaybolabilir.', 'İki kişi aynı anda ilan verirse ya da beğeni yaparsa biri kaybolabilir. İlanlar tek bir dosyada tutulduğu için bu oluyor. Trafik şimdilik az, o yüzden nadir olur.'],
+    ['Orta', 'Onaylanmamış işletmelere yorum yazılabiliyor.', 'Yorumların ve sohbet mesajlarının uzunluk sınırı da yok. Yorum yağdırarak bir işletmenin seviyesi yapay olarak yükseltilebilir.'],
+    ['Küçük', 'Silinen hesabın bazı izleri kalıyor.', 'Hesabını silen kişinin ilanlara yazdığı yorumlar ve beğeniler adıyla birlikte duruyor.'],
+  ].map(([level, title, detail]) => ({ level, title, detail })),
+};
+app.get('/api/admin/audit-report', requireAdmin, (req, res) => res.json(AUDIT_REPORT));
+
 // ── ADMIN: Etkinlik Kayıtları ─────────────────────────────────
 app.get('/api/admin/logs', requireAdmin, async (req, res) => {
   res.json(await db.getLogs());
