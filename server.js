@@ -2207,6 +2207,54 @@ setInterval(() => {
   for (const [ip, times] of logRate) if (!times.some(t => t > minuteAgo)) logRate.delete(ip);
 }, 10 * 60 * 1000).unref();
 
+// ── Açılış ekranı (yönetimden ayarlanır) ───────────────────────
+const WELCOME_FILE = 'welcome-popup.json';
+const DEFAULT_WELCOME = {
+  enabled: true,
+  image: 'img/banner.png',
+  title: 'NewHal Rehberine Hoş Geldiniz',
+  text: "Mersin Hal Kompleksi'ndeki işletmeleri interaktif harita üzerinde keşfedin, yorum yapın ve kendi işletmenizi ekleyin.",
+  button: 'Rehberi Keşfetmeye Başla',
+  version: 1,
+};
+let welcomeCache = null;
+async function getWelcomeSettings() {
+  if (welcomeCache) return welcomeCache;
+  const saved = await db.getPrivateJson(WELCOME_FILE);
+  welcomeCache = { ...DEFAULT_WELCOME, ...(saved || {}) };
+  return welcomeCache;
+}
+const welcomeText = (value, max) => String(value == null ? '' : value).trim().slice(0, max);
+app.get('/api/welcome', async (req, res) => {
+  try { res.json(await getWelcomeSettings()); }
+  catch (err) { console.error('Açılış ekranı okunamadı:', err.message); res.json(DEFAULT_WELCOME); }
+});
+app.put('/api/admin/welcome', requireAdmin, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const current = await getWelcomeSettings();
+    const title = welcomeText(body.title, 120);
+    const button = welcomeText(body.button, 60);
+    if (!title || !button) return res.status(400).json({ error: 'Başlık ve düğme yazısı boş olamaz' });
+    const image = welcomeText(body.image, 500);
+    if (image !== DEFAULT_WELCOME.image && !image.startsWith('https://')) return res.status(400).json({ error: 'Resim geçersiz' });
+    const next = {
+      enabled: body.enabled !== false,
+      image,
+      title,
+      text: welcomeText(body.text, 500),
+      button,
+      version: Number(current.version || 1) + (body.showAgain ? 1 : 0),
+    };
+    if (!(await db.savePrivateJson(WELCOME_FILE, next))) return res.status(500).json({ error: 'Kaydedilemedi' });
+    welcomeCache = next;
+    res.json(next);
+  } catch (err) {
+    console.error('Açılış ekranı kaydedilemedi:', err.message);
+    res.status(500).json({ error: 'Kaydedilemedi' });
+  }
+});
+
 // ── ADMIN: Etkinlik Kayıtları ─────────────────────────────────
 app.get('/api/admin/logs', requireAdmin, async (req, res) => {
   res.json(await db.getLogs());

@@ -481,6 +481,7 @@ const sectionTitles = {
   broadcast: 'Toplu Bildirim',
   stats:     'İstatistikler',
   logs:      'Aktivite Logları',
+  welcome:   'Açılış Ekranı',
   audit:     'Raporlar',
   heatmap:   'Tıklama Haritası'
 };
@@ -508,9 +509,78 @@ function showSection(name) {
     loadClaims();
   } else if (name === 'heatmap') {
     loadHeatmap();
+  } else if (name === 'welcome') {
+    loadWelcome();
   } else if (name === 'audit') {
     loadAuditReport();
   }
+}
+
+// ── Açılış ekranı ayarı ──────────────────────────────────────
+const WELCOME_DEFAULT_IMAGE = 'img/banner.png';
+let welcomeImageUrl = WELCOME_DEFAULT_IMAGE;
+
+function showWelcomePreview() {
+  document.getElementById('welcomeImagePreview').src = welcomeImageUrl === WELCOME_DEFAULT_IMAGE ? '/' + WELCOME_DEFAULT_IMAGE : welcomeImageUrl;
+}
+
+async function loadWelcome() {
+  try {
+    const res = await fetch('/api/welcome');
+    const w = await res.json();
+    document.getElementById('welcomeEnabled').checked = w.enabled !== false;
+    document.getElementById('welcomeTitleInput').value = w.title || '';
+    document.getElementById('welcomeTextInput').value = w.text || '';
+    document.getElementById('welcomeButtonInput').value = w.button || '';
+    document.getElementById('welcomeShowAgain').checked = false;
+    welcomeImageUrl = w.image || WELCOME_DEFAULT_IMAGE;
+    showWelcomePreview();
+  } catch {
+    showToast('Açılış ekranı ayarları yüklenemedi', 'error');
+  }
+}
+
+async function pickWelcomeImage(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const btn = document.getElementById('welcomeSaveBtn');
+  btn.disabled = true;
+  btn.textContent = 'Resim yükleniyor...';
+  try {
+    welcomeImageUrl = await uploadAdFile(await shrinkImage(file), 'image');
+    showWelcomePreview();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Kaydet';
+    input.value = '';
+  }
+}
+
+function resetWelcomeImage() {
+  welcomeImageUrl = WELCOME_DEFAULT_IMAGE;
+  showWelcomePreview();
+}
+
+async function saveWelcome(event) {
+  event.preventDefault();
+  const res = await api('/api/admin/welcome', {
+    method: 'PUT',
+    body: JSON.stringify({
+      enabled: document.getElementById('welcomeEnabled').checked,
+      image: welcomeImageUrl,
+      title: document.getElementById('welcomeTitleInput').value,
+      text: document.getElementById('welcomeTextInput').value,
+      button: document.getElementById('welcomeButtonInput').value,
+      showAgain: document.getElementById('welcomeShowAgain').checked,
+    }),
+  });
+  if (!res) return;
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { showToast(data.error || 'Kaydedilemedi', 'error'); return; }
+  document.getElementById('welcomeShowAgain').checked = false;
+  showToast('Açılış ekranı kaydedildi', 'success');
 }
 
 async function sendBroadcast(event) {

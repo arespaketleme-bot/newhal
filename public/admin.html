@@ -120,6 +120,10 @@
           <span aria-hidden="true">🔥</span>
           Tıklama Haritası
         </button>
+        <button class="nav-item" id="navWelcome" onclick="showSection('welcome')">
+          <span aria-hidden="true">🖼️</span>
+          Açılış Ekranı
+        </button>
         <button class="nav-item" id="navAudit" onclick="showSection('audit')">
           <span aria-hidden="true">📋</span>
           Raporlar
@@ -597,6 +601,44 @@
         <div id="heatmapStage" style="position:relative;margin:0 auto;border-radius:12px;overflow:hidden;background:var(--bg-card);border:1px solid rgba(255,255,255,.08)">
           <div id="heatmapFrameBox" style="position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none"></div>
           <canvas id="heatmapCanvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
+        </div>
+      </section>
+
+      <section class="section" id="sectionWelcome">
+        <div class="section-head">
+          <div>
+            <h1>Açılış Ekranı</h1>
+            <p>Siteye girenlere çıkan karşılama ekranı</p>
+          </div>
+        </div>
+        <div class="broadcast-card">
+          <form id="welcomeForm" onsubmit="saveWelcome(event)">
+            <div class="form-group">
+              <label><input id="welcomeEnabled" type="checkbox" style="width:auto;margin-right:8px" />Açılış ekranı gösterilsin</label>
+            </div>
+            <div class="form-group">
+              <label for="welcomeImageFile">Resim</label>
+              <img id="welcomeImagePreview" alt="" style="display:block;max-width:100%;max-height:220px;border-radius:10px;margin-bottom:8px" />
+              <input id="welcomeImageFile" type="file" accept="image/jpeg,image/png,image/webp" onchange="pickWelcomeImage(this)" />
+              <button type="button" class="btn-sm" style="margin-top:8px" onclick="resetWelcomeImage()">Eski resme dön</button>
+            </div>
+            <div class="form-group">
+              <label for="welcomeTitleInput">Başlık</label>
+              <input id="welcomeTitleInput" type="text" maxlength="120" required />
+            </div>
+            <div class="form-group">
+              <label for="welcomeTextInput">Yazı</label>
+              <textarea id="welcomeTextInput" maxlength="500" rows="4"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="welcomeButtonInput">Düğme yazısı</label>
+              <input id="welcomeButtonInput" type="text" maxlength="60" required />
+            </div>
+            <div class="form-group">
+              <label><input id="welcomeShowAgain" type="checkbox" style="width:auto;margin-right:8px" />Daha önce kapatanlara da bir kez daha göster</label>
+            </div>
+            <button type="submit" class="btn-sm btn-approve" id="welcomeSaveBtn">Kaydet</button>
+          </form>
         </div>
       </section>
 

@@ -150,14 +150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Açılış banner popup'ı sadece ilk ziyarette göster
-  const welcomePopup = document.getElementById('welcomePopup');
-  let welcomeSeen = false;
-  try { welcomeSeen = localStorage.getItem('welcomeSeen') === '1'; } catch {}
-  if (welcomePopup && !welcomeSeen) {
-    setTimeout(() => {
-      welcomePopup.classList.add('open');
-    }, 300);
-  }
+  showWelcomePopup();
 
 });
 
@@ -1960,12 +1953,33 @@ function hideUserEmojiPicker() {
 }
 
 // ── Welcome Popup Close Helpers ──────────────────────────────────
+let welcomeVersion = 1;
+async function showWelcomePopup() {
+  const popup = document.getElementById('welcomePopup');
+  if (!popup || window.self !== window.top) return;
+  let w = {};
+  try {
+    const res = await fetch('/api/welcome');
+    if (res.ok) w = await res.json();
+  } catch {}
+  if (w.enabled === false) return;
+  welcomeVersion = Number(w.version) || 1;
+  let seen = 0;
+  try { seen = Number(localStorage.getItem('welcomeSeen')) || 0; } catch {}
+  if (seen >= welcomeVersion) return;
+  if (w.image) document.getElementById('welcomeImage').src = w.image;
+  if (w.title) document.getElementById('welcomeTitle').textContent = w.title;
+  if (typeof w.text === 'string') document.getElementById('welcomeText').textContent = w.text;
+  if (w.button) document.getElementById('welcomeButton').textContent = w.button;
+  popup.classList.add('open');
+}
+
 function closeWelcomePopup() {
   const popup = document.getElementById('welcomePopup');
   if (popup) {
     popup.classList.remove('open');
   }
-  try { localStorage.setItem('welcomeSeen', '1'); } catch {}
+  try { localStorage.setItem('welcomeSeen', String(welcomeVersion)); } catch {}
 }
 
 function closeWelcomePopupOnBg(e) {
