@@ -578,7 +578,10 @@ function esc(str) {
 function formatDate(dateStr) {
   if (!dateStr) return '—';
   try {
-    const d = new Date(dateStr.replace(' ', 'T') + 'Z');
+    let s = String(dateStr).replace(' ', 'T');
+    if (!/(Z|[+-]\d\d:?\d\d)$/.test(s)) s += 'Z';
+    const d = new Date(s);
+    if (isNaN(d)) return '—';
     return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   } catch { return dateStr; }
 }
