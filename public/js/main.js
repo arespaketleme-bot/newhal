@@ -209,7 +209,7 @@ function toggleMapFullscreen(force) {
   panel.classList.toggle('map-fullscreen', on);
   document.body.classList.toggle('map-fs-open', on);
   const btn = document.getElementById('mapFsBtn');
-  document.getElementById('mapFsLabel').textContent = on ? 'Küçült' : 'Tam Ekran';
+  document.getElementById('mapFsLabel').textContent = on ? 'Küçült / İlanlara Geç' : 'Tam Ekran';
   btn.setAttribute('aria-label', on ? 'Haritayı eski haline döndür' : 'Haritayı tam ekran yap');
   if (on) setChatOpen(false);
   if (typeof updateBottomNav === 'function') updateBottomNav();
