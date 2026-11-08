@@ -2179,8 +2179,7 @@ async function flushLogsToTelegram() {
   }
   const notes = tgLogDropped ? ['', `ℹ️ ${tgLogDropped} kayıt yoğunluk yüzünden atlandı.`] : [];
   tgLogDropped = 0;
-  await sendTelegram(['🧾 <b>Yeni aktiviteler</b>', '', ...lines, ...notes].join('
-'));
+  await sendTelegram(['🧾 <b>Yeni aktiviteler</b>', '', ...lines, ...notes].join(String.fromCharCode(10)));
 }
 setInterval(() => {
   flushLogsToTelegram().catch(err => console.error('Aktivite Telegram bildirimi gönderilemedi:', err.message));
