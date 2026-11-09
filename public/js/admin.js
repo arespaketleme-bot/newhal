@@ -483,6 +483,7 @@ const sectionTitles = {
   logs:      'Aktivite Logları',
   welcome:   'Açılış Ekranı',
   promo:     'WhatsApp Reklam',
+  engage:    'Kalma Süresi',
   audit:     'Raporlar',
   heatmap:   'Tıklama Haritası'
 };
@@ -514,6 +515,8 @@ function showSection(name) {
     loadWelcome();
   } else if (name === 'promo') {
     loadPromo();
+  } else if (name === 'engage') {
+    loadEngagement();
   } else if (name === 'audit') {
     loadAuditReport();
   }
@@ -730,6 +733,52 @@ async function copyPromo() {
   } catch {
     showToast('Kopyalanamadı', 'error');
   }
+}
+
+// ── Kalma süresi ─────────────────────────────────────────────
+const percent = (part, whole) => (whole ? Math.round(part * 100 / whole) : 0);
+const formatSeconds = (s) => (s < 60 ? `${Math.round(s)} sn` : `${Math.floor(s / 60)} dk ${Math.round(s % 60)} sn`);
+
+async function loadEngagement() {
+  const res = await api('/api/admin/engagement');
+  if (!res) return;
+  const box = document.getElementById('engageBox');
+  if (!res.ok) { box.textContent = 'Yüklenemedi'; return; }
+  const data = await res.json();
+  document.getElementById('engageMeta').textContent = `${formatDate(data.since)} tarihinden beri`;
+  const rows = Object.entries(data.sources).sort((a, b) => b[1].total - a[1].total);
+  if (!rows.length) { box.textContent = 'Henüz veri yok. Ziyaretçiler siteden ayrıldıkça burada görünecek.'; return; }
+  const all = rows.reduce((sum, [, r]) => ({
+    total: sum.total + r.total,
+    interacted: sum.interacted + r.interacted,
+    seconds: sum.seconds + r.seconds,
+    buckets: sum.buckets.map((n, i) => n + r.buckets[i]),
+  }), { total: 0, interacted: 0, seconds: 0, buckets: [0, 0, 0, 0, 0] });
+  const line = (name, r, strong) => `<tr${strong ? ' style="font-weight:700"' : ''}>
+    <td style="padding:8px">${esc(name)}</td>
+    <td style="padding:8px">${r.total}</td>
+    <td style="padding:8px">%${percent(r.buckets[0], r.total)}</td>
+    <td style="padding:8px">%${percent(r.total - r.interacted, r.total)}</td>
+    <td style="padding:8px">%${percent(r.buckets[3] + r.buckets[4], r.total)}</td>
+    <td style="padding:8px">${formatSeconds(r.seconds / r.total)}</td>
+  </tr>`;
+  box.innerHTML = `<table style="width:100%;border-collapse:collapse;text-align:left">
+    <thead><tr>
+      <th style="padding:8px">Nereden geldi</th><th style="padding:8px">Ziyaret</th>
+      <th style="padding:8px">10 sn'den kısa</th><th style="padding:8px">Hiç dokunmadan çıkan</th>
+      <th style="padding:8px">2 dk'dan uzun</th><th style="padding:8px">Ortalama</th>
+    </tr></thead>
+    <tbody>${rows.map(([name, r]) => line(name, r)).join('')}${line('Toplam', all, true)}</tbody>
+  </table>`;
+}
+
+async function resetEngagement() {
+  if (!confirm('Kalma süresi verileri sıfırlansın mı?')) return;
+  const res = await api('/api/admin/engagement', { method: 'DELETE' });
+  if (!res) return;
+  if (!res.ok) { showToast('Sıfırlanamadı', 'error'); return; }
+  showToast('Sıfırlandı', 'success');
+  loadEngagement();
 }
 
 async function sendBroadcast(event) {

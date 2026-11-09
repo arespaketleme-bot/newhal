@@ -1953,10 +1953,56 @@ function hideUserEmojiPicker() {
 }
 
 // ── Welcome Popup Close Helpers ──────────────────────────────────
+// Paylaşım linkinden gelene büyük açılış ekranı yerine işine yarayan küçük kart
+const LANDINGS = {
+  davet: { icon: '📍', title: 'Dükkanınız haritada olabilir', text: 'Adını yazın, bulun ve ücretsiz sahiplenin.', button: 'Dükkanımı Bul', action: focusMapSearch },
+  tanitim: { icon: '🗺️', title: 'Mersin Hali cebinizde', text: 'Aradığınız esnafı ya da ürünü yazın.', button: 'Aramaya Başla', action: focusMapSearch },
+  ilan: { icon: '📢', title: 'İlanınızı 1 dakikada verin', text: 'Ücretsiz. Hal esnafı görsün.', button: 'İlan Ver', action: () => openUserAdModal() },
+};
+
+function focusMapSearch() {
+  if (!isMapFullscreen()) toggleMapFullscreen(true);
+  const input = document.getElementById('mapSearch');
+  if (input) input.focus();
+}
+
+function showLandingCard(key) {
+  const info = LANDINGS[key];
+  const card = document.createElement('div');
+  card.className = 'landing-card';
+  card.setAttribute('role', 'dialog');
+  card.setAttribute('aria-label', info.title);
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'landing-card-close';
+  close.textContent = '✕';
+  close.setAttribute('aria-label', 'Kapat');
+  close.onclick = () => card.remove();
+  const icon = document.createElement('div');
+  icon.className = 'landing-card-icon';
+  icon.textContent = info.icon;
+  const body = document.createElement('div');
+  body.className = 'landing-card-body';
+  const title = document.createElement('b');
+  title.textContent = info.title;
+  const text = document.createElement('span');
+  text.textContent = info.text;
+  body.append(title, text);
+  const go = document.createElement('button');
+  go.type = 'button';
+  go.className = 'landing-card-go';
+  go.textContent = info.button;
+  go.onclick = () => { card.remove(); info.action(); };
+  card.append(close, icon, body, go);
+  document.body.appendChild(card);
+}
+
 let welcomeVersion = 1;
 async function showWelcomePopup() {
   const popup = document.getElementById('welcomePopup');
   if (!popup || window.self !== window.top) return;
+  const kaynak = new URLSearchParams(location.search).get('kaynak');
+  if (kaynak && Object.prototype.hasOwnProperty.call(LANDINGS, kaynak)) { showLandingCard(kaynak); return; }
   let w = {};
   try {
     const res = await fetch('/api/welcome');
@@ -4328,6 +4374,41 @@ function trackSearch(source, q, immediate) {
 // ── Tıklama yoğunluk haritası ─────────────────────────────────
 // Sadece ölçüm çerezine "Kabul et" diyen ziyaretçide çalışır. Kim olduğu değil,
 // sadece ekranın neresine tıklandığı (ekran boyuna oranla) gönderilir.
+// Kalma süresi: oturum başına bir kez, sayfadan ayrılırken gönderilir. Kişi bilgisi içermez.
+(function setupEngagement() {
+  if (window.self !== window.top) return;
+  try {
+    if (localStorage.getItem('newhal_admin_token') || sessionStorage.getItem('engagementSent')) return;
+  } catch { return; }
+  let start = document.visibilityState === 'visible' ? Date.now() : 0;
+  let interacted = false;
+  let sent = false;
+  const markInteracted = () => { interacted = true; };
+  document.addEventListener('pointerdown', markInteracted, { passive: true, capture: true, once: true });
+  document.addEventListener('keydown', markInteracted, { passive: true, capture: true, once: true });
+  function send() {
+    if (sent || !start) return;
+    sent = true;
+    try { sessionStorage.setItem('engagementSent', '1'); } catch {}
+    const body = JSON.stringify({
+      seconds: Math.round((Date.now() - start) / 1000),
+      interacted,
+      kaynak: new URLSearchParams(location.search).get('kaynak') || '',
+      referrer: document.referrer || '',
+    });
+    try {
+      if (!navigator.sendBeacon || !navigator.sendBeacon('/api/engagement', new Blob([body], { type: 'application/json' }))) {
+        fetch('/api/engagement', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+      }
+    } catch {}
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') send();
+    else if (!start) start = Date.now();
+  });
+  window.addEventListener('pagehide', send);
+})();
+
 (function setupClickHeatmap() {
   const COLS = 60, ROWS = 40;
   let queue = [];

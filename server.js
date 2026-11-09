@@ -2255,6 +2255,86 @@ app.put('/api/admin/welcome', requireAdmin, async (req, res) => {
   }
 });
 
+// ── Kalma süresi ölçümü: kişi bilgisi tutulmaz, sadece kaynağa göre toplam sayılar ──
+const ENGAGE_FILE = 'engagement.json';
+const ENGAGE_LIMITS = [10, 30, 120, 600];
+const ENGAGE_PER_IP_MIN = 30;
+const ENGAGE_KAYNAK = { davet: 'Davet linki', tanitim: 'Tanıtım linki', ilan: 'İlan linki' };
+const ENGAGE_KNOWN = ['Google araması', 'Facebook', 'Instagram', 'WhatsApp', 'X (Twitter)'];
+let engagement = null, engagementDirty = false;
+const engageRate = new Map();
+async function loadEngagement() {
+  if (!engagement) {
+    const saved = await db.getPrivateJson(ENGAGE_FILE);
+    engagement = saved && saved.sources ? saved : { since: new Date().toISOString(), sources: {} };
+  }
+  return engagement;
+}
+function engageSource(body) {
+  const kaynak = String(body.kaynak || '');
+  if (Object.prototype.hasOwnProperty.call(ENGAGE_KAYNAK, kaynak)) return ENGAGE_KAYNAK[kaynak];
+  const label = describeReferrer(String(body.referrer || '').slice(0, 300));
+  if (ENGAGE_KNOWN.includes(label)) return label;
+  return body.referrer ? 'Diğer' : 'Doğrudan';
+}
+setInterval(async () => {
+  if (!engagementDirty || !engagement) return;
+  engagementDirty = false;
+  if (!(await db.savePrivateJson(ENGAGE_FILE, engagement))) engagementDirty = true;
+}, 30 * 1000).unref();
+setInterval(() => {
+  const minuteAgo = Date.now() - 60 * 1000;
+  for (const [ip, r] of engageRate) if (r.at < minuteAgo) engageRate.delete(ip);
+}, 10 * 60 * 1000).unref();
+
+app.post('/api/engagement', express.text({ type: '*/*', limit: '4kb' }), async (req, res) => {
+  res.status(204).end();
+  try {
+    let body = req.body;
+    if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = null; } }
+    if (!body || typeof body !== 'object') return;
+    const seconds = Number(body.seconds);
+    if (!Number.isFinite(seconds) || seconds < 0 || seconds > 86400) return;
+    const ua = req.headers['user-agent'] || '';
+    if (/bot|crawl|spider|preview|facebookexternalhit|headless/i.test(ua)) return;
+    const ip = String(getIp(req)).split(',')[0].trim();
+    const now = Date.now();
+    const rate = engageRate.get(ip);
+    const bucket = rate && now - rate.at < 60000 ? rate : { at: now, n: 0 };
+    bucket.n++;
+    engageRate.set(ip, bucket);
+    if (bucket.n > ENGAGE_PER_IP_MIN) return;
+    const data = await loadEngagement();
+    const source = engageSource(body);
+    const row = data.sources[source] || (data.sources[source] = { total: 0, interacted: 0, seconds: 0, buckets: [0, 0, 0, 0, 0] });
+    row.total++;
+    if (body.interacted === true) row.interacted++;
+    row.seconds += Math.min(seconds, 1800);
+    const index = ENGAGE_LIMITS.findIndex(limit => seconds < limit);
+    row.buckets[index === -1 ? ENGAGE_LIMITS.length : index]++;
+    engagementDirty = true;
+  } catch (err) {
+    console.error('Kalma süresi kaydedilemedi:', err.message);
+  }
+});
+
+app.get('/api/admin/engagement', requireAdmin, async (req, res) => {
+  try { res.json(await loadEngagement()); }
+  catch (err) { console.error('Kalma süresi okunamadı:', err.message); res.status(500).json({ error: 'Okunamadı' }); }
+});
+
+app.delete('/api/admin/engagement', requireAdmin, async (req, res) => {
+  try {
+    engagement = { since: new Date().toISOString(), sources: {} };
+    if (!(await db.savePrivateJson(ENGAGE_FILE, engagement))) return res.status(500).json({ error: 'Sıfırlanamadı' });
+    engagementDirty = false;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Kalma süresi sıfırlanamadı:', err.message);
+    res.status(500).json({ error: 'Sıfırlanamadı' });
+  }
+});
+
 // ── Paylaşım linkleri: WhatsApp'ta resimli önizleme çıkar, tıklayan siteye geçer ──
 const SHARE_LINKS = {
   davet: { image: 'esnaf', kaynak: 'davet', title: 'Dükkanınız NewHal haritasında!', description: 'Dükkanınızı ücretsiz sahiplenin, ürünlerinizi ekleyin, müşteriler sizi kolayca bulsun.' },

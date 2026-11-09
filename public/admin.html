@@ -128,6 +128,10 @@
           <span aria-hidden="true">💬</span>
           WhatsApp Reklam
         </button>
+        <button class="nav-item" id="navEngage" onclick="showSection('engage')">
+          <span aria-hidden="true">⏱️</span>
+          Kalma Süresi
+        </button>
         <button class="nav-item" id="navAudit" onclick="showSection('audit')">
           <span aria-hidden="true">📋</span>
           Raporlar
@@ -689,6 +693,20 @@
             </div>
           </div>
         </div>
+      </section>
+
+      <section class="section" id="sectionEngage">
+        <div class="section-head">
+          <div>
+            <h1>Kalma Süresi</h1>
+            <p id="engageMeta">Ziyaretçiler sitede ne kadar kalıyor</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-sm btn-approve" onclick="loadEngagement()">🔄 Yenile</button>
+            <button class="btn-sm" onclick="resetEngagement()">Sıfırla</button>
+          </div>
+        </div>
+        <div id="engageBox" style="padding:16px;background:var(--bg-card);border-radius:12px;overflow-x:auto">Yükleniyor...</div>
       </section>
 
       <section class="section" id="sectionAudit">
