@@ -124,6 +124,10 @@
           <span aria-hidden="true">🖼️</span>
           Açılış Ekranı
         </button>
+        <button class="nav-item" id="navPromo" onclick="showSection('promo')">
+          <span aria-hidden="true">💬</span>
+          WhatsApp Reklam
+        </button>
         <button class="nav-item" id="navAudit" onclick="showSection('audit')">
           <span aria-hidden="true">📋</span>
           Raporlar
@@ -639,6 +643,49 @@
             </div>
             <button type="submit" class="btn-sm btn-approve" id="welcomeSaveBtn">Kaydet</button>
           </form>
+        </div>
+      </section>
+
+      <section class="section" id="sectionPromo">
+        <style>
+          .promo-wrap { display:flex; flex-wrap:wrap; gap:20px; align-items:flex-start; }
+          .promo-left { flex:1 1 320px; min-width:0; }
+          .promo-chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+          .promo-chip { padding:8px 14px; border-radius:999px; border:1px solid rgba(37,211,102,.45); background:transparent; color:inherit; font-weight:600; cursor:pointer; }
+          .promo-chip.active { background:#25d366; border-color:#25d366; color:#06281a; }
+          #promoText { width:100%; min-height:300px; box-sizing:border-box; padding:12px; border-radius:12px; font:inherit; line-height:1.5; resize:vertical; }
+          .promo-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+          .promo-btn { padding:11px 18px; border:0; border-radius:10px; font-weight:700; cursor:pointer; }
+          .promo-btn.wa { background:#25d366; color:#06281a; }
+          .promo-btn.copy { background:rgba(148,163,184,.2); color:inherit; }
+          .promo-phone { flex:1 1 320px; max-width:400px; border-radius:18px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+          .promo-phone-head { background:#075e54; color:#fff; padding:12px 16px; font-weight:700; }
+          .promo-phone-body { background:#e5ddd5; padding:16px; min-height:300px; }
+          .promo-bubble { background:#dcf8c6; color:#111b21; padding:10px 12px; border-radius:10px 0 10px 10px; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.45; font-size:14.5px; box-shadow:0 1px 1px rgba(0,0,0,.15); }
+          .promo-time { text-align:right; font-size:11px; color:#667781; margin-top:4px; }
+        </style>
+        <div class="section-head">
+          <div>
+            <h1>WhatsApp Reklam</h1>
+            <p>Hazır mesajı seçin, isterseniz değiştirin, sonra paylaşın</p>
+          </div>
+        </div>
+        <div class="promo-wrap">
+          <div class="promo-left">
+            <div class="promo-chips" id="promoChips"></div>
+            <textarea id="promoText" oninput="renderPromoPreview()" aria-label="Reklam mesajı"></textarea>
+            <div class="promo-actions">
+              <button type="button" class="promo-btn wa" onclick="sharePromo()">WhatsApp'ta Paylaş</button>
+              <button type="button" class="promo-btn copy" onclick="copyPromo()">Mesajı Kopyala</button>
+            </div>
+          </div>
+          <div class="promo-phone">
+            <div class="promo-phone-head">Önizleme</div>
+            <div class="promo-phone-body">
+              <div class="promo-bubble" id="promoPreview"></div>
+              <div class="promo-time">WhatsApp'ta böyle görünür</div>
+            </div>
+          </div>
         </div>
       </section>
 

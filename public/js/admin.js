@@ -482,6 +482,7 @@ const sectionTitles = {
   stats:     'İstatistikler',
   logs:      'Aktivite Logları',
   welcome:   'Açılış Ekranı',
+  promo:     'WhatsApp Reklam',
   audit:     'Raporlar',
   heatmap:   'Tıklama Haritası'
 };
@@ -511,6 +512,8 @@ function showSection(name) {
     loadHeatmap();
   } else if (name === 'welcome') {
     loadWelcome();
+  } else if (name === 'promo') {
+    loadPromo();
   } else if (name === 'audit') {
     loadAuditReport();
   }
@@ -581,6 +584,112 @@ async function saveWelcome(event) {
   if (!res.ok) { showToast(data.error || 'Kaydedilemedi', 'error'); return; }
   document.getElementById('welcomeShowAgain').checked = false;
   showToast('Açılış ekranı kaydedildi', 'success');
+}
+
+// ── WhatsApp reklam mesajı ───────────────────────────────────
+let promoBusinessCount = '470+';
+let promoActive = 'genel';
+
+const PROMO_TEMPLATES = {
+  genel: { label: 'Genel Tanıtım', text: () => `🍊 *MERSİN HALİ ARTIK CEBİNİZDE!* 🍅
+
+Hal esnafını aramakla vakit kaybetmeyin.
+*NewHal* ile hepsi tek haritada:
+
+🗺️ *${promoBusinessCount} işletme* haritada
+📞 Esnafa *tek dokunuşla* ulaşın
+📢 *Ücretsiz* ilan verin
+🚚 Komisyoncu, tüccar, nakliyeci, market
+
+━━━━━━━━━━━━
+👉 *newhal.com*
+━━━━━━━━━━━━
+
+_Ücretsiz. Uygulama indirmeye gerek yok._` },
+  esnaf: { label: 'Esnafa Davet', text: () => `Merhaba, iyi çalışmalar 🌿
+
+*Dükkanınız NewHal haritasında!* 📍
+Mersin'in hal ve çevre esnafı burada buluşuyor.
+
+Dükkanınızı *ücretsiz* sahiplenin:
+✅ Bilgilerinizi kendiniz güncelleyin
+✅ Ürün ve fotoğraflarınızı ekleyin
+✅ *Ücretsiz ilan* verin
+✅ Müşteriler sizi kolayca bulsun
+
+━━━━━━━━━━━━
+👉 *newhal.com*
+━━━━━━━━━━━━
+
+_İstemiyorsanız yazmanız yeterli, bir daha rahatsız etmeyiz._` },
+  ilan: { label: 'Ücretsiz İlan', text: () => `📢 *ALIM SATIMINIZ VAR MI?*
+
+Sebze, meyve, nakliye, kasa, iş ilanı...
+İlanınızı *NewHal*'e verin, hal esnafı görsün!
+
+💰 Tamamen *ücretsiz*
+⏱️ *1 dakikada* yayında
+📸 Fotoğraf ve video ekleyin
+
+━━━━━━━━━━━━
+👉 *newhal.com*
+━━━━━━━━━━━━` },
+};
+
+function renderPromoPreview() {
+  document.getElementById('promoPreview').innerHTML = esc(document.getElementById('promoText').value)
+    .replace(/\*([^*\n]+)\*/g, '<b>$1</b>')
+    .replace(/(^|\s)_([^_\n]+)_(?=\s|$)/g, '$1<i>$2</i>');
+}
+
+function selectPromo(key) {
+  promoActive = key;
+  document.getElementById('promoText').value = PROMO_TEMPLATES[key].text();
+  document.querySelectorAll('.promo-chip').forEach(b => b.classList.toggle('active', b.dataset.key === key));
+  renderPromoPreview();
+}
+
+async function loadPromo() {
+  const chips = document.getElementById('promoChips');
+  if (!chips.children.length) {
+    Object.entries(PROMO_TEMPLATES).forEach(([key, t]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'promo-chip';
+      b.dataset.key = key;
+      b.textContent = t.label;
+      b.onclick = () => selectPromo(key);
+      chips.appendChild(b);
+    });
+    selectPromo(promoActive);
+  }
+  try {
+    const res = await fetch('/api/pins');
+    const pins = await res.json();
+    if (Array.isArray(pins) && pins.length >= 10) {
+      const next = `${Math.floor(pins.length / 10) * 10}+`;
+      if (next !== promoBusinessCount) {
+        const old = PROMO_TEMPLATES[promoActive].text();
+        promoBusinessCount = next;
+        if (document.getElementById('promoText').value === old) selectPromo(promoActive);
+      }
+    }
+  } catch {}
+}
+
+function sharePromo() {
+  const text = document.getElementById('promoText').value.trim();
+  if (!text) { showToast('Mesaj boş', 'error'); return; }
+  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+}
+
+async function copyPromo() {
+  try {
+    await navigator.clipboard.writeText(document.getElementById('promoText').value);
+    showToast('Mesaj kopyalandı', 'success');
+  } catch {
+    showToast('Kopyalanamadı', 'error');
+  }
 }
 
 async function sendBroadcast(event) {
