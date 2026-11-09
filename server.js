@@ -2335,6 +2335,8 @@ app.delete('/api/admin/engagement', requireAdmin, async (req, res) => {
   }
 });
 
+app.get('/halim', (req, res) => res.redirect(302, 'https://halim-lc2m.onrender.com'));
+
 // ── Paylaşım linkleri: WhatsApp'ta resimli önizleme çıkar, tıklayan siteye geçer ──
 const SHARE_LINKS = {
   davet: { image: 'esnaf', kaynak: 'davet', title: 'Dükkanınız NewHal haritasında!', description: 'Dükkanınızı ücretsiz sahiplenin, ürünlerinizi ekleyin, müşteriler sizi kolayca bulsun.' },
