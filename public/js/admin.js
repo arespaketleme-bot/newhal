@@ -591,7 +591,7 @@ let promoBusinessCount = '470+';
 let promoActive = 'genel';
 
 const PROMO_TEMPLATES = {
-  genel: { label: 'Genel Tanıtım', text: () => `🍊 *MERSİN HALİ ARTIK CEBİNİZDE!* 🍅
+  genel: { label: 'Genel Tanıtım', image: 'genel', text: () => `🍊 *MERSİN HALİ ARTIK CEBİNİZDE!* 🍅
 
 Hal esnafını aramakla vakit kaybetmeyin.
 *NewHal* ile hepsi tek haritada:
@@ -606,7 +606,7 @@ Hal esnafını aramakla vakit kaybetmeyin.
 ━━━━━━━━━━━━
 
 _Ücretsiz. Uygulama indirmeye gerek yok._` },
-  esnaf: { label: 'Esnafa Davet', text: () => `Merhaba, iyi çalışmalar 🌿
+  esnaf: { label: 'Esnafa Davet', image: 'esnaf', text: () => `Merhaba, iyi çalışmalar 🌿
 
 *Dükkanınız NewHal haritasında!* 📍
 Mersin'in hal ve çevre esnafı burada buluşuyor.
@@ -622,7 +622,7 @@ Dükkanınızı *ücretsiz* sahiplenin:
 ━━━━━━━━━━━━
 
 _İstemiyorsanız yazmanız yeterli, bir daha rahatsız etmeyiz._` },
-  ilan: { label: 'Ücretsiz İlan', text: () => `📢 *ALIM SATIMINIZ VAR MI?*
+  ilan: { label: 'Ücretsiz İlan', image: 'ilan', text: () => `📢 *ALIM SATIMINIZ VAR MI?*
 
 Sebze, meyve, nakliye, kasa, iş ilanı...
 İlanınızı *NewHal*'e verin, hal esnafı görsün!
@@ -645,6 +645,7 @@ function renderPromoPreview() {
 function selectPromo(key) {
   promoActive = key;
   document.getElementById('promoText').value = PROMO_TEMPLATES[key].text();
+  document.getElementById('promoImage').src = promoImageUrl();
   document.querySelectorAll('.promo-chip').forEach(b => b.classList.toggle('active', b.dataset.key === key));
   renderPromoPreview();
 }
@@ -675,6 +676,60 @@ async function loadPromo() {
       }
     }
   } catch {}
+}
+
+function promoImageUrl() {
+  return `/img/promo/${PROMO_TEMPLATES[promoActive].image}.jpg`;
+}
+
+async function promoImageFile() {
+  const res = await fetch(promoImageUrl());
+  if (!res.ok) throw new Error('Resim alınamadı');
+  return new File([await res.blob()], `newhal-${PROMO_TEMPLATES[promoActive].image}.jpg`, { type: 'image/jpeg' });
+}
+
+function saveFileToDevice(file) {
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+async function downloadPromoImage() {
+  try {
+    saveFileToDevice(await promoImageFile());
+    showToast('Resim indirildi', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// Telefonda paylaşım menüsü açılır; bilgisayarda resim indirilir, yazı WhatsApp'ta açılır
+async function sharePromoImage() {
+  const text = document.getElementById('promoText').value.trim();
+  try { await navigator.clipboard.writeText(text); } catch {}
+  let file;
+  try {
+    file = await promoImageFile();
+  } catch (err) {
+    showToast(err.message, 'error');
+    return;
+  }
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], text });
+    } catch (err) {
+      if (err.name !== 'AbortError') showToast('Paylaşılamadı', 'error');
+    }
+    return;
+  }
+  saveFileToDevice(file);
+  showToast('Resim indirildi. WhatsApp açılınca resmi sohbete ekleyin', 'success');
+  sharePromo();
 }
 
 function sharePromo() {
