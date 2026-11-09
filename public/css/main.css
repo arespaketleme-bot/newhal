@@ -2323,7 +2323,7 @@ a.logo:hover img.logo-icon { transform: scale(1.06); }
 
 /* Paylaşım linkinden gelene çıkan küçük karşılama kartı */
 .landing-card {
-  position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  position: fixed; left: 50%; top: calc(155px + env(safe-area-inset-top)); transform: translateX(-50%);
   z-index: 5000; width: min(440px, calc(100vw - 24px)); box-sizing: border-box;
   display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; align-items: center;
   padding: 14px 40px 14px 14px; border-radius: 18px; color: #fff;
