@@ -2255,6 +2255,36 @@ app.put('/api/admin/welcome', requireAdmin, async (req, res) => {
   }
 });
 
+// ── Paylaşım linkleri: WhatsApp'ta resimli önizleme çıkar, tıklayan siteye geçer ──
+const SHARE_LINKS = {
+  davet: { image: 'esnaf', kaynak: 'davet', title: 'Dükkanınız NewHal haritasında!', description: 'Dükkanınızı ücretsiz sahiplenin, ürünlerinizi ekleyin, müşteriler sizi kolayca bulsun.' },
+  tanitim: { image: 'genel', kaynak: 'tanitim', title: 'Mersin Hali artık cebinizde!', description: 'Hal esnafı tek haritada. Esnafa tek dokunuşla ulaşın, ücretsiz ilan verin.' },
+  'ilan-ver': { image: 'ilan', kaynak: 'ilan', title: 'İlanınız hal esnafına ulaşsın', description: 'Ücretsiz ilan verin, 1 dakikada yayında.' },
+};
+Object.entries(SHARE_LINKS).forEach(([slug, link]) => {
+  app.get(`/${slug}`, (req, res) => {
+    const target = `/?kaynak=${link.kaynak}`;
+    res.type('html').send(`<!doctype html><html lang="tr"><head><meta charset="utf-8">
+<title>${link.title}</title>
+<meta name="robots" content="noindex">
+<meta name="description" content="${link.description}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="NewHal">
+<meta property="og:title" content="${link.title}">
+<meta property="og:description" content="${link.description}">
+<meta property="og:url" content="https://newhal.com/${slug}">
+<meta property="og:image" content="https://newhal.com/img/promo/${link.image}.jpg">
+<meta property="og:image:secure_url" content="https://newhal.com/img/promo/${link.image}.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1080">
+<meta property="og:image:height" content="1080">
+<meta name="twitter:card" content="summary_large_image">
+<meta http-equiv="refresh" content="0;url=${target}">
+<script>location.replace(${JSON.stringify(target)});</script>
+</head><body><a href="${target}">NewHal'e git</a></body></html>`);
+  });
+});
+
 // ── ADMIN: Etkinlik Kayıtları ─────────────────────────────────
 app.get('/api/admin/logs', requireAdmin, async (req, res) => {
   res.json(await db.getLogs());

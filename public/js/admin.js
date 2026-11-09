@@ -591,7 +591,7 @@ let promoBusinessCount = '470+';
 let promoActive = 'genel';
 
 const PROMO_TEMPLATES = {
-  genel: { label: 'Genel Tanıtım', image: 'genel', text: () => `🍊 *MERSİN HALİ ARTIK CEBİNİZDE!* 🍅
+  genel: { label: 'Genel Tanıtım', image: 'genel', link: 'https://newhal.com/tanitim', text: () => `🍊 *MERSİN HALİ ARTIK CEBİNİZDE!* 🍅
 
 Hal esnafını aramakla vakit kaybetmeyin.
 *NewHal* ile hepsi tek haritada:
@@ -602,11 +602,11 @@ Hal esnafını aramakla vakit kaybetmeyin.
 🚚 Komisyoncu, tüccar, nakliyeci, market
 
 ━━━━━━━━━━━━
-👉 *newhal.com*
+👉 https://newhal.com/tanitim
 ━━━━━━━━━━━━
 
 _Ücretsiz. Uygulama indirmeye gerek yok._` },
-  esnaf: { label: 'Esnafa Davet', image: 'esnaf', text: () => `Merhaba, iyi çalışmalar 🌿
+  esnaf: { label: 'Esnafa Davet', image: 'esnaf', link: 'https://newhal.com/davet', text: () => `Merhaba, iyi çalışmalar 🌿
 
 *Dükkanınız NewHal haritasında!* 📍
 Mersin'in hal ve çevre esnafı burada buluşuyor.
@@ -618,11 +618,11 @@ Dükkanınızı *ücretsiz* sahiplenin:
 ✅ Müşteriler sizi kolayca bulsun
 
 ━━━━━━━━━━━━
-👉 *newhal.com*
+👉 https://newhal.com/davet
 ━━━━━━━━━━━━
 
 _İstemiyorsanız yazmanız yeterli, bir daha rahatsız etmeyiz._` },
-  ilan: { label: 'Ücretsiz İlan', image: 'ilan', text: () => `📢 *ALIM SATIMINIZ VAR MI?*
+  ilan: { label: 'Ücretsiz İlan', image: 'ilan', link: 'https://newhal.com/ilan-ver', text: () => `📢 *ALIM SATIMINIZ VAR MI?*
 
 Sebze, meyve, nakliye, kasa, iş ilanı...
 İlanınızı *NewHal*'e verin, hal esnafı görsün!
@@ -632,7 +632,7 @@ Sebze, meyve, nakliye, kasa, iş ilanı...
 📸 Fotoğraf ve video ekleyin
 
 ━━━━━━━━━━━━
-👉 *newhal.com*
+👉 https://newhal.com/ilan-ver
 ━━━━━━━━━━━━` },
 };
 
@@ -708,34 +708,19 @@ async function downloadPromoImage() {
   }
 }
 
-// Telefonda paylaşım menüsü açılır; bilgisayarda resim indirilir, yazı WhatsApp'ta açılır
-async function sharePromoImage() {
-  const text = document.getElementById('promoText').value.trim();
-  try { await navigator.clipboard.writeText(text); } catch {}
-  let file;
-  try {
-    file = await promoImageFile();
-  } catch (err) {
-    showToast(err.message, 'error');
-    return;
-  }
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], text });
-    } catch (err) {
-      if (err.name !== 'AbortError') showToast('Paylaşılamadı', 'error');
-    }
-    return;
-  }
-  saveFileToDevice(file);
-  showToast('Resim indirildi. WhatsApp açılınca resmi sohbete ekleyin', 'success');
-  sharePromo();
-}
-
 function sharePromo() {
   const text = document.getElementById('promoText').value.trim();
   if (!text) { showToast('Mesaj boş', 'error'); return; }
   window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+}
+
+async function copyPromoLink() {
+  try {
+    await navigator.clipboard.writeText(PROMO_TEMPLATES[promoActive].link);
+    showToast('Link kopyalandı', 'success');
+  } catch {
+    showToast('Kopyalanamadı', 'error');
+  }
 }
 
 async function copyPromo() {
