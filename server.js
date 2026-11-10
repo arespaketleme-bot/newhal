@@ -13,6 +13,8 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const app        = express();
+// newhal.com/halim adresi Halim programini kendi adresiyle gosterir
+app.use(require('./halim-vekil')());
 const PORT       = process.env.PORT       || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'newhal_secret';
 const cleanReferralCode = value => /^NH[1-9]\d{0,17}$/i.test(String(value || '').trim())
@@ -2351,7 +2353,6 @@ app.delete('/api/admin/engagement', requireAdmin, async (req, res) => {
   }
 });
 
-app.get('/halim', (req, res) => res.redirect(302, 'https://halim-lc2m.onrender.com'));
 
 // ── Paylaşım linkleri: WhatsApp'ta resimli önizleme çıkar, tıklayan siteye geçer ──
 const SHARE_LINKS = {
