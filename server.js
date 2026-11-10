@@ -481,13 +481,29 @@ async function getIpLocation(ip) {
   if (cached) ipLocationCache.delete(ip);
 
   try {
-    const response = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}?fields=success,city,region,country`, {
-      signal: AbortSignal.timeout(3000),
-      headers: { 'User-Agent': 'NewHal-Visitor-Notification/1.0' },
-    });
-    if (!response.ok) return null;
-    const data = await response.json();
-    if (!data.success) return null;
+    // İlk servis cevap vermezse yedek servise sorulur
+    let data = null;
+    try {
+      const r = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}?fields=success,city,region,country`, {
+        signal: AbortSignal.timeout(4000),
+        headers: { 'User-Agent': 'NewHal-Visitor-Notification/1.0' },
+      });
+      const d = r.ok ? await r.json() : null;
+      if (d && d.success) data = d;
+    } catch {}
+    if (!data) {
+      try {
+        const r = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,city,regionName,country&lang=tr`, {
+          signal: AbortSignal.timeout(4000),
+        });
+        const d = r.ok ? await r.json() : null;
+        if (d && d.status === 'success') data = { city: d.city, region: d.regionName, country: d.country };
+      } catch {}
+    }
+    if (!data) {
+      console.warn('[ziyaret] konum bulunamadı:', ip);
+      return null;
+    }
 
     const location = [data.city, data.region, data.country]
       .map(value => String(value || '').trim())
@@ -1038,7 +1054,7 @@ app.get('/api/chat', async (req, res) => {
 });
 
 function getIp(req) {
-  let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip || '127.0.0.1';
+  let ip = req.headers['cf-connecting-ip'] || String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || req.ip || '127.0.0.1';
   if (ip === '::1' || ip === '::ffff:127.0.0.1') {
     ip = '127.0.0.1';
   }
