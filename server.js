@@ -2543,9 +2543,30 @@ async function getTrends() {
   }
   return trendsCache.items;
 }
+// Yönetimden açılıp kapanır (kayıt yoksa açık)
+const TRENDS_SETTING_FILE = 'trend-bar.json';
+let trendSettingCache = null;
+async function getTrendSetting() {
+  if (trendSettingCache) return trendSettingCache;
+  const saved = await db.getPrivateJson(TRENDS_SETTING_FILE);
+  trendSettingCache = { enabled: !(saved && saved.enabled === false) };
+  return trendSettingCache;
+}
 app.get('/api/trends', async (req, res) => {
-  res.set('Cache-Control', 'public, max-age=300');
-  res.json({ items: await getTrends() });
+  res.set('Cache-Control', 'public, max-age=60');
+  const setting = await getTrendSetting().catch(() => ({ enabled: true }));
+  if (!setting.enabled) return res.json({ enabled: false, items: [] });
+  res.json({ enabled: true, items: await getTrends() });
+});
+app.get('/api/admin/trends', requireAdmin, async (req, res) => {
+  const setting = await getTrendSetting();
+  res.json({ ...setting, items: setting.enabled ? await getTrends() : [] });
+});
+app.put('/api/admin/trends', requireAdmin, async (req, res) => {
+  const next = { enabled: req.body && req.body.enabled === true };
+  if (!(await db.savePrivateJson(TRENDS_SETTING_FILE, next))) return res.status(500).json({ error: 'Kaydedilemedi' });
+  trendSettingCache = next;
+  res.json(next);
 });
 
 app.get('/api/welcome', async (req, res) => {

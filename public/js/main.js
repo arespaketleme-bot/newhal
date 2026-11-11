@@ -2352,7 +2352,8 @@ async function loadTrendBar() {
   if (!bar || !track) return;
   let items = [];
   try { const r = await fetch('/api/trends'); if (r.ok) items = (await r.json()).items || []; } catch {}
-  if (!items.length) return;
+  // Yönetimden kapatıldıysa (ya da trend yoksa) şerit gizlenir
+  if (!items.length) { bar.hidden = true; document.body.classList.remove('has-trends'); return; }
   track.innerHTML = '';
   // Kesintisiz akması için liste iki kez yazılır
   for (let copy = 0; copy < 2; copy++) {

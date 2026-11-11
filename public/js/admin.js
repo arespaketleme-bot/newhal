@@ -507,6 +507,7 @@ const sectionTitles = {
   welcome:   'Açılış Ekranı',
   sponsor:   'Sponsorlu Reklam',
   appPromo:  'Uygulama İndirme',
+  trends:    'Gündem Şeridi',
   promo:    'WhatsApp Reklam',
   engage:    'Kalma Süresi',
   audit:     'Raporlar',
@@ -542,6 +543,8 @@ function showSection(name) {
     loadSponsor();
   } else if (name === 'appPromo') {
     loadAppPromo();
+  } else if (name === 'trends') {
+    loadTrendSetting();
   } else if (name === 'promo') {
     loadPromo();
   } else if (name === 'engage') {
@@ -800,6 +803,31 @@ async function loadSponsor() {
   } catch {
     showToast('Sponsor ayarı okunamadı', 'error');
   }
+}
+
+// ── Gündem şeridi ayarı ───────────────────────────────────────
+function renderTrendSetting(d) {
+  document.getElementById('trendEnabled').checked = d.enabled !== false;
+  const box = document.getElementById('trendPreview');
+  const items = d.items || [];
+  box.innerHTML = d.enabled === false
+    ? 'Şerit şu an <b>kapalı</b>.'
+    : (items.length ? `<b>Şu an akan ${items.length} etiket:</b><br>${items.map(t => escHtmlSafe(t.tag)).join(' · ')}` : 'Google şu an trend vermedi, şerit görünmüyor.');
+}
+async function loadTrendSetting() {
+  const res = await api('/api/admin/trends');
+  if (!res) return;
+  renderTrendSetting(await res.json().catch(() => ({})));
+}
+async function saveTrendSetting(event) {
+  event.preventDefault();
+  const enabled = document.getElementById('trendEnabled').checked;
+  const res = await api('/api/admin/trends', { method: 'PUT', body: JSON.stringify({ enabled }) });
+  if (!res) return;
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { showToast(data.error || 'Kaydedilemedi', 'error'); return; }
+  showToast(enabled ? 'Gündem şeridi açıldı' : 'Gündem şeridi kapatıldı', 'success');
+  loadTrendSetting();
 }
 
 // ── Uygulama indirme ayarı ────────────────────────────────────

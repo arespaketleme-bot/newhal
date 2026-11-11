@@ -124,6 +124,10 @@
           Toplu Bildirim
         </button>
         <div class="nav-group-title">Site Ayarları</div>
+        <button class="nav-item" id="navTrends" onclick="showSection('trends')">
+          <span aria-hidden="true">📈</span>
+          Gündem Şeridi
+        </button>
         <button class="nav-item" id="navWelcome" onclick="showSection('welcome')">
           <span aria-hidden="true">🖼️</span>
           Açılış Ekranı
@@ -735,6 +739,20 @@
             <button type="submit" class="btn-sm btn-approve" id="welcomeSaveBtn">Kaydet</button>
           </form>
         </div>
+      </section>
+
+      <section class="section" id="sectionTrends">
+        <div class="section-head">
+          <div>
+            <h1>Gündem Şeridi</h1>
+            <p>Sitenin en üstünde kayan Google Türkiye günlük trendleri (#etiketler).</p>
+          </div>
+        </div>
+        <form onsubmit="saveTrendSetting(event)" style="display:flex;flex-direction:column;gap:14px;max-width:560px">
+          <label class="app-ctl"><input type="checkbox" id="trendEnabled" /> <span><b>Gündem şeridi açık</b><br><small>Kapalıyken şerit sitede hiç görünmez, menü eskisi gibi en üstte durur.</small></span></label>
+          <div><button type="submit" class="btn-sm btn-approve">Kaydet</button></div>
+          <div id="trendPreview" style="font-size:14px;line-height:1.8;opacity:.9"></div>
+        </form>
       </section>
 
       <section class="section" id="sectionAppPromo">
