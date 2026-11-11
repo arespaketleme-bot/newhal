@@ -1598,6 +1598,83 @@ app.get('/api/admin/economy-ledger', requireAdmin, async (req, res) => {
   res.json({ total_distributed: entries.reduce((total, row) => total + Number(row.amount || 0), 0), entries });
 });
 
+// ── İlan takibi: üye kelime kaydeder, uyan yeni ilan yayına girince bildirim alır ──
+const AD_ALERT_FILE = 'ad-alerts.json';
+const AD_ALERT_MAX_WORDS = 10;
+let adAlertCache = null;
+async function getAdAlerts() {
+  if (adAlertCache) return adAlertCache;
+  const saved = await db.getPrivateJson(AD_ALERT_FILE);
+  adAlertCache = saved && saved.users && typeof saved.users === 'object' ? saved : { users: {} };
+  return adAlertCache;
+}
+const trLower = s => String(s || '').toLocaleLowerCase('tr-TR');
+function cleanAlertWords(list) {
+  const out = [];
+  for (const raw of Array.isArray(list) ? list : []) {
+    const w = trLower(raw).replace(/\s+/g, ' ').trim().slice(0, 40);
+    if (w.length >= 2 && !out.includes(w)) out.push(w);
+    if (out.length >= AD_ALERT_MAX_WORDS) break;
+  }
+  return out;
+}
+const requireMember = (req, res) => {
+  if (req.user.role !== 'user' || !req.user.id) { res.status(403).json({ error: 'İlan takibi için giriş yapmalısınız' }); return false; }
+  return true;
+};
+app.get('/api/ad-alerts', requireAuth, async (req, res) => {
+  if (!requireMember(req, res)) return;
+  const store = await getAdAlerts();
+  res.json({ words: (store.users[String(req.user.id)] || {}).words || [], max: AD_ALERT_MAX_WORDS });
+});
+app.put('/api/ad-alerts', requireAuth, async (req, res) => {
+  if (!requireMember(req, res)) return;
+  const words = cleanAlertWords(req.body && req.body.words);
+  const store = await getAdAlerts();
+  const next = { users: { ...store.users } };
+  if (words.length) next.users[String(req.user.id)] = { words, updated_at: new Date().toISOString() };
+  else delete next.users[String(req.user.id)];
+  if (!(await db.savePrivateJson(AD_ALERT_FILE, next))) return res.status(500).json({ error: 'Kaydedilemedi' });
+  adAlertCache = next;
+  res.json({ words, max: AD_ALERT_MAX_WORDS });
+});
+
+// Yayına giren ilanı takip kelimeleriyle karşılaştır, uyan üyelere bildirim gönder (bir ilan için bir kez)
+const adAlertSent = new Set();
+async function notifyAdAlerts(ad) {
+  try {
+    if (!ad || ad.active === false || ad.pending || adAlertSent.has(ad.id)) return;
+    adAlertSent.add(ad.id);
+    const store = await getAdAlerts();
+    const text = trLower(`${ad.title || ''} ${ad.body || ''}`);
+    if (!text.trim()) return;
+    const ownerId = ad.owner && ad.owner.id ? String(ad.owner.id) : null;
+    const hits = [];
+    for (const [uid, entry] of Object.entries(store.users)) {
+      if (uid === ownerId) continue;
+      const word = (entry.words || []).find(w => text.includes(w));
+      if (word) hits.push({ id: Number(uid), word });
+    }
+    if (!hits.length) return;
+    const snippet = String(ad.title || ad.body || '').replace(/\s+/g, ' ').trim().slice(0, 140);
+    const rows = hits.map(h => ({
+      recipient_id: h.id, actor_id: null, type: 'announcement',
+      title: `🔔 Takip ettiğiniz "${h.word}" için yeni ilan`.slice(0, 120),
+      body: `${ad.no ? `#${ad.no} · ` : ''}${snippet}\nİlanı görmek için: ${SITE_URL}/?ilan=${ad.id}`,
+    }));
+    const { error } = await db.supabase.from('user_notifications').insert(rows);
+    if (error) console.error('İlan takibi bildirimi kaydedilemedi:', error.message);
+    for (const h of hits) {
+      void sendBrowserPush(h.id, {
+        title: `NewHal: "${h.word}" için yeni ilan`, body: snippet, url: `/?ilan=${ad.id}`, tag: `ad-alert-${ad.id}`,
+      });
+    }
+    console.log(`[ilan takibi] ${ad.no || ad.id}: ${hits.length} üyeye bildirim`);
+  } catch (err) {
+    console.error('İlan takibi bildirimi gönderilemedi:', err.message);
+  }
+}
+
 app.post('/api/ads', requireAuth, async (req, res) => {
   if (req.user.role !== 'user' || !req.user.id) return res.status(403).json({ error: 'Google ile giriş yapmalısınız' });
   const ad = cleanAd(req.body, { allowVideoFile: false });
@@ -1621,6 +1698,7 @@ app.post('/api/ads', requireAuth, async (req, res) => {
   };
   setAdStory(created, await userStoryPin(req.user.id, req.body.pinId));
   if (!(await db.saveAds([created, ...ads]))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
+  void notifyAdAlerts(created);
   const reward = await awardEconomyPoints(req.user.id, 'ad_created', `ad:${created.id}`);
   res.status(201).json({ id: created.id, story: !!created.pinId, points_awarded: reward.amount, message: 'İlanınız yayınlandı' });
 });
@@ -1730,6 +1808,7 @@ app.post('/api/admin/ads', requireAdmin, async (req, res) => {
   if (req.body.featured) setFeatured(created, true, req.body.featured_days);
   setAdStory(created, await adminStoryPin(req.body.pinId));
   if (!(await db.saveAds([created, ...ads]))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
+  void notifyAdAlerts(created);
   res.status(201).json(created);
 });
 
@@ -1769,6 +1848,7 @@ app.patch('/api/admin/ads/:id', requireAdmin, async (req, res) => {
   if (req.body.featured) { ad.featured_request_status = 'approved'; ad.featured_approved_at = new Date().toISOString(); }
   if (req.body.whatsapp_sent) ad.whatsapp_sent_at = new Date().toISOString();
   if (!(await db.saveAds(ads))) return res.status(500).json({ error: 'Kaydedilemedi' });
+  if (req.body.active === true) void notifyAdAlerts(ad);
   res.json(ad);
 });
 

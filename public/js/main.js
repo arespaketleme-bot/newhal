@@ -935,6 +935,11 @@ function showPinDetail(id) {
   if (!pin) return;
   currentDetailPinId = id;
   renderSponsorDetail();
+  // Başlığın yanında favori kalbi
+  document.getElementById('pinDetailFav')?.remove();
+  const favBtn = buildFavButton('pins', id, 'in-header');
+  favBtn.id = 'pinDetailFav';
+  document.querySelector('#pinDetailBox .modal-close')?.insertAdjacentElement('beforebegin', favBtn);
 
   // Reset report form
   const rForm = document.getElementById('reportFormContainer');
@@ -2652,6 +2657,7 @@ function renderAdsGrid() {
   if (adsShownQuery !== adsQuery) { adsShownQuery = adsQuery; adsMobileShown = ADS_MOBILE_PAGE; }
   const shown = isAdsMobile() ? list.slice(0, adsMobileShown) : list;
   adsFeedList = adsQuery ? list : [...featured, ...list];
+  renderAdsTools();
   renderAdsFeedButton(adsFeedList.length);
   shown.forEach(ad => grid.appendChild(buildAdCard(ad)));
   // Sponsorlu kartlar 6., 12. … sıraya (daha az ilan varsa ilki sona) girer
@@ -2665,6 +2671,199 @@ function renderAdsGrid() {
     : `"${adsQuery}" için ilan bulunamadı`;
 }
 
+
+// ── Favoriler: giriş gerekmez, bu cihazda saklanır ────────────
+const FAV_KEY = 'newhal_favorites';
+function readFavs() {
+  try {
+    const v = JSON.parse(localStorage.getItem(FAV_KEY) || '{}');
+    return { ads: Array.isArray(v.ads) ? v.ads : [], pins: Array.isArray(v.pins) ? v.pins : [] };
+  } catch { return { ads: [], pins: [] }; }
+}
+function writeFavs(f) { try { localStorage.setItem(FAV_KEY, JSON.stringify(f)); } catch {} }
+const isFav = (kind, id) => readFavs()[kind].includes(String(id));
+function toggleFav(kind, id) {
+  const f = readFavs();
+  const key = String(id);
+  const on = !f[kind].includes(key);
+  f[kind] = on ? [key, ...f[kind]].slice(0, 200) : f[kind].filter(x => x !== key);
+  writeFavs(f);
+  document.querySelectorAll(`.fav-btn[data-kind="${kind}"][data-id="${CSS.escape(key)}"]`).forEach(b => paintFav(b, on));
+  updateFavCount();
+  showToast(on ? '❤️ Favorilere eklendi' : 'Favorilerden çıkarıldı', 'success');
+  return on;
+}
+function paintFav(btn, on) {
+  btn.classList.toggle('on', on);
+  btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  btn.setAttribute('aria-label', on ? 'Favorilerden çıkar' : 'Favorilere ekle');
+  btn.querySelector('.fav-ico').textContent = on ? '❤️' : '🤍';
+}
+function buildFavButton(kind, id, extraClass = '') {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = `fav-btn ${extraClass}`.trim();
+  b.dataset.kind = kind;
+  b.dataset.id = String(id);
+  b.innerHTML = '<span class="fav-ico"></span>';
+  paintFav(b, isFav(kind, id));
+  b.addEventListener('click', (e) => { e.stopPropagation(); e.preventDefault(); toggleFav(kind, id); });
+  b.addEventListener('keydown', (e) => e.stopPropagation());
+  return b;
+}
+function updateFavCount() {
+  const f = readFavs();
+  const n = f.ads.filter(id => allAds.some(a => a.id === id)).length + f.pins.filter(id => allPins.some(p => String(p.id) === id)).length;
+  const el = document.getElementById('favCount');
+  if (el) el.textContent = n ? ` (${n})` : '';
+}
+
+// Basit pencere: mevcut pencere görünümünü kullanır
+function openSimpleModal(id, icon, title, subtitle) {
+  let ov = document.getElementById(id);
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.className = 'modal-overlay';
+    ov.id = id;
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.classList.remove('open'); });
+    ov.innerHTML = `<div class="modal simple-modal"><div class="modal-header"><div class="modal-title-wrap"><div class="modal-icon"></div><div><h3></h3><p></p></div></div><button type="button" class="modal-close" aria-label="Kapat">✕</button></div><div class="simple-modal-body"></div></div>`;
+    ov.querySelector('.modal-close').onclick = () => ov.classList.remove('open');
+    document.body.appendChild(ov);
+  }
+  ov.querySelector('.modal-icon').textContent = icon;
+  ov.querySelector('h3').textContent = title;
+  ov.querySelector('.modal-title-wrap p').textContent = subtitle;
+  ov.classList.add('open');
+  return ov.querySelector('.simple-modal-body');
+}
+
+function openFavorites() {
+  const body = openSimpleModal('favoritesModal', '❤️', 'Favorilerim', 'Beğendiğiniz ilanlar ve işletmeler, bu cihazda saklanır');
+  body.innerHTML = '';
+  const f = readFavs();
+  const ads = f.ads.map(id => allAds.find(a => a.id === id)).filter(Boolean);
+  const pins = f.pins.map(id => allPins.find(p => String(p.id) === id)).filter(Boolean);
+  if (!ads.length && !pins.length) {
+    body.innerHTML = '<p class="simple-empty">Henüz favoriniz yok. İlanlarda ve işletmelerde 🤍 işaretine dokunarak ekleyebilirsiniz.</p>';
+    return;
+  }
+  const section = (label, items, build) => {
+    if (!items.length) return;
+    const h = document.createElement('h4');
+    h.className = 'simple-sub';
+    h.textContent = `${label} (${items.length})`;
+    body.appendChild(h);
+    items.forEach(it => body.appendChild(build(it)));
+  };
+  const row = (img, title, sub, onOpen, kind, id) => {
+    const r = document.createElement('div');
+    r.className = 'fav-row';
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'fav-row-open';
+    if (img) { const im = document.createElement('img'); im.src = img; im.alt = ''; im.loading = 'lazy'; open.appendChild(im); }
+    const t = document.createElement('span');
+    t.className = 'fav-row-text';
+    const s1 = document.createElement('strong'); s1.textContent = title;
+    const s2 = document.createElement('small'); s2.textContent = sub;
+    t.append(s1, s2);
+    open.appendChild(t);
+    open.onclick = () => { document.getElementById('favoritesModal').classList.remove('open'); onOpen(); };
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'fav-row-del';
+    del.setAttribute('aria-label', 'Favorilerden çıkar');
+    del.textContent = '✕';
+    del.onclick = () => { toggleFav(kind, id); r.remove(); };
+    r.append(open, del);
+    return r;
+  };
+  section('İlanlar', ads, ad => row((ad.images || [])[0] || AD_LOGO_URL, ad.title || String(ad.body || '').split('\n')[0] || 'İlan',
+    ad.no ? `İlan #${ad.no}` : 'İlan', () => openAdViewer(ad, 0), 'ads', ad.id));
+  section('İşletmeler', pins, pin => row((pin.images || [])[0] || '', pin.title || 'İşletme', pin.category || '',
+    () => showPinDetail(pin.id), 'pins', pin.id));
+}
+
+// ── İlan takibi penceresi (giriş gerekir) ──────────────────────
+let adAlertWords = [];
+async function adAlertRequest(method, body) {
+  const token = readToken('userToken');
+  const res = await fetch('/api/ad-alerts', {
+    method, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'İşlem yapılamadı');
+  return data;
+}
+function openAdAlerts() {
+  if (!checkAuthAndRun()) return;
+  const body = openSimpleModal('adAlertsModal', '🔔', 'İlan Takibi', 'Yazdığınız kelime geçen yeni ilan gelince haber verelim');
+  body.innerHTML = `
+    <form class="alert-form" id="adAlertForm">
+      <input type="text" id="adAlertInput" maxlength="40" placeholder="Örnek: limon, nakliye, kasa" aria-label="Takip edilecek kelime" autocomplete="off" />
+      <button type="submit" class="btn-primary">Ekle</button>
+    </form>
+    <div class="alert-words" id="adAlertWords"><p class="simple-empty">Yükleniyor...</p></div>
+    <div class="alert-push">
+      <p>Telefon ya da bilgisayar kapalıyken de haber almak için bildirimleri açın.</p>
+      <button type="button" class="btn-outline" onclick="enableBrowserNotifications()">Bildirimleri aç</button>
+    </div>`;
+  document.getElementById('adAlertForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('adAlertInput');
+    const w = input.value.trim();
+    if (w.length < 2) { showToast('En az 2 harf yazın', 'error'); return; }
+    try {
+      const data = await adAlertRequest('PUT', { words: [...adAlertWords, w] });
+      adAlertWords = data.words;
+      input.value = '';
+      renderAdAlertWords(data.max);
+      showToast(`"${w}" takibe alındı`, 'success');
+    } catch (err) { showToast(err.message, 'error'); }
+  };
+  adAlertRequest('GET').then(data => { adAlertWords = data.words || []; renderAdAlertWords(data.max); })
+    .catch(err => { document.getElementById('adAlertWords').innerHTML = `<p class="simple-empty">${escHtml(err.message)}</p>`; });
+}
+function renderAdAlertWords(max = 10) {
+  const box = document.getElementById('adAlertWords');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!adAlertWords.length) { box.innerHTML = '<p class="simple-empty">Henüz takip ettiğiniz kelime yok.</p>'; return; }
+  const head = document.createElement('p');
+  head.className = 'simple-sub';
+  head.textContent = `Takip ettikleriniz (${adAlertWords.length}/${max})`;
+  box.appendChild(head);
+  adAlertWords.forEach(w => {
+    const chip = document.createElement('span');
+    chip.className = 'alert-chip';
+    chip.textContent = w;
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.setAttribute('aria-label', `${w} takibini bırak`);
+    x.textContent = '✕';
+    x.onclick = async () => {
+      try {
+        const data = await adAlertRequest('PUT', { words: adAlertWords.filter(v => v !== w) });
+        adAlertWords = data.words;
+        renderAdAlertWords(data.max);
+      } catch (err) { showToast(err.message, 'error'); }
+    };
+    chip.appendChild(x);
+    box.appendChild(chip);
+  });
+}
+
+function renderAdsTools() {
+  if (document.getElementById('adsTools')) { updateFavCount(); return; }
+  const bar = document.createElement('div');
+  bar.id = 'adsTools';
+  bar.className = 'ads-tools';
+  bar.innerHTML = `<button type="button" class="ads-tool" onclick="openFavorites()">❤️ Favorilerim<span id="favCount"></span></button>
+    <button type="button" class="ads-tool" onclick="openAdAlerts()">🔔 İlan Takibi</button>`;
+  document.getElementById('adsGrid').insertAdjacentElement('beforebegin', bar);
+  updateFavCount();
+}
 
 // ── Telefonda TikTok gibi dikey kaydırmalı ilan akışı ─────────
 let adsFeedList = [];
@@ -2824,6 +3023,11 @@ function buildFeedSlide(ad, i, total) {
     b.onclick = (e) => { e.stopPropagation(); fn(); };
     return b;
   };
+  const fav = mk(isFav('ads', ad.id) ? '❤️' : '🤍', 'Favori', () => {
+    const on = toggleFav('ads', ad.id);
+    fav.querySelector('.feed-act-ico').textContent = on ? '❤️' : '🤍';
+  });
+  side.appendChild(fav);
   side.appendChild(mk('💬', 'Detay', () => openAdViewer(ad, 0)));
   side.appendChild(mk(SHARE_ICONS.whatsapp, 'Paylaş', () => {
     const url = adShareUrl(ad), text = adShareText(ad);
@@ -2960,6 +3164,7 @@ function initAdsSearch() {
 function buildAdCard(ad) {
   const card = document.createElement('article');
   card.className = 'ad-card';
+  card.appendChild(buildFavButton('ads', ad.id, 'on-card'));
   const images = ad.images || [];
 
   if (ad.video && ad.video.type === 'file') {
