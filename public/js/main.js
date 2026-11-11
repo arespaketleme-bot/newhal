@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Chat initialization & polling
   loadChatMessages();
   setInterval(loadChatMessages, 3000);
-  initDraggableChat();
+  // Sağ alttaki sohbet (WhatsApp) simgesi sabit durur, sürüklenmez
   initChatAutoCollapse();
 
   // Emoji picker init
