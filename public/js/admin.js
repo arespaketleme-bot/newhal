@@ -1892,6 +1892,151 @@ async function addAdPhotos(files) {
   }));
 }
 
+// ── Facebook gönderisinden ilan: yapıştırılan içerik yazı ve resim olarak ayrılır ──
+let fbImportFiles = [];   // panodan gelen resim dosyaları
+let fbImportUrls = [];    // yapıştırılan içerikteki Facebook resim adresleri
+
+// Facebook ekranındaki düğme ve sayaç yazıları ilan metnine girmesin
+const FB_NOISE = [
+  /^(beğen|yorum yap|yorum|paylaş|gönder|yanıtla|takip et|katıl|mesaj gönder|daha fazla gör|daha fazlasını gör|tümünü gör|diğer yorumları gör|çeviriyi gör|en alakalı|herkese açık|sponsorlu|facebook|like|comment|share|send|reply|follow|see more|see translation|most relevant|all reactions:?)$/i,
+  /^\d+([.,]\d+)?\s*(b|bn|k|m)?\s*(yorum|paylaşım|beğeni|tepki|görüntülenme|comments?|shares?|likes?|reactions?|views?)$/i,
+  /^(\d+\s*(sn|dk|sa|g|h|hf|y|s|d|w|m)|dün|bugün|şimdi|az önce|just now|yesterday)(\s*(saat|at)?\s*[\d:.]*)?\s*·?$/i,
+  /^[\d\s.,·•]+$/,
+  /^·$/,
+  /^yorum yaz.*$/i, /^write a comment.*$/i, /^.{0,3}$/,
+];
+function cleanFbText(text) {
+  const lines = String(text || '').replace(/\r/g, '').split('\n').map(l => l.replace(/ /g, ' ').replace(/\s+/g, ' ').trim());
+  const out = [];
+  for (const l of lines) {
+    if (!l) { if (out.length && out[out.length - 1] !== '') out.push(''); continue; }
+    const digits = (l.match(/\d/g) || []).length;
+    if (digits < 7 && FB_NOISE.some(rx => rx.test(l))) continue;   // telefon numarası korunur
+    if (out.includes(l) && l.length < 40) continue;   // tekrar eden kısa satırlar (isim, grup adı)
+    out.push(l.replace(/\s*…?\s*(daha fazla gör|see more)$/i, ''));
+  }
+  while (out.length && out[out.length - 1] === '') out.pop();
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function fbImageUrlsFromHtml(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const urls = [];
+  doc.querySelectorAll('img').forEach(img => {
+    const src = img.getAttribute('src') || '';
+    if (!/^https:\/\/[^/]*(fbcdn\.net|fbsbx\.com)\//i.test(src)) return;
+    if (/\/(emoji|rsrc)\.php|static\.xx\.fbcdn|\/images\/emoji/i.test(src)) return;   // emojiler ve simgeler
+    const w = Number(img.getAttribute('width')) || 0, h = Number(img.getAttribute('height')) || 0;
+    if ((w && w < 120) || (h && h < 120)) return;   // profil resimleri ve küçük simgeler
+    if (/[?&]stp=[^&]*(p40x40|p32x32|s40x40|c\d+\.\d+\.\d+\.\d+a_cp0_dst-jpg_s\d{2}x)/i.test(src)) return;
+    if (!urls.includes(src)) urls.push(src);
+  });
+  return urls;
+}
+
+function renderFbImportFound() {
+  const box = document.getElementById('fbImportFound');
+  const n = fbImportUrls.length + fbImportFiles.length;
+  const text = cleanFbText(document.getElementById('fbImportPaste').innerText);
+  box.hidden = !n && !text;
+  box.textContent = `Bulunan: ${text ? `${text.split('\n').filter(Boolean).length} satır yazı` : 'yazı yok'} · ${n} resim${n > AD_MAX_PHOTOS ? ` (ilk ${AD_MAX_PHOTOS} tanesi alınır)` : ''}`;
+}
+
+function setupFbImport() {
+  const paste = document.getElementById('fbImportPaste');
+  if (!paste) return;
+  paste.addEventListener('paste', (e) => {
+    e.stopPropagation();   // sayfanın genel resim yapıştırması devreye girmesin
+    e.preventDefault();
+    const cd = e.clipboardData;
+    const html = cd.getData('text/html');
+    const plain = cd.getData('text/plain');
+    const files = [...cd.items].filter(it => it.kind === 'file' && /^image\//.test(it.type)).map(it => it.getAsFile()).filter(Boolean);
+    if (html) fbImageUrlsFromHtml(html).forEach(u => { if (!fbImportUrls.includes(u)) fbImportUrls.push(u); });
+    fbImportFiles.push(...files);
+    const textToAdd = plain || (html ? new DOMParser().parseFromString(html, 'text/html').body.innerText : '');
+    if (textToAdd) {
+      const cur = paste.innerText.trim();
+      paste.innerText = cur ? `${cur}\n${textToAdd}` : textToAdd;
+    }
+    // Yapıştırılan resimleri kutunun içinde küçük önizleme olarak göster
+    files.forEach(f => {
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(f);
+      img.className = 'fb-import-thumb';
+      paste.appendChild(img);
+    });
+    fbImportUrls.forEach(u => {
+      if (paste.querySelector(`img[data-src="${CSS.escape(u)}"]`)) return;
+      const img = document.createElement('img');
+      img.src = u;
+      img.dataset.src = u;
+      img.className = 'fb-import-thumb';
+      img.referrerPolicy = 'no-referrer';
+      paste.appendChild(img);
+    });
+    renderFbImportFound();
+  });
+  paste.addEventListener('input', renderFbImportFound);
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupFbImport);
+else setupFbImport();
+
+function clearFbImport() {
+  document.getElementById('fbImportPaste').innerHTML = '';
+  document.getElementById('fbImportLink').value = '';
+  fbImportFiles = [];
+  fbImportUrls = [];
+  renderFbImportFound();
+}
+
+async function applyFbImport() {
+  const btn = document.getElementById('fbImportBtn');
+  const paste = document.getElementById('fbImportPaste');
+  const text = cleanFbText(paste.innerText);
+  const link = document.getElementById('fbImportLink').value.trim();
+  if (!text && !fbImportUrls.length && !fbImportFiles.length) {
+    showToast('Önce gönderiyi kutuya yapıştırın', 'error');
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Aktarılıyor...';
+  try {
+    // Yazı: ilan metnine (ilk satır başlık olur)
+    let body = text;
+    if (link && document.getElementById('fbImportAddLink').checked) body = `${body}\n\n${link}`.trim();
+    if (body) {
+      const area = document.getElementById('adBody');
+      area.value = body.slice(0, Number(area.maxLength) > 0 ? Number(area.maxLength) : 2120);
+      area.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    // Resimler: panodan gelen dosyalar yüklenir, Facebook adresleri sitenin deposuna kopyalanır
+    let room = AD_MAX_PHOTOS - adPhotoUrls.length - adPhotoBusy;
+    const files = fbImportFiles.slice(0, Math.max(0, room));
+    room -= files.length;
+    if (files.length) await addAdPhotos(files.map((f, i) => new File([f], `facebook-${Date.now()}-${i}.png`, { type: f.type })));
+    let ok = 0, fail = 0;
+    for (const url of fbImportUrls.slice(0, Math.max(0, room))) {
+      adPhotoBusy++;
+      renderAdPhotos();
+      try {
+        const res = await api('/api/admin/ads/import-image', { method: 'POST', body: JSON.stringify({ url }) });
+        const data = res ? await res.json().catch(() => ({})) : {};
+        if (res && res.ok && data.url) { adPhotoUrls.push(data.url); ok++; } else fail++;
+      } catch { fail++; }
+      finally { adPhotoBusy--; renderAdPhotos(); }
+    }
+    const imgCount = files.length + ok;
+    showToast(`Forma aktarıldı: ${body ? 'yazı' : 'yazı yok'}, ${imgCount} resim${fail ? ` (${fail} resim alınamadı, onları tek tek kopyalayıp yapıştırın)` : ''}`, fail ? 'error' : 'success');
+    document.getElementById('adBody').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    clearFbImport();
+    document.getElementById('fbImport').open = false;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Ayır ve Forma Aktar';
+  }
+}
+
 // ── Resim yapıştırma (Ctrl+V ya da düğme) ─────────────────────
 function isAdsSectionOpen() {
   const section = document.getElementById('sectionAds');

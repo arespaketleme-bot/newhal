@@ -389,6 +389,39 @@
           </div>
         </details>
 
+        <style>
+          .fb-import { margin: 0 0 18px; border: 1px solid rgba(59,130,246,.45); border-radius: 14px; background: rgba(59,130,246,.06); }
+          .fb-import > summary { cursor: pointer; padding: 14px 16px; list-style: none; }
+          .fb-import > summary::-webkit-details-marker { display: none; }
+          .fb-import-body { display: flex; flex-direction: column; gap: 12px; padding: 0 16px 16px; }
+          .fb-import-steps { margin: 0; padding-left: 20px; line-height: 1.6; font-size: 14px; opacity: .9; }
+          .fb-import-body input[type=url] { padding: 10px 12px; border-radius: 10px; font: inherit; }
+          .fb-import-paste { min-height: 140px; max-height: 340px; overflow-y: auto; padding: 12px; border-radius: 12px; border: 2px dashed rgba(59,130,246,.55); background: rgba(0,0,0,.18); white-space: pre-wrap; line-height: 1.5; outline: none; }
+          .fb-import-paste:empty::before { content: attr(data-placeholder); opacity: .55; }
+          .fb-import-paste:focus { border-color: #3b82f6; }
+          .fb-import-thumb { display: inline-block; width: 90px; height: 90px; object-fit: cover; border-radius: 8px; margin: 6px 6px 0 0; vertical-align: top; }
+          .fb-import-found { font-weight: 700; color: #93c5fd; }
+          .fb-import-opt { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+        </style>
+        <details class="fb-import" id="fbImport">
+          <summary>📘 <strong>Facebook gönderisinden ilan yap</strong> <span class="ad-hint">Yapıştırın, yazı ve resimler otomatik ayrılsın</span></summary>
+          <div class="fb-import-body">
+            <ol class="fb-import-steps">
+              <li>Facebook'ta gönderiyi açın. Fareyle gönderinin yazısının başından son resmine kadar seçip <b>Ctrl+C</b> ile kopyalayın.</li>
+              <li>Aşağıdaki kutuya tıklayıp <b>Ctrl+V</b> ile yapıştırın. Resimleri tek tek kopyalayıp da yapıştırabilirsiniz.</li>
+              <li><b>Ayır ve Forma Aktar</b>'a basın. Yazı ilan metnine, resimler resim kutusuna gelir.</li>
+            </ol>
+            <input type="url" id="fbImportLink" placeholder="Facebook gönderi linki (isteğe bağlı)" aria-label="Facebook gönderi linki" />
+            <div class="fb-import-paste" id="fbImportPaste" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Facebook gönderisini buraya yapıştırın" data-placeholder="Gönderiyi buraya yapıştırın (Ctrl+V)"></div>
+            <div class="fb-import-found" id="fbImportFound" hidden></div>
+            <label class="fb-import-opt"><input type="checkbox" id="fbImportAddLink" /> Linki ilan yazısının sonuna ekle</label>
+            <div class="ad-actions">
+              <button type="button" class="btn-ghost-sm" onclick="clearFbImport()">Temizle</button>
+              <button type="button" class="btn-publish" id="fbImportBtn" onclick="applyFbImport()">Ayır ve Forma Aktar</button>
+            </div>
+          </div>
+        </details>
+
         <form class="ad-form" id="adForm" onsubmit="submitAd(event)">
           <div class="ad-edit-banner" id="adEditBanner" hidden>
             ✏️ <strong id="adEditLabel">İlan düzenleniyor</strong>

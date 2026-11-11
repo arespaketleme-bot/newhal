@@ -1795,6 +1795,34 @@ app.post('/api/admin/ads/upload-url', requireAdmin, async (req, res) => {
   res.json(result);
 });
 
+// Facebook gönderisinden kopyalanan resim adresini indirip ilan deposuna kaydeder.
+// Güvenlik: yalnızca Facebook'un resim sunucularından, en fazla 5 MB, sadece resim.
+const FB_IMAGE_HOST = /(^|\.)(fbcdn\.net|fbsbx\.com)$/i;
+app.post('/api/admin/ads/import-image', requireAdmin, async (req, res) => {
+  let url;
+  try { url = new URL(String(req.body.url || '')); } catch { return res.status(400).json({ error: 'Resim adresi geçersiz' }); }
+  if (url.protocol !== 'https:' || !FB_IMAGE_HOST.test(url.hostname)) {
+    return res.status(400).json({ error: 'Sadece Facebook resimleri alınabilir' });
+  }
+  try {
+    const r = await fetch(url.href, { signal: AbortSignal.timeout(15000), redirect: 'error' });
+    if (!r.ok) return res.status(502).json({ error: `Resim alınamadı (${r.status})` });
+    const type = String(r.headers.get('content-type') || '').split(';')[0].trim();
+    const ext = AD_UPLOAD_RULES.image.types[type];
+    if (!ext) return res.status(400).json({ error: 'Bu resim türü desteklenmiyor' });
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (!buf.length || buf.length > AD_UPLOAD_RULES.image.maxBytes) return res.status(400).json({ error: 'Resim çok büyük' });
+    const target = await db.createAdUploadUrl(`ads/${Date.now()}-${crypto.randomUUID()}.${ext}`);
+    if (!target) return res.status(500).json({ error: 'Resim kaydedilemedi' });
+    const up = await fetch(target.uploadUrl, { method: 'PUT', headers: { 'Content-Type': type }, body: buf });
+    if (!up.ok) return res.status(500).json({ error: 'Resim kaydedilemedi' });
+    res.json({ url: target.publicUrl });
+  } catch (err) {
+    console.error('Facebook resmi alınamadı:', err.message);
+    res.status(502).json({ error: 'Resim alınamadı' });
+  }
+});
+
 app.post('/api/admin/ads', requireAdmin, async (req, res) => {
   const ad = cleanAd(req.body);
   if (!ad.title && !ad.body && !ad.images.length && !ad.video) {
