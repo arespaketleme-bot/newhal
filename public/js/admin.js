@@ -76,6 +76,29 @@ function showAdminPanel() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('adminLayout').style.display = 'flex';
   loadAll();
+  handleFbLinkParam();
+}
+
+// Chrome eklentisinden gelen "?fbLink=..." : İlanlar açılır, link yazılır, sorgu kendiliğinden başlar
+function handleFbLinkParam() {
+  const params = new URLSearchParams(location.search);
+  const link = (params.get('fbLink') || '').trim();
+  if (!link) return;
+  params.delete('fbLink');
+  history.replaceState(null, '', location.pathname + (params.toString() ? `?${params}` : '') + location.hash);
+  if (!/^https:\/\/([^/]+\.)?(facebook\.com|fb\.com|fb\.watch)\//i.test(link)) {
+    showToast('Gelen link bir Facebook linki değil', 'error');
+    return;
+  }
+  setTimeout(() => {
+    showSection('ads');
+    const box = document.getElementById('fbImport');
+    if (box) box.open = true;
+    document.getElementById('fbImportLink').value = link;
+    if (typeof loadApifyStatus === 'function') loadApifyStatus();
+    document.getElementById('fbImport')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    fetchFbPost();
+  }, 300);
 }
 
 // ── API Helper ─────────────────────────────────────────────────
