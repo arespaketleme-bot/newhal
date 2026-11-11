@@ -1895,6 +1895,7 @@ async function addAdPhotos(files) {
 // ── Facebook gönderisinden ilan: yapıştırılan içerik yazı ve resim olarak ayrılır ──
 let fbImportFiles = [];   // panodan gelen resim dosyaları
 let fbImportUrls = [];    // yapıştırılan içerikteki Facebook resim adresleri
+let fbImportText = '';    // yapıştırılan yazı (kutuda elle değiştirilirse o hali)
 
 // Facebook ekranındaki düğme ve sayaç yazıları ilan metnine girmesin
 const FB_NOISE = [
@@ -1937,7 +1938,7 @@ function fbImageUrlsFromHtml(html) {
 function renderFbImportFound() {
   const box = document.getElementById('fbImportFound');
   const n = fbImportUrls.length + fbImportFiles.length;
-  const text = cleanFbText(document.getElementById('fbImportPaste').innerText);
+  const text = cleanFbText(fbImportText);
   box.hidden = !n && !text;
   box.textContent = `Bulunan: ${text ? `${text.split('\n').filter(Boolean).length} satır yazı` : 'yazı yok'} · ${n} resim${n > AD_MAX_PHOTOS ? ` (ilk ${AD_MAX_PHOTOS} tanesi alınır)` : ''}`;
 }
@@ -1956,8 +1957,8 @@ function setupFbImport() {
     fbImportFiles.push(...files);
     const textToAdd = plain || (html ? new DOMParser().parseFromString(html, 'text/html').body.innerText : '');
     if (textToAdd) {
-      const cur = paste.innerText.trim();
-      paste.innerText = cur ? `${cur}\n${textToAdd}` : textToAdd;
+      fbImportText = fbImportText.trim() ? `${fbImportText.trim()}\n${textToAdd}` : textToAdd;
+      paste.innerText = fbImportText;
     }
     // Yapıştırılan resimleri kutunun içinde küçük önizleme olarak göster
     files.forEach(f => {
@@ -1977,7 +1978,7 @@ function setupFbImport() {
     });
     renderFbImportFound();
   });
-  paste.addEventListener('input', renderFbImportFound);
+  paste.addEventListener('input', () => { fbImportText = paste.innerText; renderFbImportFound(); });
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupFbImport);
 else setupFbImport();
@@ -1987,13 +1988,14 @@ function clearFbImport() {
   document.getElementById('fbImportLink').value = '';
   fbImportFiles = [];
   fbImportUrls = [];
+  fbImportText = '';
   renderFbImportFound();
 }
 
 async function applyFbImport() {
   const btn = document.getElementById('fbImportBtn');
   const paste = document.getElementById('fbImportPaste');
-  const text = cleanFbText(paste.innerText);
+  const text = cleanFbText(fbImportText);
   const link = document.getElementById('fbImportLink').value.trim();
   if (!text && !fbImportUrls.length && !fbImportFiles.length) {
     showToast('Önce gönderiyi kutuya yapıştırın', 'error');
