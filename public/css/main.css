@@ -1599,22 +1599,23 @@ body.map-fs-open { overflow: hidden; }
 .sponsor-detail .sponsor-title { font-size: 15px; }
 .sponsor-detail .sponsor-text { font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { .sponsor-card, .sponsor-card:hover { transition: none; transform: none; } }
-/* Haritanın solundaki uygulama indirme düğmesi */
-.map-app-dl {
-  position: absolute; left: 10px; top: 50%; transform: translateY(-50%); z-index: 1000;
-  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 8px; border-radius: 14px;
-  text-decoration: none; color: #04130b; font-weight: 800; font-size: 13px; line-height: 1.1; text-align: center;
-  background: linear-gradient(160deg, #6ee7b7, #10b981); border: 1px solid rgba(255,255,255,0.35);
-  box-shadow: 0 8px 22px rgba(16,185,129,0.45); animation: mapDlPulse 2.4s ease-in-out infinite;
+/* Üst menüdeki uygulama indirme düğmesi (Harita'nın solunda) */
+.apk-dl[hidden] { display: none !important; }
+.nav-apk, .nav-apk-mobile {
+  display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border-radius: 999px; white-space: nowrap;
+  text-decoration: none; font-weight: 800; font-size: 14px; color: #04130b;
+  background: linear-gradient(135deg, #6ee7b7, #10b981); box-shadow: 0 6px 18px rgba(16,185,129,0.4);
+  animation: navApkGlow 2.4s ease-in-out infinite;
 }
-.map-app-dl[hidden] { display: none; }
-.map-app-dl:hover { filter: brightness(1.08); }
-.map-app-dl:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
-.map-app-dl-ico { font-size: 18px; }
-.map-app-dl-txt { display: flex; flex-direction: column; }
-.map-app-dl-txt small { font-size: 9.5px; font-weight: 700; opacity: 0.75; }
-@keyframes mapDlPulse { 0%, 100% { box-shadow: 0 8px 22px rgba(16,185,129,0.45); } 50% { box-shadow: 0 8px 30px rgba(16,185,129,0.8); } }
-@media (prefers-reduced-motion: reduce) { .map-app-dl { animation: none; } }
+.nav-apk:hover, .nav-apk-mobile:hover { filter: brightness(1.08); }
+.nav-apk:focus-visible, .nav-apk-mobile:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.nav-apk-mobile { display: none; }
+.mobile-apk { font-weight: 800; color: #34d399 !important; text-decoration: none; }
+@keyframes navApkGlow { 0%, 100% { box-shadow: 0 6px 18px rgba(16,185,129,0.4); } 50% { box-shadow: 0 6px 26px rgba(16,185,129,0.85); } }
+@media (max-width: 768px) {
+  .nav-apk-mobile:not([hidden]) { display: inline-flex; margin-left: auto; margin-right: 10px; padding: 8px 12px; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { .nav-apk, .nav-apk-mobile { animation: none; } }
 
 /* Mobil uygulama duyurusu */
 .app-promo {

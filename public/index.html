@@ -80,6 +80,7 @@
         </div>
       </a>
       <nav class="nav">
+        <a class="apk-dl nav-apk" href="/indir/NewHal.apk" download="NewHal.apk" onclick="appPromoLog('Menüdeki İndir düğmesiyle APK indirdi')" hidden aria-label="NewHal Android uygulamasını indir">⬇️ Uygulamayı İndir</a>
         <button class="btn-ghost" onclick="scrollToMap()">Harita</button>
         <button class="btn-ghost" onclick="showPinList()">İşletmeler</button>
         <button class="btn-ghost ads-nav-link" onclick="showAds()" hidden>İlanlar</button>
@@ -90,11 +91,13 @@
           İğne Ekle
         </button>
       </nav>
+      <a class="apk-dl nav-apk-mobile" href="/indir/NewHal.apk" download="NewHal.apk" onclick="appPromoLog('Menüdeki İndir düğmesiyle APK indirdi')" hidden aria-label="NewHal Android uygulamasını indir">⬇️ İndir</a>
       <button class="hamburger" id="hamburger" onclick="toggleMobileMenu()">
         <span></span><span></span><span></span>
       </button>
     </div>
     <div class="mobile-menu" id="mobileMenu">
+      <a class="apk-dl mobile-apk" href="/indir/NewHal.apk" download="NewHal.apk" onclick="appPromoLog('Menüdeki İndir düğmesiyle APK indirdi')" hidden>⬇️ Uygulamayı İndir (Android)</a>
       <button onclick="scrollToMap(); toggleMobileMenu()">Harita</button>
       <button onclick="showPinList(); toggleMobileMenu()">İşletmeler</button>
       <button class="ads-nav-link" onclick="showAds(); toggleMobileMenu()" hidden>📢 İlanlar</button>
@@ -259,13 +262,6 @@
           <button class="layer-btn" id="layerBtnSatellite" onclick="setMapLayer('satellite')">🛰 Uydu</button>
           <button class="layer-btn active" id="layerBtnLight" onclick="setMapLayer('light')">🗺 Açık Renk</button><button class="layer-btn" id="locateMeBtn" onclick="goToMyLocation()">📍 Konumum</button>
         </div>
-
-        <!-- Haritanın solunda: Android uygulamasını indir -->
-        <a class="map-app-dl" id="mapAppDl" href="/indir/NewHal.apk" download="NewHal.apk" hidden
-           onclick="appPromoLog('Haritadaki İndir düğmesiyle APK indirdi')" aria-label="NewHal Android uygulamasını indir">
-          <span class="map-app-dl-ico" aria-hidden="true">⬇️</span>
-          <span class="map-app-dl-txt">İndir<small>Android</small></span>
-        </a>
 
         <!-- Tam ekran / eski haline döndür -->
         <button type="button" class="map-fs-btn" id="mapFsBtn" onclick="toggleMapFullscreen()" aria-label="Haritayı tam ekran yap">

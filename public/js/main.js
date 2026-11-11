@@ -2355,9 +2355,9 @@ function inNativeApp() {
   } catch { return isStandaloneApp(); }
 }
 function showAppPromo() {
-  // Haritadaki İndir düğmesi: uygulamanın içinde ve iPhone'da gösterilmez
-  const mapDl = document.getElementById('mapAppDl');
-  if (mapDl) mapDl.hidden = inNativeApp() || isIos();
+  // Menüdeki İndir düğmeleri: uygulamanın içinde ve iPhone'da gösterilmez
+  const hideDl = inNativeApp() || isIos();
+  document.querySelectorAll('.apk-dl').forEach(a => { a.hidden = hideDl; });
   const box = document.getElementById('appPromo');
   if (!box || inNativeApp()) return;
   let closedAt = 0;
