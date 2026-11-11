@@ -214,6 +214,62 @@ button, a { cursor: pointer; text-decoration: none; border: none; background: no
 }
 @media (prefers-reduced-motion: reduce) { .online-dot { animation: none; } }
 
+/* Görsel hava durumu: vitrinin ilk kartı, gökyüzü rengi havaya göre değişir */
+.vitrin-slide.weather-slide { display: flex; align-items: center; justify-content: center; background: #0b2a44; }
+.vitrin-slide.sky-clear  { background: linear-gradient(160deg, #0e4f86 0%, #1b7fc4 55%, #f2b544 130%); }
+.vitrin-slide.sky-partly { background: linear-gradient(160deg, #144a74 0%, #2f78ad 60%, #c9d6e2 140%); }
+.vitrin-slide.sky-cloudy { background: linear-gradient(160deg, #2b3b4e 0%, #52667d 100%); }
+.vitrin-slide.sky-rain   { background: linear-gradient(160deg, #1c2b3d 0%, #34506d 100%); }
+.vitrin-slide.sky-storm  { background: linear-gradient(160deg, #141a2b 0%, #3a3156 100%); }
+.vitrin-slide.sky-snow   { background: linear-gradient(160deg, #42607d 0%, #9fb6cc 100%); }
+.vitrin-slide.sky-fog    { background: linear-gradient(160deg, #3b4652 0%, #75828f 100%); }
+.weather-panel {
+  display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%;
+  max-width: 760px; padding: 20px 24px; box-sizing: border-box; color: #fff;
+}
+.weather-main { display: flex; align-items: center; gap: 16px; }
+.weather-icon { display: inline-flex; line-height: 0; }
+.weather-main .weather-icon svg { filter: drop-shadow(0 6px 14px rgba(251,191,36,0.25)); animation: weather-float 6s ease-in-out infinite; }
+@keyframes weather-float { 50% { transform: translateY(-4px); } }
+.weather-info { display: flex; flex-direction: column; gap: 2px; }
+.weather-place { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.8); }
+.weather-desc { font-size: 22px; color: #fff; }
+.weather-temps { font-family: var(--font-head); font-weight: 800; }
+.weather-high { font-size: 40px; color: #fff; }
+.weather-low { font-size: 24px; color: rgba(255,255,255,0.75); }
+.weather-wind { font-size: 12px; color: rgba(255,255,255,0.8); }
+.weather-hours { display: flex; justify-content: center; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.weather-hours li {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 58px;
+  padding: 8px 6px; border-radius: 12px; background: rgba(255,255,255,0.1); border: 1px solid transparent;
+}
+.weather-hours li.is-now { background: rgba(255,255,255,0.24); border-color: rgba(255,255,255,0.6); }
+.weather-hour { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.85); }
+.weather-hour-temp { font-size: 14px; font-weight: 700; color: #fff; }
+.weather-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.weather-tag {
+  padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1.3;
+  color: #0b1220; background: rgba(255,255,255,0.88);
+}
+.weather-tag.tone-good { background: #bbf7d0; color: #064e3b; }
+.weather-tag.tone-warn { background: #fde68a; color: #4a2c00; }
+/* Etiketler kesilmesin: hava kartı içeriği kadar uzar (vitrin şeridi en uzun karta göre boy alır) */
+.vitrin-slide.weather-slide { height: auto; min-height: clamp(260px, 46vw, 460px); }
+@media (max-width: 600px) {
+  .weather-panel { gap: 8px; padding: 14px 10px; }
+  .weather-wind { display: none; }
+  .weather-main { gap: 10px; }
+  .weather-main .weather-icon svg { width: 52px; height: 52px; }
+  .weather-desc { font-size: 17px; }
+  .weather-high { font-size: 28px; }
+  .weather-low { font-size: 18px; }
+  .weather-hours { width: 100%; justify-content: space-between; gap: 2px; }
+  .weather-hours li { min-width: 0; flex: 1; padding: 4px 1px; gap: 2px; }
+  .weather-hours .weather-icon svg { width: 22px; height: 22px; }
+  .weather-tag { font-size: 11px; padding: 4px 9px; }
+}
+@media (prefers-reduced-motion: reduce) { .weather-main .weather-icon svg { animation: none; } }
+
 .hero-scroll {
   position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
   cursor: pointer; animation: bounce 2s infinite;

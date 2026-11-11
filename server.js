@@ -1369,6 +1369,19 @@ function weatherDescription(code) {
   return ['Hava durumu', '🌤️'];
 }
 
+// Görsel kartın ikon türü (istemcideki çizimlerle aynı adlar)
+function weatherKind(code) {
+  const value = String(code || '').toLowerCase();
+  if (value.includes('thunder')) return 'storm';
+  if (value.includes('snow') || value.includes('sleet')) return 'snow';
+  if (value.includes('rain') || value.includes('shower')) return 'rain';
+  if (value.includes('fog')) return 'fog';
+  if (value.includes('partlycloudy') || value.startsWith('fair')) return 'partly';
+  if (value.includes('cloudy')) return 'cloudy';
+  if (value.startsWith('clearsky')) return 'clear';
+  return 'partly';
+}
+
 async function loadMersinWeatherStory() {
   const day = localWeatherDay();
   if (mersinWeatherStory && mersinWeatherStory.weather.date === day) return mersinWeatherStory;
@@ -1400,10 +1413,19 @@ async function loadMersinWeatherStory() {
     const [description, icon] = weatherDescription(middayDetails?.summary?.symbol_code);
     const formattedDate = new Intl.DateTimeFormat('tr-TR', { timeZone: WEATHER_TZ, day: 'numeric', month: 'long' }).format(new Date(`${day}T12:00:00+03:00`));
     const winds = todayPoints.map(point => Number(point.data?.instant?.details?.wind_speed)).filter(Number.isFinite);
+    // Görsel kart için: günün hava tipi ve 06–21 arası 3 saatte bir sıcaklık
+    const pointHour = point => Number(new Intl.DateTimeFormat('en-GB', { timeZone: WEATHER_TZ, hour: '2-digit', hourCycle: 'h23' }).format(new Date(point.time)));
+    const pointSymbol = point => (point.data?.next_1_hours || point.data?.next_6_hours || point.data?.next_12_hours)?.summary?.symbol_code;
+    const hours = todayPoints
+      .filter(point => { const h = pointHour(point); return h >= 6 && h <= 21 && h % 3 === 0; })
+      .map(point => ({ hour: pointHour(point), temp: Math.round(Number(point.data?.instant?.details?.air_temperature)), kind: weatherKind(pointSymbol(point)) }))
+      .filter(item => Number.isFinite(item.temp))
+      .slice(0, 6);
     const weather = {
-      date: day, formattedDate, description, icon,
+      date: day, formattedDate, description, icon, kind: weatherKind(middayDetails?.summary?.symbol_code),
       high: Math.round(Math.max(...temperatures)), low: Math.round(Math.min(...temperatures)),
-      wind: winds.length ? Math.round(Math.max(...winds) * 3.6) : null
+      wind: winds.length ? Math.round(Math.max(...winds) * 3.6) : null,
+      hours
     };
     const nextMidnight = new Date(new Date(`${day}T21:00:00.000Z`).getTime() + DAY_MS);
     mersinWeatherStory = {

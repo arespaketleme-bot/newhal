@@ -2377,6 +2377,125 @@ let allAds = [];
 let adStorySettings = { enabled: true, days: 7, groupSize: 10 };
 let adsQuery = '';
 
+// ── Görsel hava durumu kartı (ilk ekranda) ───────────────────
+// Çizimler sabit SVG; tür adı sunucudan gelse de yalnızca bu listeden seçilir
+const WEATHER_SVG = (() => {
+  const sun = '<circle cx="24" cy="24" r="9" fill="#fbbf24"/><g stroke="#fbbf24" stroke-width="3" stroke-linecap="round"><path d="M24 5v5M24 38v5M5 24h5M38 24h5M10.6 10.6l3.5 3.5M33.9 33.9l3.5 3.5M10.6 37.4l3.5-3.5M33.9 14.1l3.5-3.5"/></g>';
+  const moon = '<path d="M30 8a15 15 0 1 0 10 25A13 13 0 0 1 30 8z" fill="#fde68a"/>';
+  const cloud = (fill = '#e2e8f0') => `<path d="M15 38h20a8 8 0 0 0 0-16 11 11 0 0 0-21-2 9 9 0 0 0 1 18z" fill="${fill}"/>`;
+  const smallSun = '<g transform="translate(-6 -8) scale(.8)">' + sun + '</g>';
+  const smallMoon = '<g transform="translate(-8 -9) scale(.8)">' + moon + '</g>';
+  const drops = '<g stroke="#38bdf8" stroke-width="3" stroke-linecap="round"><path d="M17 41l-2 5M25 41l-2 5M33 41l-2 5"/></g>';
+  return {
+    clear: n => n ? moon : sun,
+    partly: n => (n ? smallMoon : smallSun) + cloud(),
+    cloudy: () => '<path d="M28 30h12a6 6 0 0 0 0-12 8 8 0 0 0-15-1" fill="#94a3b8"/>' + cloud(),
+    rain: () => '<g transform="translate(0 -4)">' + cloud('#cbd5e1') + '</g>' + drops,
+    storm: () => '<g transform="translate(0 -4)">' + cloud('#94a3b8') + '</g><path d="M26 34l-6 9h5l-3 7 9-11h-5l3-5z" fill="#fbbf24"/>',
+    snow: () => '<g transform="translate(0 -4)">' + cloud() + '</g><g fill="#f8fafc"><circle cx="17" cy="44" r="2"/><circle cx="25" cy="46" r="2"/><circle cx="33" cy="44" r="2"/></g>',
+    fog: () => '<g stroke="#cbd5e1" stroke-width="3" stroke-linecap="round"><path d="M8 18h32M5 25h38M10 32h28M14 39h20"/></g>',
+  };
+})();
+
+function weatherIcon(kind, night, size) {
+  const draw = WEATHER_SVG[kind] || WEATHER_SVG.partly;
+  const span = document.createElement('span');
+  span.className = 'weather-icon';
+  span.setAttribute('aria-hidden', 'true');
+  span.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 48 48">${draw(night)}</svg>`;
+  return span;
+}
+
+// Havaya göre etiketler: ölçümler + hal esnafı için kısa öneriler
+function weatherTags(w) {
+  const kind = w.kind || 'partly';
+  const high = Number(w.high), low = Number(w.low), wind = w.wind === null ? NaN : Number(w.wind);
+  const tags = [{ text: `${high}° / ${low}°`, tone: 'info' }];
+  if (Number.isFinite(wind)) tags.push({ text: `Rüzgâr ${wind} km/sa`, tone: 'info' });
+  if (kind === 'storm') tags.push({ text: 'Fırtına: açık alanda dikkat', tone: 'warn' });
+  if (kind === 'rain' || kind === 'storm') tags.push({ text: 'Ürünleri örtün', tone: 'warn' }, { text: 'Yükleme alanı kaygan olabilir', tone: 'warn' });
+  if (kind === 'snow') tags.push({ text: 'Kar: yollar kapanabilir', tone: 'warn' });
+  if (kind === 'fog') tags.push({ text: 'Sis: yolda dikkatli sürün', tone: 'warn' });
+  if (high >= 30) tags.push({ text: 'Sıcak: soğuk zincir önerilir', tone: 'warn' }, { text: 'Sabah erken sevkiyat', tone: 'good' });
+  if (low <= 3) tags.push({ text: 'Don riski: hassas ürünleri koruyun', tone: 'warn' });
+  if (wind >= 40) tags.push({ text: 'Kuvvetli rüzgâr: brandaları sabitleyin', tone: 'warn' });
+  if ((kind === 'clear' || kind === 'partly') && high < 30 && low > 3 && !(wind >= 40)) {
+    tags.push({ text: 'Sevkiyata uygun hava', tone: 'good' }, { text: 'Açık tezgâh için ideal', tone: 'good' });
+  }
+  return tags;
+}
+
+function buildWeatherPanel(w) {
+  const box = document.createElement('div');
+  box.className = 'weather-panel';
+  const nowHour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Istanbul', hour: '2-digit', hourCycle: 'h23' }).format(new Date()));
+  const night = nowHour >= 19 || nowHour < 6;
+
+  const main = document.createElement('div');
+  main.className = 'weather-main';
+  main.appendChild(weatherIcon(w.kind, night, 72));
+  const info = document.createElement('div');
+  info.className = 'weather-info';
+  const place = document.createElement('span');
+  place.className = 'weather-place';
+  place.textContent = `Mersin · ${w.formattedDate || 'Bugün'}`;
+  const desc = document.createElement('strong');
+  desc.className = 'weather-desc';
+  desc.textContent = w.description || 'Hava durumu';
+  const temps = document.createElement('span');
+  temps.className = 'weather-temps';
+  const high = document.createElement('span');
+  high.className = 'weather-high';
+  high.textContent = `${Number(w.high)}°`;
+  const low = document.createElement('span');
+  low.className = 'weather-low';
+  low.textContent = ` / ${Number(w.low)}°`;
+  temps.append(high, low);
+  info.append(place, desc, temps);
+  if (Number.isFinite(Number(w.wind)) && w.wind !== null) {
+    const wind = document.createElement('span');
+    wind.className = 'weather-wind';
+    wind.textContent = `Rüzgâr en fazla ${Number(w.wind)} km/sa`;
+    info.appendChild(wind);
+  }
+  main.appendChild(info);
+  box.appendChild(main);
+
+  const hours = Array.isArray(w.hours) ? w.hours : [];
+  if (hours.length) {
+    const list = document.createElement('ol');
+    list.className = 'weather-hours';
+    list.setAttribute('aria-label', 'Saatlik tahmin');
+    // Şu anki 3 saatlik dilim vurgulanır
+    const current = hours.reduce((best, h) => (h.hour <= nowHour ? h : best), null);
+    for (const h of hours) {
+      const li = document.createElement('li');
+      if (h === current) li.className = 'is-now';
+      const label = document.createElement('span');
+      label.className = 'weather-hour';
+      label.textContent = h === current ? 'Şimdi' : `${String(h.hour).padStart(2, '0')}:00`;
+      const temp = document.createElement('span');
+      temp.className = 'weather-hour-temp';
+      temp.textContent = `${Number(h.temp)}°`;
+      li.append(label, weatherIcon(h.kind, h.hour >= 19 || h.hour < 6, 30), temp);
+      list.appendChild(li);
+    }
+    box.appendChild(list);
+  }
+
+  const tags = document.createElement('ul');
+  tags.className = 'weather-tags';
+  tags.setAttribute('aria-label', 'Hava durumu etiketleri');
+  for (const t of weatherTags(w)) {
+    const li = document.createElement('li');
+    li.className = `weather-tag tone-${t.tone}`;
+    li.textContent = t.text;
+    tags.appendChild(li);
+  }
+  box.appendChild(tags);
+  return box;
+}
+
 function renderAds(ads) {
   allAds = ads;
   refreshStories();
@@ -4034,6 +4153,8 @@ function renderVitrin(ads) {
   box.hidden = !ads.length;
   if (!ads.length) return;
   box.classList.toggle('single', ads.length === 1);
+  // Günlük hava durumu vitrinin ilk kartı olur
+  ads = [...ads].sort((a, b) => (b.weather ? 1 : 0) - (a.weather ? 1 : 0));
 
   ads.forEach((ad, i) => {
     const slide = document.createElement('article');
@@ -4041,6 +4162,13 @@ function renderVitrin(ads) {
     slide.tabIndex = 0;
     slide.setAttribute('role', 'button');
     slide.setAttribute('aria-label', `${ad.title || 'Vitrin ilanı'}: büyüt`);
+    const weather = ad.weather && typeof ad.weather === 'object' ? ad.weather : null;
+    if (weather) {
+      const kind = Object.prototype.hasOwnProperty.call(WEATHER_SVG, weather.kind) ? weather.kind : 'partly';
+      slide.classList.add('weather-slide', `sky-${kind}`);
+      slide.setAttribute('aria-label', 'Mersin günlük hava durumu: büyüt');
+      slide.appendChild(buildWeatherPanel(weather));
+    } else {
     const cover = (ad.images || [])[0]
       || (ad.video && ad.video.type === 'youtube' ? `https://i.ytimg.com/vi/${encodeURIComponent(ad.video.id)}/hqdefault.jpg` : null)
       || (ad.video ? null : AD_LOGO_URL);
@@ -4110,6 +4238,7 @@ function renderVitrin(ads) {
     more.textContent = 'İlanı incele →';
     overlay.appendChild(more);
     slide.appendChild(overlay);
+    }
 
     observeAdView(slide, ad);
     slide.addEventListener('click', () => openAdViewer(ad, 0));
