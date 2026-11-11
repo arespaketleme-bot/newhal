@@ -2326,11 +2326,12 @@ async function getSponsorSettings() {
   // Eski kayıt tek sponsordu (QMove): korunur, Mersin Manşet ikinci olarak eklenir
   else if (saved && saved.name) sponsors = [{ ...DEFAULT_SPONSORS[0], ...saved, id: 'qmove' }, DEFAULT_SPONSORS[1]];
   else sponsors = DEFAULT_SPONSORS;
-  sponsorCache = { sponsors: sponsors.map(withDefaultPlaces) };
+  // Sağ/sol reklamda kapatma (×) düğmesi: kayıt yoksa açık
+  sponsorCache = { sponsors: sponsors.map(withDefaultPlaces), sideClose: !(saved && saved.sideClose === false) };
   return sponsorCache;
 }
 // Eski sayfa sürümleri tek sponsor bekler: ilk açık sponsor üst düzeyde de verilir
-const publicSponsorPayload = settings => ({ ...(settings.sponsors.find(s => s.enabled) || { enabled: false }), sponsors: settings.sponsors });
+const publicSponsorPayload = settings => ({ ...(settings.sponsors.find(s => s.enabled) || { enabled: false }), sponsors: settings.sponsors, sideClose: settings.sideClose !== false });
 app.get('/api/sponsor', async (req, res) => {
   try { res.json(publicSponsorPayload(await getSponsorSettings())); }
   catch (err) { console.error('Sponsor ayarı okunamadı:', err.message); res.json({ enabled: false, sponsors: [] }); }
@@ -2362,7 +2363,7 @@ app.put('/api/admin/sponsor', requireAdmin, async (req, res) => {
       sponsors.push(result.sponsor);
     }
     if (new Set(sponsors.map(s => s.id)).size !== sponsors.length) return res.status(400).json({ error: 'Sponsor kimlikleri tekrar ediyor' });
-    const next = { sponsors };
+    const next = { sponsors, sideClose: req.body.sideClose !== false };
     if (!(await db.savePrivateJson(SPONSOR_FILE, next))) return res.status(500).json({ error: 'Kaydedilemedi' });
     sponsorCache = next;
     res.json(publicSponsorPayload(next));

@@ -662,6 +662,10 @@
           </div>
         </div>
         <form id="sponsorForm" onsubmit="saveSponsor(event)">
+          <label style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:12px 14px;border:1px solid rgba(148,163,184,.3);border-radius:12px;cursor:pointer">
+            <input type="checkbox" id="sponsorSideClose" checked style="width:18px;height:18px" />
+            <span><b>Sağ/sol reklamlarda kapatma (×) düğmesi olsun</b><br><small style="opacity:.75">Kapalıysa ziyaretçi masaüstündeki yan reklamları kapatamaz.</small></span>
+          </label>
           <div id="sponsorList" style="display:flex;flex-direction:column;gap:16px"></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
             <button type="button" class="btn-sm" id="sponsorAddBtn" onclick="addSponsor()">+ Sponsor ekle</button>

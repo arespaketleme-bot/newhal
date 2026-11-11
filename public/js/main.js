@@ -737,6 +737,7 @@ let currentDetailPinId = null;
 
 // ── Sponsorlu reklamlar (yönetimden açılıp kapanır; birden fazla sponsor yerleri paylaşır) ──
 let sponsors = [];
+let sponsorSideClose = true;   // yönetimden: sağ/sol reklamda × düğmesi olsun mu
 
 function sponsorUsable(s, place) {
   return !!(s && s.enabled && s.places && s.places[place]
@@ -891,7 +892,7 @@ const SPONSOR_SIDE_CLOSED = side => `sponsorSideClosed_${side}`;
 function renderSponsorSides() {
   document.querySelectorAll('.sponsor-rail').forEach(el => el.remove());
   ['left', 'right'].forEach((side, i) => {
-    try { if (sessionStorage.getItem(SPONSOR_SIDE_CLOSED(side))) return; } catch {}
+    if (sponsorSideClose) { try { if (sessionStorage.getItem(SPONSOR_SIDE_CLOSED(side))) return; } catch {} }
     const rail = document.createElement('aside');
     rail.className = `sponsor-rail sponsor-rail-${side}`;
     rail.setAttribute('aria-label', 'Sponsorlu reklam ve ilan');
@@ -908,7 +909,8 @@ function renderSponsorSides() {
     const half = n => (i ? Math.floor(n / 2) : 0);
     const sponsorSlot = rotatingSlot(() => sponsorsFor('side'), s => buildSponsorCard('side', s), half(sponsorsFor('side').length));
     const adSlot = rotatingSlot(() => { const a = railAds(); const h = half(a.length); return [...a.slice(h), ...a.slice(0, h)]; }, buildRailAdCard);
-    rail.append(close, sponsorSlot, adSlot);
+    if (sponsorSideClose) rail.append(close);
+    rail.append(sponsorSlot, adSlot);
     document.body.appendChild(rail);
   });
 }
@@ -919,6 +921,7 @@ async function loadSponsor() {
     if (res.ok) {
       const data = await res.json();
       sponsors = Array.isArray(data.sponsors) ? data.sponsors : (data && data.name ? [data] : []);
+      sponsorSideClose = data.sideClose !== false;
     }
   } catch {}
   renderSponsorStrip();

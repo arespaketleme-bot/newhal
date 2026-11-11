@@ -768,6 +768,7 @@ async function loadSponsor() {
     const data = res.ok ? await res.json() : {};
     const list = Array.isArray(data.sponsors) ? data.sponsors : (data.name ? [data] : []);
     sponsorDrafts = list.map(s => ({ ...s, places: { ...(s.places || {}) } }));
+    document.getElementById('sponsorSideClose').checked = data.sideClose !== false;
     if (!sponsorDrafts.length) addSponsor();
     else renderSponsorForms();
   } catch {
@@ -777,11 +778,12 @@ async function loadSponsor() {
 
 async function saveSponsor(event) {
   event.preventDefault();
-  const res = await api('/api/admin/sponsor', { method: 'PUT', body: JSON.stringify({ sponsors: sponsorDrafts }) });
+  const res = await api('/api/admin/sponsor', { method: 'PUT', body: JSON.stringify({ sponsors: sponsorDrafts, sideClose: document.getElementById('sponsorSideClose').checked }) });
   if (!res) return;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) { showToast(data.error || 'Kaydedilemedi', 'error'); return; }
   sponsorDrafts = (data.sponsors || []).map(s => ({ ...s, places: { ...(s.places || {}) } }));
+  document.getElementById('sponsorSideClose').checked = data.sideClose !== false;
   renderSponsorForms();
   const on = sponsorDrafts.filter(s => s.enabled).length;
   showToast(on ? `${on} sponsorlu reklam açık ve kaydedildi` : 'Tüm sponsorlu reklamlar kapatıldı', 'success');
