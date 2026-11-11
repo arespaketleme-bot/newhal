@@ -670,3 +670,11 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 .topbar-site-link { display: inline-flex; align-items: center; padding: 7px 14px; margin-right: 6px; border-radius: 999px; font-size: 13px; font-weight: 700; text-decoration: none; color: var(--green-400); border: 1px solid rgba(74,222,128,.35); background: rgba(74,222,128,.08); transition: var(--trans); white-space: nowrap; }
 .topbar-site-link:hover { background: rgba(74,222,128,.16); }
 @media (max-width: 600px) { .topbar-site-link { padding: 6px 10px; font-size: 12px; } #adminName { display: none; } }
+
+/* Menü uzun: kendi içinde kayar, altta boşluk kalır; çıkış düğmesi hep görünür */
+.sidebar { height: 100vh; height: 100dvh; }
+.sidebar-logo, .sidebar-footer { flex-shrink: 0; }
+.sidebar-nav { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 40px; scrollbar-width: thin; scrollbar-color: rgba(148,163,184,.35) transparent; }
+.sidebar-nav::-webkit-scrollbar { width: 6px; }
+.sidebar-nav::-webkit-scrollbar-thumb { background: rgba(148,163,184,.35); border-radius: 6px; }
+.sidebar-footer { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
