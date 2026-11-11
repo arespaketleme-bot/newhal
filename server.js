@@ -1871,14 +1871,42 @@ function fbPostImages(item) {
   return found;
 }
 
+// Facebook linkini tek bir gönderinin linkine çevirir; gönderi göstermiyorsa (ana sayfa, grup ana sayfası) null
+function fbPostUrl(u) {
+  const q = k => u.searchParams.get(k);
+  const path = u.pathname.replace(/\/+$/, '/');
+  const group = (path.match(/^\/groups\/([^/]+)\//) || [])[1];
+  // Grup akışında seçili gönderi: /groups/G/?multi_permalinks=P  veya  ?view=permalink&id=P
+  const gPost = q('multi_permalinks') || (q('view') === 'permalink' && q('id')) || q('story_fbid');
+  if (group && gPost && /^\d+$/.test(String(gPost).split(',')[0])) {
+    return `https://www.facebook.com/groups/${group}/posts/${String(gPost).split(',')[0]}/`;
+  }
+  if (/\/(posts|permalink|videos|reel|photos?)\/|\/share\/(p|v|r)\//i.test(path)
+    || (/\/(permalink|story|photo)\.php$/i.test(path) && (q('story_fbid') || q('fbid')))
+    || (/^\/watch/.test(path) && q('v'))
+    || /(^|\.)fb\.watch$/i.test(u.hostname)) {
+    const clean = new URL(`https://www.facebook.com${u.pathname}`);
+    if (/(^|\.)fb\.watch$/i.test(u.hostname)) return u.href;
+    ['story_fbid', 'id', 'fbid', 'set', 'v'].forEach(k => { if (q(k)) clean.searchParams.set(k, q(k)); });
+    return clean.href;
+  }
+  return null;
+}
+
 app.post('/api/admin/ads/from-facebook', requireAdmin, async (req, res) => {
   let link;
   try { link = new URL(String(req.body.url || '').trim()); } catch { return res.status(400).json({ error: 'Facebook linki geçersiz' }); }
   if (!/(^|\.)(facebook\.com|fb\.com|fb\.watch)$/i.test(link.hostname)) return res.status(400).json({ error: 'Bu bir Facebook linki değil' });
+  const postUrl = fbPostUrl(link);
+  if (!postUrl) {
+    return res.status(400).json({ error: 'Bu link tek bir gönderiyi göstermiyor. Facebook\'ta gönderinin tarihine (ör. "3 sa") tıklayıp gönderiyi açın, sonra tekrar deneyin.' });
+  }
   const token = await getApifyToken();
   if (!token) return res.status(400).json({ error: 'Önce Apify anahtarını kaydedin' });
-  const isGroup = /\/groups\//i.test(link.pathname);
-  const actor = isGroup ? 'apify~facebook-groups-scraper' : 'apify~facebook-posts-scraper';
+  const isGroup = /\/groups\//i.test(postUrl);
+  // Grup gönderileri de gönderi okuyucusuyla doğru gelir; grup okuyucusu grubun son gönderisini getiriyordu
+  const actor = 'apify~facebook-posts-scraper';
+  link = new URL(postUrl);
   let items;
   try {
     const r = await fetch(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=150`, {

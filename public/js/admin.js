@@ -2164,7 +2164,14 @@ async function fetchFbPost() {
     const res = await api('/api/admin/ads/from-facebook', { method: 'POST', body: JSON.stringify({ url: link }) });
     if (!res) return;
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) { showToast(data.error || 'Gönderi okunamadı', 'error'); return; }
+    if (!res.ok) {
+      showToast(data.error || 'Gönderi okunamadı', 'error');
+      // Hata kutuda kalır: kısa uyarı kaçırılmasın
+      const found = document.getElementById('fbImportFound');
+      found.hidden = false;
+      found.textContent = `⚠️ ${data.error || 'Gönderi okunamadı'}`;
+      return;
+    }
     let body = cleanFbText(data.text || '');
     if (document.getElementById('fbImportAddLink').checked) body = `${body}\n\n${link}`.trim();
     if (body) {
