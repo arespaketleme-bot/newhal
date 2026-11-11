@@ -663,3 +663,10 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 .broadcast-status.success { color: var(--green-400); }
 .broadcast-status.error { color: var(--red-400); }
 @media (max-width: 640px) { .broadcast-card { padding: 18px; } .broadcast-send { width: 100%; } }
+
+/* Menü grupları ve üstteki Siteye Dön düğmesi */
+.nav-group-title { margin: 14px 12px 4px; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+.nav-group-title:first-child { margin-top: 0; }
+.topbar-site-link { display: inline-flex; align-items: center; padding: 7px 14px; margin-right: 6px; border-radius: 999px; font-size: 13px; font-weight: 700; text-decoration: none; color: var(--green-400); border: 1px solid rgba(74,222,128,.35); background: rgba(74,222,128,.08); transition: var(--trans); white-space: nowrap; }
+.topbar-site-link:hover { background: rgba(74,222,128,.16); }
+@media (max-width: 600px) { .topbar-site-link { padding: 6px 10px; font-size: 12px; } #adminName { display: none; } }
