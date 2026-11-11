@@ -483,6 +483,7 @@ const sectionTitles = {
   logs:      'Aktivite Logları',
   welcome:   'Açılış Ekranı',
   sponsor:   'Sponsorlu Reklam',
+  appPromo:  'Uygulama İndirme',
   promo:    'WhatsApp Reklam',
   engage:    'Kalma Süresi',
   audit:     'Raporlar',
@@ -516,6 +517,8 @@ function showSection(name) {
     loadWelcome();
   } else if (name === 'sponsor') {
     loadSponsor();
+  } else if (name === 'appPromo') {
+    loadAppPromo();
   } else if (name === 'promo') {
     loadPromo();
   } else if (name === 'engage') {
@@ -774,6 +777,35 @@ async function loadSponsor() {
   } catch {
     showToast('Sponsor ayarı okunamadı', 'error');
   }
+}
+
+// ── Uygulama indirme ayarı ────────────────────────────────────
+function fillAppPromo(d) {
+  document.getElementById('apMenuButton').checked = d.menuButton !== false;
+  document.getElementById('apHomeCard').checked = d.homeCard !== false;
+  document.getElementById('apPlayLink').checked = d.playLink !== false;
+  document.getElementById('apLabel').value = d.label || 'Uygulamayı İndir';
+}
+async function loadAppPromo() {
+  try {
+    const res = await fetch('/api/app-promo', { cache: 'no-store' });
+    fillAppPromo(res.ok ? await res.json() : {});
+  } catch { showToast('Ayar okunamadı', 'error'); }
+}
+async function saveAppPromo(event) {
+  event.preventDefault();
+  const body = {
+    menuButton: document.getElementById('apMenuButton').checked,
+    homeCard: document.getElementById('apHomeCard').checked,
+    playLink: document.getElementById('apPlayLink').checked,
+    label: document.getElementById('apLabel').value.trim(),
+  };
+  const res = await api('/api/admin/app-promo', { method: 'PUT', body: JSON.stringify(body) });
+  if (!res) return;
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { showToast(data.error || 'Kaydedilemedi', 'error'); return; }
+  fillAppPromo(data);
+  showToast('Uygulama indirme ayarı kaydedildi', 'success');
 }
 
 async function saveSponsor(event) {

@@ -2458,6 +2458,28 @@ async function getWelcomeSettings() {
   return welcomeCache;
 }
 const welcomeText = (value, max) => String(value == null ? '' : value).trim().slice(0, max);
+// ── Mobil uygulama indirme: menü düğmesi ve ana sayfa kartı yönetimden açılır/kapanır ──
+const APP_PROMO_FILE = 'app-promo.json';
+const APP_PROMO_DEFAULT = { menuButton: true, homeCard: true, playLink: true, label: 'Uygulamayı İndir' };
+let appPromoCache = null;
+async function getAppPromo() {
+  if (appPromoCache) return appPromoCache;
+  const saved = await db.getPrivateJson(APP_PROMO_FILE);
+  appPromoCache = { ...APP_PROMO_DEFAULT, ...(saved || {}) };
+  return appPromoCache;
+}
+app.get('/api/app-promo', async (req, res) => {
+  try { res.json(await getAppPromo()); } catch { res.json(APP_PROMO_DEFAULT); }
+});
+app.put('/api/admin/app-promo', requireAdmin, async (req, res) => {
+  const b = req.body || {};
+  const label = String(b.label || '').replace(/\s+/g, ' ').trim().slice(0, 30) || APP_PROMO_DEFAULT.label;
+  const next = { menuButton: b.menuButton === true, homeCard: b.homeCard === true, playLink: b.playLink === true, label };
+  if (!(await db.savePrivateJson(APP_PROMO_FILE, next))) return res.status(500).json({ error: 'Kaydedilemedi' });
+  appPromoCache = next;
+  res.json(next);
+});
+
 app.get('/api/welcome', async (req, res) => {
   try { res.json(await getWelcomeSettings()); }
   catch (err) { console.error('Açılış ekranı okunamadı:', err.message); res.json(DEFAULT_WELCOME); }

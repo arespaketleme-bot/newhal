@@ -124,6 +124,10 @@
           <span aria-hidden="true">🖼️</span>
           Açılış Ekranı
         </button>
+        <button class="nav-item" id="navAppPromo" onclick="showSection('appPromo')">
+          <span aria-hidden="true">📲</span>
+          Uygulama İndirme
+        </button>
         <button class="nav-item" id="navSponsor" onclick="showSection('sponsor')">
           <span aria-hidden="true">📣</span>
           Sponsorlu Reklam
@@ -702,6 +706,29 @@
             <button type="submit" class="btn-sm btn-approve" id="welcomeSaveBtn">Kaydet</button>
           </form>
         </div>
+      </section>
+
+      <section class="section" id="sectionAppPromo">
+        <div class="section-head">
+          <div>
+            <h1>Uygulama İndirme</h1>
+            <p>Sitedeki Android uygulaması indirme düğmesini ve ana sayfadaki uygulama kartını buradan açıp kapatın.</p>
+          </div>
+        </div>
+        <form id="appPromoForm" onsubmit="saveAppPromo(event)" style="display:flex;flex-direction:column;gap:14px;max-width:560px">
+          <label class="app-ctl"><input type="checkbox" id="apMenuButton" /> <span><b>Üst menüdeki "İndir" düğmesi</b><br><small>Bilgisayarda menünün başında, Harita'nın solunda; telefonda açılır menünün en üstünde görünür.</small></span></label>
+          <label class="app-ctl"><input type="checkbox" id="apHomeCard" /> <span><b>Ana sayfadaki uygulama kartı</b><br><small>İlanların üstündeki resimli "NewHal artık cebinizde" kartı.</small></span></label>
+          <label class="app-ctl"><input type="checkbox" id="apPlayLink" /> <span><b>Kartta "Google Play'de Test Et" düğmesi</b><br><small>Kapalı testte yalnızca test listenizdeki kişilerde çalışır.</small></span></label>
+          <label style="display:flex;flex-direction:column;gap:6px"><b>Düğme yazısı</b>
+            <input type="text" id="apLabel" maxlength="30" placeholder="Uygulamayı İndir" style="padding:10px 12px;border-radius:10px;font:inherit" />
+          </label>
+          <div><button type="submit" class="btn-sm btn-approve">Kaydet</button></div>
+          <style>
+            .app-ctl { display:flex; gap:12px; align-items:flex-start; padding:12px 14px; border:1px solid rgba(148,163,184,.3); border-radius:12px; cursor:pointer; }
+            .app-ctl input { width:20px; height:20px; margin-top:2px; flex:0 0 auto; }
+            .app-ctl small { opacity:.75; }
+          </style>
+        </form>
       </section>
 
       <section class="section" id="sectionSponsor">

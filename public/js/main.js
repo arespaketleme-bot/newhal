@@ -2354,12 +2354,23 @@ function inNativeApp() {
     return sessionStorage.getItem('inNativeApp') === '1' || isStandaloneApp();
   } catch { return isStandaloneApp(); }
 }
-function showAppPromo() {
+async function showAppPromo() {
+  // Yönetimden gelen ayar: menü düğmesi, ana sayfa kartı, Play düğmesi, düğme yazısı
+  let cfg = { menuButton: true, homeCard: true, playLink: true, label: 'Uygulamayı İndir' };
+  try { const r = await fetch('/api/app-promo'); if (r.ok) cfg = { ...cfg, ...(await r.json()) }; } catch {}
   // Menüdeki İndir düğmeleri: uygulamanın içinde ve iPhone'da gösterilmez
-  const hideDl = inNativeApp() || isIos();
-  document.querySelectorAll('.apk-dl').forEach(a => { a.hidden = hideDl; });
+  const hideDl = !cfg.menuButton || inNativeApp() || isIos();
+  document.querySelectorAll('.apk-dl').forEach(a => {
+    a.hidden = hideDl;
+    const short = a.classList.contains('nav-apk-mobile');
+    a.textContent = `⬇️ ${short ? 'İndir' : cfg.label}${a.classList.contains('mobile-apk') ? ' (Android)' : ''}`;
+  });
   const box = document.getElementById('appPromo');
-  if (!box || inNativeApp()) return;
+  if (!box || !cfg.homeCard || inNativeApp()) return;
+  const play = box.querySelector('.app-promo-btn.play');
+  if (play) play.hidden = !cfg.playLink;
+  const main = box.querySelector('.app-promo-btn.primary');
+  if (main && main.firstChild) main.childNodes.forEach(n => { if (n.nodeType === 3 && n.textContent.trim()) n.textContent = ` ${cfg.label} `; });
   let closedAt = 0;
   try { closedAt = Number(localStorage.getItem(APP_PROMO_KEY)) || 0; } catch {}
   if (Date.now() - closedAt < APP_PROMO_HIDE_DAYS * 864e5) return;
