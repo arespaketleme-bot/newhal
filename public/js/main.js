@@ -762,6 +762,8 @@ function buildSponsorCard(place, s) {
     img.loading = 'lazy';
     img.decoding = 'async';
     card.appendChild(img);
+  } else {
+    card.classList.add('no-img');
   }
   const label = document.createElement('span');
   label.className = 'sponsor-label';
@@ -2584,22 +2586,61 @@ function renderAdsGrid() {
   const list = adsQuery
     ? regularAds.filter(ad => adMatchesSearch(ad, adsQuery)).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
     : regularAds.filter(ad => !ad.featured);
-  list.forEach(ad => grid.appendChild(buildAdCard(ad)));
-  // Sponsorlu kart 6. sıraya (daha az ilan varsa sona) bir kez girer
-  insertGridSponsors(grid, list.length);
+  // Telefonda liste sayfanın akışında 6'şar 6'şar açılır (iç kaydırma kutusu parmağı tuzağa düşürüyordu)
+  if (adsShownQuery !== adsQuery) { adsShownQuery = adsQuery; adsMobileShown = ADS_MOBILE_PAGE; }
+  const shown = isAdsMobile() ? list.slice(0, adsMobileShown) : list;
+  shown.forEach(ad => grid.appendChild(buildAdCard(ad)));
+  // Sponsorlu kartlar 6., 12. … sıraya (daha az ilan varsa ilki sona) girer
+  insertGridSponsors(grid, shown.length);
   grid.scrollTop = 0;
   fitAdsGridRows();
+  renderAdsMoreButton(list.length - shown.length);
   info.hidden = !adsQuery;
   info.textContent = list.length
     ? `"${adsQuery}" için ${list.length} ilan bulundu`
     : `"${adsQuery}" için ilan bulunamadı`;
 }
 
-// İlan listesi en fazla 2 satır yüksekliğinde; fazlası kutunun içinde kaydırılır
+// Telefonda sayfalama: iç kaydırma yok, "Daha fazla ilan göster" ile 6'şar ilan açılır
+const ADS_MOBILE_PAGE = 6;
+let adsMobileShown = ADS_MOBILE_PAGE;
+let adsShownQuery = null;
+const isAdsMobile = () => window.matchMedia('(max-width: 768px)').matches;
+
+function renderAdsMoreButton(remaining) {
+  let btn = document.getElementById('adsMoreBtn');
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'adsMoreBtn';
+    btn.className = 'ads-more-btn';
+    btn.addEventListener('click', () => {
+      const grid = document.getElementById('adsGrid');
+      const before = grid.children.length;
+      adsMobileShown += ADS_MOBILE_PAGE;
+      const keepY = window.scrollY;
+      renderAdsGrid();
+      // Liste yeniden çizilince sayfa yerinde kalsın, yeni ilk kart klavyeyle de bulunabilsin
+      window.scrollTo(0, keepY);
+      grid.children[before]?.querySelector('a,button,[tabindex]')?.focus({ preventScroll: true });
+    });
+    document.getElementById('adsGrid').insertAdjacentElement('afterend', btn);
+  }
+  btn.hidden = remaining <= 0;
+  btn.textContent = `Daha fazla ilan göster (${remaining} ilan daha)`;
+}
+
+// Masaüstünde liste en fazla 2 satır yüksekliğinde; fazlası kutunun içinde kaydırılır.
+// Telefonda iç kaydırma yoktur: parmak listenin üstündeyken de sayfa kayar.
 const ADS_VISIBLE_ROWS = 2;
 
 function fitAdsGridRows() {
   const grid = document.getElementById('adsGrid');
+  if (isAdsMobile()) {
+    grid.classList.remove('scrollable');
+    grid.style.maxHeight = '';
+    return;
+  }
   const tops = [...new Set([...grid.children].map(c => c.offsetTop))].sort((a, b) => a - b);
   const scrollable = tops.length > ADS_VISIBLE_ROWS;
   grid.classList.toggle('scrollable', scrollable);
@@ -2616,6 +2657,8 @@ function fitAdsGridRows() {
   // Resimler yüklendikçe kart boyları değişir, ekran döndürülünce sütun sayısı değişir
   grid.addEventListener('load', refit, true);
   window.addEventListener('resize', refit);
+  // Telefon ↔ masaüstü geçişinde (ör. tablet döndürülünce) sayfalama yeniden kurulur
+  window.matchMedia('(max-width: 768px)').addEventListener('change', () => renderAdsGrid());
 })();
 
 function clearAdsSearch() {
