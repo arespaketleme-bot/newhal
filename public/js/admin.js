@@ -594,7 +594,7 @@ async function saveWelcome(event) {
 
 // ── Sponsorlu reklam ayarı ───────────────────────────────────
 const SPONSOR_FIELDS = { sponsorName: 'name', sponsorTitle: 'title', sponsorText: 'text', sponsorButton: 'button', sponsorUrl: 'url' };
-const SPONSOR_PLACE_BOXES = { sponsorPlaceGrid: 'grid', sponsorPlaceStrip: 'strip', sponsorPlaceDetail: 'detail' };
+const SPONSOR_PLACE_BOXES = { sponsorPlaceGrid: 'grid', sponsorPlaceStrip: 'strip', sponsorPlaceDetail: 'detail', sponsorPlaceSide: 'side' };
 const SPONSOR_DEFAULT_IMAGE = 'img/sponsor-qmove.webp';
 let sponsorImageUrl = '';
 

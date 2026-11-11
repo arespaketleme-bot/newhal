@@ -2275,7 +2275,7 @@ app.put('/api/admin/welcome', requireAdmin, async (req, res) => {
 
 // ── Sponsorlu reklam (QMove; yönetimden açılır/kapanır) ────────
 const SPONSOR_FILE = 'sponsor.json';
-const SPONSOR_PLACES = ['grid', 'strip', 'detail'];   // ilan listesi, vitrin altı bant, işletme detayı
+const SPONSOR_PLACES = ['grid', 'strip', 'detail', 'side'];   // ilan listesi, vitrin altı bant, işletme detayı, masaüstü sağ/sol
 const DEFAULT_SPONSOR = {
   enabled: true,
   name: 'QMove',
@@ -2284,7 +2284,7 @@ const DEFAULT_SPONSOR = {
   button: 'QMove’da Araç Bul',
   url: 'https://www.qmove.com/tr-tr/',
   image: 'img/sponsor-qmove.webp',
-  places: { grid: true, strip: true, detail: true },
+  places: { grid: true, strip: true, detail: true, side: true },
 };
 let sponsorCache = null;
 async function getSponsorSettings() {

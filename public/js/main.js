@@ -807,12 +807,37 @@ function renderSponsorDetail() {
   box.appendChild(card);
 }
 
+// Masaüstü sağ/sol reklam: yalnızca geniş ekranda (CSS) görünür; × ile o oturum boyunca kapanır
+const SPONSOR_SIDE_CLOSED = side => `sponsorSideClosed_${side}`;
+function renderSponsorSides() {
+  document.querySelectorAll('.sponsor-rail').forEach(el => el.remove());
+  if (!sponsorOn('side')) return;
+  for (const side of ['left', 'right']) {
+    try { if (sessionStorage.getItem(SPONSOR_SIDE_CLOSED(side))) continue; } catch {}
+    const rail = document.createElement('aside');
+    rail.className = `sponsor-rail sponsor-rail-${side}`;
+    rail.setAttribute('aria-label', 'Sponsorlu reklam');
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'sponsor-close';
+    close.setAttribute('aria-label', 'Reklamı kapat');
+    close.textContent = '×';
+    close.addEventListener('click', () => {
+      rail.remove();
+      try { sessionStorage.setItem(SPONSOR_SIDE_CLOSED(side), '1'); } catch {}
+    });
+    rail.append(close, buildSponsorCard('side'));
+    document.body.appendChild(rail);
+  }
+}
+
 async function loadSponsor() {
   try {
     const res = await fetch('/api/sponsor');
     if (res.ok) sponsor = await res.json();
   } catch {}
   renderSponsorStrip();
+  renderSponsorSides();
   // İlanlar önce geldiyse listeyi sponsor kartıyla yeniden çiz
   if (document.getElementById('adsGrid')?.children.length) renderAdsGrid();
 }
