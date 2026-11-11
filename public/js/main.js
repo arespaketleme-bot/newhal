@@ -117,6 +117,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   initSearch();
   // Site haritayla, tam ekran açılır; "Küçült" ya da alt menü ile sayfanın geri kalanına geçilir
   toggleMapFullscreen(true);
+  // İlk açılışta harita 20 sn sonra kendiliğinden küçülür; sayaç karşılama ekranı kapanınca başlar
+  mapAutoClosePending = true;
   await loadCategories();
   loadPins();
   initAdsSearch();
@@ -150,7 +152,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Açılış banner popup'ı sadece ilk ziyarette göster
-  showWelcomePopup();
+  // Karşılama ekranı açılmadıysa harita sayacı hemen, açıldıysa kapanınca başlar
+  if (!(await showWelcomePopup())) startInitialMapAutoClose();
 
 });
 
@@ -196,7 +199,45 @@ function isMapFullscreen() {
   return document.getElementById('mapPanel').classList.contains('map-fullscreen');
 }
 
+let mapAutoCloseTimer = null;
+let mapAutoClosePending = false;   // ilk açılış sayacı henüz başlamadı
+
+function startInitialMapAutoClose() {
+  if (!mapAutoClosePending) return;
+  mapAutoClosePending = false;
+  // Tek seferlik: bu tarayıcıda daha önce çalıştıysa bir daha başlamaz
+  try {
+    if (localStorage.getItem('mapAutoCloseShown')) return;
+    localStorage.setItem('mapAutoCloseShown', '1');
+  } catch {}
+  startMapAutoClose(20);
+}
+
+function stopMapAutoClose() {
+  if (!mapAutoCloseTimer) return;
+  clearInterval(mapAutoCloseTimer);
+  mapAutoCloseTimer = null;
+}
+
+function startMapAutoClose(seconds) {
+  stopMapAutoClose();
+  if (!isMapFullscreen()) return;
+  let left = seconds;
+  const label = document.getElementById('mapFsLabel');
+  const show = () => { label.textContent = `Küçült / İlanlara Geç · ${left} sn`; };
+  show();
+  mapAutoCloseTimer = setInterval(() => {
+    left--;
+    if (left > 0) return show();
+    stopMapAutoClose();
+    if (isMapFullscreen()) toggleMapFullscreen(false);
+  }, 1000);
+}
+
 function toggleMapFullscreen(force) {
+  // Kullanıcı haritayı kendisi açar ya da kapatırsa geri sayım biter (başlamadıysa hiç başlamaz)
+  stopMapAutoClose();
+  mapAutoClosePending = false;
   const panel = document.getElementById('mapPanel');
   const on = typeof force === 'boolean' ? force : !isMapFullscreen();
   panel.classList.toggle('map-fullscreen', on);
@@ -2000,24 +2041,25 @@ function showLandingCard(key) {
 let welcomeVersion = 1;
 async function showWelcomePopup() {
   const popup = document.getElementById('welcomePopup');
-  if (!popup || window.self !== window.top) return;
+  if (!popup || window.self !== window.top) return false;
   const kaynak = new URLSearchParams(location.search).get('kaynak');
-  if (kaynak && Object.prototype.hasOwnProperty.call(LANDINGS, kaynak)) { showLandingCard(kaynak); return; }
+  if (kaynak && Object.prototype.hasOwnProperty.call(LANDINGS, kaynak)) { showLandingCard(kaynak); return false; }
   let w = {};
   try {
     const res = await fetch('/api/welcome');
     if (res.ok) w = await res.json();
   } catch {}
-  if (w.enabled === false) return;
+  if (w.enabled === false) return false;
   welcomeVersion = Number(w.version) || 1;
   let seen = 0;
   try { seen = Number(localStorage.getItem('welcomeSeen')) || 0; } catch {}
-  if (seen >= welcomeVersion) return;
+  if (seen >= welcomeVersion) return false;
   if (w.image) document.getElementById('welcomeImage').src = w.image;
   if (w.title) document.getElementById('welcomeTitle').textContent = w.title;
   if (typeof w.text === 'string') document.getElementById('welcomeText').textContent = w.text;
   if (w.button) document.getElementById('welcomeButton').textContent = w.button;
   popup.classList.add('open');
+  return true;
 }
 
 function closeWelcomePopup() {
@@ -2026,6 +2068,7 @@ function closeWelcomePopup() {
     popup.classList.remove('open');
   }
   try { localStorage.setItem('welcomeSeen', String(welcomeVersion)); } catch {}
+  startInitialMapAutoClose();
 }
 
 function closeWelcomePopupOnBg(e) {
