@@ -260,6 +260,13 @@
           <button class="layer-btn active" id="layerBtnLight" onclick="setMapLayer('light')">🗺 Açık Renk</button><button class="layer-btn" id="locateMeBtn" onclick="goToMyLocation()">📍 Konumum</button>
         </div>
 
+        <!-- Haritanın solunda: Android uygulamasını indir -->
+        <a class="map-app-dl" id="mapAppDl" href="/indir/NewHal.apk" download="NewHal.apk" hidden
+           onclick="appPromoLog('Haritadaki İndir düğmesiyle APK indirdi')" aria-label="NewHal Android uygulamasını indir">
+          <span class="map-app-dl-ico" aria-hidden="true">⬇️</span>
+          <span class="map-app-dl-txt">İndir<small>Android</small></span>
+        </a>
+
         <!-- Tam ekran / eski haline döndür -->
         <button type="button" class="map-fs-btn" id="mapFsBtn" onclick="toggleMapFullscreen()" aria-label="Haritayı tam ekran yap">
           <svg class="fs-enter" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
