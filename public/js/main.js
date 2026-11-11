@@ -750,6 +750,16 @@ function buildSponsorCard(place) {
   card.href = sponsor.url;
   card.target = '_blank';
   card.rel = 'sponsored noopener noreferrer';
+  const image = typeof sponsor.image === 'string' ? sponsor.image : '';
+  if (image.startsWith('https://') || /^img\/[\w.-]+$/.test(image)) {
+    const img = document.createElement('img');
+    img.className = 'sponsor-img';
+    img.src = image.startsWith('https://') ? image : '/' + image;
+    img.alt = `${sponsor.name || 'Sponsor'} reklamı`;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    card.appendChild(img);
+  }
   const label = document.createElement('span');
   label.className = 'sponsor-label';
   label.textContent = `Sponsorlu · ${sponsor.name || ''}`;

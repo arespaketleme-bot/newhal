@@ -1487,10 +1487,15 @@ body.map-fs-open { overflow: hidden; }
   align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px;
   border-radius: 999px; background: var(--accent); color: #1a1300; font-weight: 700; font-size: 14px;
 }
-.sponsor-strip { flex-direction: row; flex-wrap: wrap; align-items: center; margin: 14px 0; padding: 14px 18px; }
-.sponsor-strip .sponsor-label { flex-basis: 100%; }
-.sponsor-strip .sponsor-body { flex: 1 1 320px; min-width: 0; }
+/* Dikey afişler (9:16) listede tam görünür, bantta ve detayda küçük önizleme olur */
+.sponsor-img { display: block; border-radius: 12px; background: #e8f6ee; }
+.sponsor-grid .sponsor-img { width: 100%; height: auto; max-height: 560px; object-fit: contain; }
+.sponsor-strip, .sponsor-detail { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 16px; row-gap: 8px; align-items: center; }
+.sponsor-strip .sponsor-img, .sponsor-detail .sponsor-img { grid-row: 1 / span 3; width: 96px; height: auto; max-height: 170px; object-fit: contain; }
+.sponsor-strip .sponsor-btn, .sponsor-detail .sponsor-btn { justify-self: start; }
+.sponsor-strip { margin: 14px 0; padding: 14px 18px; }
 .sponsor-detail { margin: 4px 18px 18px; padding: 14px; box-shadow: none; }
+.sponsor-detail .sponsor-img { width: 76px; }
 .sponsor-detail .sponsor-title { font-size: 15px; }
 .sponsor-detail .sponsor-text { font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { .sponsor-card, .sponsor-card:hover { transition: none; transform: none; } }

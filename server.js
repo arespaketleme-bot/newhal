@@ -2283,6 +2283,7 @@ const DEFAULT_SPONSOR = {
   text: 'QMove ile kamyonetten TIR’a uygun aracı bulun, fiyatı sipariş vermeden görün, yükünüzü canlı takip edin.',
   button: 'QMove’da Araç Bul',
   url: 'https://www.qmove.com/tr-tr/',
+  image: 'img/sponsor-qmove.webp',
   places: { grid: true, strip: true, detail: true },
 };
 let sponsorCache = null;
@@ -2307,9 +2308,12 @@ app.put('/api/admin/sponsor', requireAdmin, async (req, res) => {
     let parsed = null;
     try { parsed = new URL(url); } catch {}
     if (!parsed || parsed.protocol !== 'https:') return res.status(400).json({ error: 'Bağlantı https:// ile başlamalı' });
+    // Resim: yok, sitedeki varsayılan afiş ya da yüklenen (https) resim
+    const image = welcomeText(body.image, 500);
+    if (image && image !== DEFAULT_SPONSOR.image && !image.startsWith('https://')) return res.status(400).json({ error: 'Resim geçersiz' });
     const places = {};
     for (const p of SPONSOR_PLACES) places[p] = !!(body.places && body.places[p]);
-    const next = { enabled: body.enabled === true, name, title, text: welcomeText(body.text, 300), button, url: parsed.href, places };
+    const next = { enabled: body.enabled === true, name, title, text: welcomeText(body.text, 300), button, url: parsed.href, image, places };
     if (!(await db.savePrivateJson(SPONSOR_FILE, next))) return res.status(500).json({ error: 'Kaydedilemedi' });
     sponsorCache = next;
     res.json(next);

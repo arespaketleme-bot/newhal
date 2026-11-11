@@ -673,6 +673,16 @@
               <label><input id="sponsorPlaceDetail" type="checkbox" style="width:auto;margin-right:8px" />İşletme detay penceresinin altında</label>
             </div>
             <div class="form-group">
+              <label for="sponsorImageFile">Resim</label>
+              <img id="sponsorImagePreview" alt="Sponsor resmi önizlemesi" style="display:block;max-width:220px;max-height:320px;border-radius:10px;margin-bottom:8px" />
+              <p id="sponsorNoImage" style="margin:0 0 8px;color:var(--text-3)" hidden>Resim yok, reklam yalnızca yazıyla görünür.</p>
+              <input id="sponsorImageFile" type="file" accept="image/jpeg,image/png,image/webp" onchange="pickSponsorImage(this)" />
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+                <button type="button" class="btn-sm" onclick="setSponsorImage(SPONSOR_DEFAULT_IMAGE)">Varsayılan QMove afişi</button>
+                <button type="button" class="btn-sm" onclick="setSponsorImage('')">Resmi kaldır</button>
+              </div>
+            </div>
+            <div class="form-group">
               <label for="sponsorName">Reklam veren</label>
               <input id="sponsorName" type="text" maxlength="40" required />
             </div>

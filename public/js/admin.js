@@ -595,6 +595,34 @@ async function saveWelcome(event) {
 // ── Sponsorlu reklam ayarı ───────────────────────────────────
 const SPONSOR_FIELDS = { sponsorName: 'name', sponsorTitle: 'title', sponsorText: 'text', sponsorButton: 'button', sponsorUrl: 'url' };
 const SPONSOR_PLACE_BOXES = { sponsorPlaceGrid: 'grid', sponsorPlaceStrip: 'strip', sponsorPlaceDetail: 'detail' };
+const SPONSOR_DEFAULT_IMAGE = 'img/sponsor-qmove.webp';
+let sponsorImageUrl = '';
+
+function setSponsorImage(url) {
+  sponsorImageUrl = url || '';
+  const preview = document.getElementById('sponsorImagePreview');
+  preview.hidden = !sponsorImageUrl;
+  preview.src = sponsorImageUrl ? (sponsorImageUrl.startsWith('https://') ? sponsorImageUrl : '/' + sponsorImageUrl) : '';
+  document.getElementById('sponsorNoImage').hidden = !!sponsorImageUrl;
+}
+
+async function pickSponsorImage(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const btn = document.getElementById('sponsorSaveBtn');
+  btn.disabled = true;
+  btn.textContent = 'Resim yükleniyor...';
+  try {
+    setSponsorImage(await uploadAdFile(await shrinkImage(file), 'image'));
+    showToast('Resim yüklendi, kaydetmeyi unutmayın', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Kaydet';
+    input.value = '';
+  }
+}
 
 async function loadSponsor() {
   try {
@@ -603,6 +631,7 @@ async function loadSponsor() {
     document.getElementById('sponsorEnabled').checked = s.enabled === true;
     for (const [id, key] of Object.entries(SPONSOR_FIELDS)) document.getElementById(id).value = s[key] || '';
     for (const [id, key] of Object.entries(SPONSOR_PLACE_BOXES)) document.getElementById(id).checked = !!(s.places && s.places[key]);
+    setSponsorImage(s.image);
   } catch {
     showToast('Sponsor ayarı okunamadı', 'error');
   }
@@ -610,7 +639,7 @@ async function loadSponsor() {
 
 async function saveSponsor(event) {
   event.preventDefault();
-  const body = { enabled: document.getElementById('sponsorEnabled').checked, places: {} };
+  const body = { enabled: document.getElementById('sponsorEnabled').checked, image: sponsorImageUrl, places: {} };
   for (const [id, key] of Object.entries(SPONSOR_FIELDS)) body[key] = document.getElementById(id).value;
   for (const [id, key] of Object.entries(SPONSOR_PLACE_BOXES)) body.places[key] = document.getElementById(id).checked;
   const res = await api('/api/admin/sponsor', { method: 'PUT', body: JSON.stringify(body) });
