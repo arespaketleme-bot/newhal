@@ -592,46 +592,184 @@ async function saveWelcome(event) {
   showToast('Açılış ekranı kaydedildi', 'success');
 }
 
-// ── Sponsorlu reklam ayarı ───────────────────────────────────
-const SPONSOR_FIELDS = { sponsorName: 'name', sponsorTitle: 'title', sponsorText: 'text', sponsorButton: 'button', sponsorUrl: 'url' };
-const SPONSOR_PLACE_BOXES = { sponsorPlaceGrid: 'grid', sponsorPlaceStrip: 'strip', sponsorPlaceDetail: 'detail', sponsorPlaceSide: 'side' };
+// ── Sponsorlu reklam ayarı (birden fazla sponsor) ─────────────
 const SPONSOR_DEFAULT_IMAGE = 'img/sponsor-qmove.webp';
-let sponsorImageUrl = '';
+const SPONSOR_MAX = 4;
+const SPONSOR_PLACE_LABELS = {
+  grid: 'İlan listesinde (6., 12. … kart)',
+  strip: 'Vitrinin altında bant',
+  detail: 'İşletme detay penceresinin altında',
+  side: 'Masaüstünde sağda/solda (geniş ekranlarda, × ile kapatılabilir)',
+};
+const SPONSOR_TEXT_FIELDS = [
+  { key: 'name', label: 'Reklam veren', max: 40, required: true },
+  { key: 'title', label: 'Başlık', max: 120, required: true },
+  { key: 'text', label: 'Yazı', max: 300, multiline: true },
+  { key: 'button', label: 'Düğme yazısı', max: 40, required: true },
+  { key: 'url', label: 'Bağlantı (https://)', max: 500, required: true, type: 'url' },
+];
+let sponsorDrafts = [];
 
-function setSponsorImage(url) {
-  sponsorImageUrl = url || '';
-  const preview = document.getElementById('sponsorImagePreview');
-  preview.hidden = !sponsorImageUrl;
-  preview.src = sponsorImageUrl ? (sponsorImageUrl.startsWith('https://') ? sponsorImageUrl : '/' + sponsorImageUrl) : '';
-  document.getElementById('sponsorNoImage').hidden = !!sponsorImageUrl;
+const sponsorImageSrc = url => (url ? (url.startsWith('https://') ? url : '/' + url) : '');
+
+function sponsorField(id, labelText, input) {
+  const group = document.createElement('div');
+  group.className = 'form-group';
+  const label = document.createElement('label');
+  label.htmlFor = id;
+  label.textContent = labelText;
+  input.id = id;
+  group.append(label, input);
+  return group;
 }
 
-async function pickSponsorImage(input) {
-  const file = input.files && input.files[0];
-  if (!file) return;
-  const btn = document.getElementById('sponsorSaveBtn');
-  btn.disabled = true;
-  btn.textContent = 'Resim yükleniyor...';
-  try {
-    setSponsorImage(await uploadAdFile(await shrinkImage(file), 'image'));
-    showToast('Resim yüklendi, kaydetmeyi unutmayın', 'success');
-  } catch (err) {
-    showToast(err.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Kaydet';
-    input.value = '';
-  }
+function renderSponsorForms() {
+  const list = document.getElementById('sponsorList');
+  list.replaceChildren();
+  sponsorDrafts.forEach((s, i) => {
+    const card = document.createElement('fieldset');
+    card.className = 'broadcast-card';
+    card.style.cssText = 'margin:0;border:1px solid var(--border)';
+    const legend = document.createElement('legend');
+    legend.style.cssText = 'padding:0 8px;font-weight:700';
+    legend.textContent = `${i + 1}. sponsor${s.name ? ` · ${s.name}` : ''}`;
+    card.appendChild(legend);
+
+    const enabled = document.createElement('label');
+    const enabledBox = document.createElement('input');
+    enabledBox.type = 'checkbox';
+    enabledBox.checked = s.enabled === true;
+    enabledBox.style.cssText = 'width:auto;margin-right:8px';
+    enabledBox.onchange = () => { s.enabled = enabledBox.checked; };
+    enabled.append(enabledBox, 'Bu reklam gösterilsin');
+    const enabledGroup = document.createElement('div');
+    enabledGroup.className = 'form-group';
+    enabledGroup.appendChild(enabled);
+    card.appendChild(enabledGroup);
+
+    const places = document.createElement('div');
+    places.className = 'form-group';
+    const placesTitle = document.createElement('label');
+    placesTitle.textContent = 'Gösterileceği yerler';
+    places.appendChild(placesTitle);
+    for (const [key, text] of Object.entries(SPONSOR_PLACE_LABELS)) {
+      const row = document.createElement('label');
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.checked = !!(s.places && s.places[key]);
+      box.style.cssText = 'width:auto;margin-right:8px';
+      box.onchange = () => { s.places = { ...(s.places || {}), [key]: box.checked }; };
+      row.append(box, text);
+      places.appendChild(row);
+    }
+    card.appendChild(places);
+
+    // Resim
+    const imgGroup = document.createElement('div');
+    imgGroup.className = 'form-group';
+    const imgLabel = document.createElement('label');
+    imgLabel.htmlFor = `sp${i}-file`;
+    imgLabel.textContent = 'Resim';
+    const preview = document.createElement('img');
+    preview.alt = `${s.name || 'Sponsor'} resmi önizlemesi`;
+    preview.style.cssText = 'display:block;max-width:200px;max-height:300px;border-radius:10px;margin-bottom:8px';
+    const noImage = document.createElement('p');
+    noImage.style.cssText = 'margin:0 0 8px;color:var(--text-3)';
+    noImage.textContent = 'Resim yok, reklam yalnızca yazıyla görünür.';
+    const showImage = () => {
+      preview.hidden = !s.image;
+      preview.src = sponsorImageSrc(s.image);
+      noImage.hidden = !!s.image;
+    };
+    showImage();
+    const file = document.createElement('input');
+    file.type = 'file';
+    file.id = `sp${i}-file`;
+    file.accept = 'image/jpeg,image/png,image/webp';
+    file.onchange = async () => {
+      const f = file.files && file.files[0];
+      if (!f) return;
+      const btn = document.getElementById('sponsorSaveBtn');
+      btn.disabled = true;
+      btn.textContent = 'Resim yükleniyor...';
+      try {
+        s.image = await uploadAdFile(await shrinkImage(f), 'image');
+        showImage();
+        showToast('Resim yüklendi, kaydetmeyi unutmayın', 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Kaydet';
+        file.value = '';
+      }
+    };
+    const imgButtons = document.createElement('div');
+    imgButtons.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:8px';
+    if (s.id === 'qmove' || s.image === SPONSOR_DEFAULT_IMAGE) {
+      const def = document.createElement('button');
+      def.type = 'button';
+      def.className = 'btn-sm';
+      def.textContent = 'Varsayılan QMove afişi';
+      def.onclick = () => { s.image = SPONSOR_DEFAULT_IMAGE; showImage(); };
+      imgButtons.appendChild(def);
+    }
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'btn-sm';
+    remove.textContent = 'Resmi kaldır';
+    remove.onclick = () => { s.image = ''; showImage(); };
+    imgButtons.appendChild(remove);
+    imgGroup.append(imgLabel, preview, noImage, file, imgButtons);
+    card.appendChild(imgGroup);
+
+    for (const f of SPONSOR_TEXT_FIELDS) {
+      const input = document.createElement(f.multiline ? 'textarea' : 'input');
+      if (!f.multiline) input.type = f.type || 'text';
+      else input.rows = 3;
+      input.maxLength = f.max;
+      input.required = !!f.required;
+      if (f.type === 'url') input.pattern = 'https://.*';
+      input.value = s[f.key] || '';
+      input.oninput = () => {
+        s[f.key] = input.value;
+        if (f.key === 'name') legend.textContent = `${i + 1}. sponsor${input.value ? ` · ${input.value}` : ''}`;
+      };
+      card.appendChild(sponsorField(`sp${i}-${f.key}`, f.label, input));
+    }
+
+    if (sponsorDrafts.length > 1) {
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'btn-sm btn-reject';
+      del.textContent = 'Bu sponsoru sil';
+      del.onclick = () => {
+        if (!confirm(`${s.name || 'Bu sponsor'} silinsin mi? Kaydet'e basınca kalıcı olur.`)) return;
+        sponsorDrafts.splice(i, 1);
+        renderSponsorForms();
+      };
+      card.appendChild(del);
+    }
+    list.appendChild(card);
+  });
+  document.getElementById('sponsorAddBtn').hidden = sponsorDrafts.length >= SPONSOR_MAX;
+}
+
+function addSponsor() {
+  if (sponsorDrafts.length >= SPONSOR_MAX) return;
+  sponsorDrafts.push({ enabled: false, name: '', title: '', text: '', button: 'İncele', url: 'https://', image: '',
+    places: { grid: true, strip: true, detail: true, side: true } });
+  renderSponsorForms();
 }
 
 async function loadSponsor() {
   try {
     const res = await fetch('/api/sponsor');
-    const s = res.ok ? await res.json() : {};
-    document.getElementById('sponsorEnabled').checked = s.enabled === true;
-    for (const [id, key] of Object.entries(SPONSOR_FIELDS)) document.getElementById(id).value = s[key] || '';
-    for (const [id, key] of Object.entries(SPONSOR_PLACE_BOXES)) document.getElementById(id).checked = !!(s.places && s.places[key]);
-    setSponsorImage(s.image);
+    const data = res.ok ? await res.json() : {};
+    const list = Array.isArray(data.sponsors) ? data.sponsors : (data.name ? [data] : []);
+    sponsorDrafts = list.map(s => ({ ...s, places: { ...(s.places || {}) } }));
+    if (!sponsorDrafts.length) addSponsor();
+    else renderSponsorForms();
   } catch {
     showToast('Sponsor ayarı okunamadı', 'error');
   }
@@ -639,14 +777,14 @@ async function loadSponsor() {
 
 async function saveSponsor(event) {
   event.preventDefault();
-  const body = { enabled: document.getElementById('sponsorEnabled').checked, image: sponsorImageUrl, places: {} };
-  for (const [id, key] of Object.entries(SPONSOR_FIELDS)) body[key] = document.getElementById(id).value;
-  for (const [id, key] of Object.entries(SPONSOR_PLACE_BOXES)) body.places[key] = document.getElementById(id).checked;
-  const res = await api('/api/admin/sponsor', { method: 'PUT', body: JSON.stringify(body) });
+  const res = await api('/api/admin/sponsor', { method: 'PUT', body: JSON.stringify({ sponsors: sponsorDrafts }) });
   if (!res) return;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) { showToast(data.error || 'Kaydedilemedi', 'error'); return; }
-  showToast(data.enabled ? 'Sponsorlu reklam açık ve kaydedildi' : 'Sponsorlu reklam kapatıldı', 'success');
+  sponsorDrafts = (data.sponsors || []).map(s => ({ ...s, places: { ...(s.places || {}) } }));
+  renderSponsorForms();
+  const on = sponsorDrafts.filter(s => s.enabled).length;
+  showToast(on ? `${on} sponsorlu reklam açık ve kaydedildi` : 'Tüm sponsorlu reklamlar kapatıldı', 'success');
 }
 
 // ── WhatsApp reklam mesajı ───────────────────────────────────

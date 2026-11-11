@@ -658,54 +658,16 @@
         <div class="section-head">
           <div>
             <h1>Sponsorlu Reklam</h1>
-            <p>Sitede "Sponsorlu" etiketiyle gösterilen reklam (QMove)</p>
+            <p>Sitede "Sponsorlu" etiketiyle gösterilen reklamlar. Birden fazla sponsor reklam yerlerini paylaşır; masaüstünde biri solda, diğeri sağda durur.</p>
           </div>
         </div>
-        <div class="broadcast-card">
-          <form id="sponsorForm" onsubmit="saveSponsor(event)">
-            <div class="form-group">
-              <label><input id="sponsorEnabled" type="checkbox" style="width:auto;margin-right:8px" />Reklam gösterilsin</label>
-            </div>
-            <div class="form-group">
-              <label>Gösterileceği yerler</label>
-              <label><input id="sponsorPlaceGrid" type="checkbox" style="width:auto;margin-right:8px" />İlan listesinde (6. kart)</label>
-              <label><input id="sponsorPlaceStrip" type="checkbox" style="width:auto;margin-right:8px" />Vitrinin altında bant</label>
-              <label><input id="sponsorPlaceDetail" type="checkbox" style="width:auto;margin-right:8px" />İşletme detay penceresinin altında</label>
-              <label><input id="sponsorPlaceSide" type="checkbox" style="width:auto;margin-right:8px" />Masaüstünde sağda ve solda (geniş ekranlarda, × ile kapatılabilir)</label>
-            </div>
-            <div class="form-group">
-              <label for="sponsorImageFile">Resim</label>
-              <img id="sponsorImagePreview" alt="Sponsor resmi önizlemesi" style="display:block;max-width:220px;max-height:320px;border-radius:10px;margin-bottom:8px" />
-              <p id="sponsorNoImage" style="margin:0 0 8px;color:var(--text-3)" hidden>Resim yok, reklam yalnızca yazıyla görünür.</p>
-              <input id="sponsorImageFile" type="file" accept="image/jpeg,image/png,image/webp" onchange="pickSponsorImage(this)" />
-              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-                <button type="button" class="btn-sm" onclick="setSponsorImage(SPONSOR_DEFAULT_IMAGE)">Varsayılan QMove afişi</button>
-                <button type="button" class="btn-sm" onclick="setSponsorImage('')">Resmi kaldır</button>
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="sponsorName">Reklam veren</label>
-              <input id="sponsorName" type="text" maxlength="40" required />
-            </div>
-            <div class="form-group">
-              <label for="sponsorTitle">Başlık</label>
-              <input id="sponsorTitle" type="text" maxlength="120" required />
-            </div>
-            <div class="form-group">
-              <label for="sponsorText">Yazı</label>
-              <textarea id="sponsorText" maxlength="300" rows="3"></textarea>
-            </div>
-            <div class="form-group">
-              <label for="sponsorButton">Düğme yazısı</label>
-              <input id="sponsorButton" type="text" maxlength="40" required />
-            </div>
-            <div class="form-group">
-              <label for="sponsorUrl">Bağlantı (https://)</label>
-              <input id="sponsorUrl" type="url" maxlength="500" pattern="https://.*" required />
-            </div>
+        <form id="sponsorForm" onsubmit="saveSponsor(event)">
+          <div id="sponsorList" style="display:flex;flex-direction:column;gap:16px"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
+            <button type="button" class="btn-sm" id="sponsorAddBtn" onclick="addSponsor()">+ Sponsor ekle</button>
             <button type="submit" class="btn-sm btn-approve" id="sponsorSaveBtn">Kaydet</button>
-          </form>
-        </div>
+          </div>
+        </form>
       </section>
 
       <section class="section" id="sectionPromo">

@@ -2295,50 +2295,77 @@ app.put('/api/admin/welcome', requireAdmin, async (req, res) => {
   }
 });
 
-// ── Sponsorlu reklam (QMove; yönetimden açılır/kapanır) ────────
+// ── Sponsorlu reklamlar (birden fazla sponsor; her biri yönetimden açılır/kapanır) ──
 const SPONSOR_FILE = 'sponsor.json';
 const SPONSOR_PLACES = ['grid', 'strip', 'detail', 'side'];   // ilan listesi, vitrin altı bant, işletme detayı, masaüstü sağ/sol
-const DEFAULT_SPONSOR = {
-  enabled: true,
-  name: 'QMove',
-  title: 'Halden çıkan malınıza araç mı lazım?',
-  text: 'QMove ile kamyonetten TIR’a uygun aracı bulun, fiyatı sipariş vermeden görün, yükünüzü canlı takip edin.',
-  button: 'QMove’da Araç Bul',
-  url: 'https://www.qmove.com/tr-tr/',
-  image: 'img/sponsor-qmove.webp',
-  places: { grid: true, strip: true, detail: true, side: true },
-};
+const SPONSOR_MAX = 4;
+const SPONSOR_DEFAULT_IMAGE = 'img/sponsor-qmove.webp';
+const DEFAULT_SPONSORS = [
+  {
+    id: 'qmove', enabled: true, name: 'QMove',
+    title: 'Halden çıkan malınıza araç mı lazım?',
+    text: 'QMove ile kamyonetten TIR’a uygun aracı bulun, fiyatı sipariş vermeden görün, yükünüzü canlı takip edin.',
+    button: 'QMove’da Araç Bul', url: 'https://www.qmove.com/tr-tr/', image: SPONSOR_DEFAULT_IMAGE,
+    places: { grid: true, strip: true, detail: true, side: true },
+  },
+  {
+    id: 'mersinmanset', enabled: true, name: 'Mersin Manşet',
+    title: 'Mersin’in son dakika haberleri',
+    text: 'İlçelerden gelişmeler, belediye duyuruları, ekonomi, yaşam ve spor haberleri Mersin Manşet’te.',
+    button: 'Haberleri Oku', url: 'https://mersinmanset.tr/', image: '',
+    places: { grid: true, strip: true, detail: true, side: true },
+  },
+];
+const withDefaultPlaces = s => ({ ...s, places: { grid: true, strip: true, detail: true, side: true, ...((s && s.places) || {}) } });
 let sponsorCache = null;
 async function getSponsorSettings() {
   if (sponsorCache) return sponsorCache;
   const saved = await db.getPrivateJson(SPONSOR_FILE);
-  sponsorCache = { ...DEFAULT_SPONSOR, ...(saved || {}), places: { ...DEFAULT_SPONSOR.places, ...((saved && saved.places) || {}) } };
+  let sponsors;
+  if (saved && Array.isArray(saved.sponsors)) sponsors = saved.sponsors;
+  // Eski kayıt tek sponsordu (QMove): korunur, Mersin Manşet ikinci olarak eklenir
+  else if (saved && saved.name) sponsors = [{ ...DEFAULT_SPONSORS[0], ...saved, id: 'qmove' }, DEFAULT_SPONSORS[1]];
+  else sponsors = DEFAULT_SPONSORS;
+  sponsorCache = { sponsors: sponsors.map(withDefaultPlaces) };
   return sponsorCache;
 }
+// Eski sayfa sürümleri tek sponsor bekler: ilk açık sponsor üst düzeyde de verilir
+const publicSponsorPayload = settings => ({ ...(settings.sponsors.find(s => s.enabled) || { enabled: false }), sponsors: settings.sponsors });
 app.get('/api/sponsor', async (req, res) => {
-  try { res.json(await getSponsorSettings()); }
-  catch (err) { console.error('Sponsor ayarı okunamadı:', err.message); res.json({ enabled: false }); }
+  try { res.json(publicSponsorPayload(await getSponsorSettings())); }
+  catch (err) { console.error('Sponsor ayarı okunamadı:', err.message); res.json({ enabled: false, sponsors: [] }); }
 });
+function cleanSponsor(body, index) {
+  const name = welcomeText(body.name, 40);
+  const title = welcomeText(body.title, 120);
+  const button = welcomeText(body.button, 40);
+  if (!name || !title || !button) return { error: `${index + 1}. sponsor: ad, başlık ve düğme yazısı boş olamaz` };
+  let parsed = null;
+  try { parsed = new URL(welcomeText(body.url, 500)); } catch {}
+  if (!parsed || parsed.protocol !== 'https:') return { error: `${index + 1}. sponsor: bağlantı https:// ile başlamalı` };
+  // Resim: yok, sitedeki varsayılan afiş ya da yüklenen (https) resim
+  const image = welcomeText(body.image, 500);
+  if (image && image !== SPONSOR_DEFAULT_IMAGE && !image.startsWith('https://')) return { error: `${index + 1}. sponsor: resim geçersiz` };
+  const id = /^[a-z0-9-]{1,40}$/.test(String(body.id || '')) ? body.id : `sponsor-${crypto.randomUUID().slice(0, 8)}`;
+  const places = {};
+  for (const p of SPONSOR_PLACES) places[p] = !!(body.places && body.places[p]);
+  return { sponsor: { id, enabled: body.enabled === true, name, title, text: welcomeText(body.text, 300), button, url: parsed.href, image, places } };
+}
 app.put('/api/admin/sponsor', requireAdmin, async (req, res) => {
   try {
-    const body = req.body || {};
-    const name = welcomeText(body.name, 40);
-    const title = welcomeText(body.title, 120);
-    const button = welcomeText(body.button, 40);
-    const url = welcomeText(body.url, 500);
-    if (!name || !title || !button) return res.status(400).json({ error: 'Ad, başlık ve düğme yazısı boş olamaz' });
-    let parsed = null;
-    try { parsed = new URL(url); } catch {}
-    if (!parsed || parsed.protocol !== 'https:') return res.status(400).json({ error: 'Bağlantı https:// ile başlamalı' });
-    // Resim: yok, sitedeki varsayılan afiş ya da yüklenen (https) resim
-    const image = welcomeText(body.image, 500);
-    if (image && image !== DEFAULT_SPONSOR.image && !image.startsWith('https://')) return res.status(400).json({ error: 'Resim geçersiz' });
-    const places = {};
-    for (const p of SPONSOR_PLACES) places[p] = !!(body.places && body.places[p]);
-    const next = { enabled: body.enabled === true, name, title, text: welcomeText(body.text, 300), button, url: parsed.href, image, places };
+    const list = Array.isArray(req.body && req.body.sponsors) ? req.body.sponsors : null;
+    if (!list || !list.length || list.length > SPONSOR_MAX) return res.status(400).json({ error: `1 ile ${SPONSOR_MAX} arasında sponsor olmalı` });
+    const sponsors = [];
+    for (const [i, item] of list.entries()) {
+      const result = cleanSponsor(item || {}, i);
+      if (result.error) return res.status(400).json({ error: result.error });
+      sponsors.push(result.sponsor);
+    }
+    if (new Set(sponsors.map(s => s.id)).size !== sponsors.length) return res.status(400).json({ error: 'Sponsor kimlikleri tekrar ediyor' });
+    const next = { sponsors };
     if (!(await db.savePrivateJson(SPONSOR_FILE, next))) return res.status(500).json({ error: 'Kaydedilemedi' });
     sponsorCache = next;
-    res.json(next);
+    res.json(publicSponsorPayload(next));
   } catch (err) {
     console.error('Sponsor ayarı kaydedilemedi:', err.message);
     res.status(500).json({ error: 'Kaydedilemedi' });
