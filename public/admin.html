@@ -411,6 +411,9 @@
           .fb-import-thumb { display: inline-block; width: 90px; height: 90px; object-fit: cover; border-radius: 8px; margin: 6px 6px 0 0; vertical-align: top; }
           .fb-import-found { font-weight: 700; color: #93c5fd; }
           .fb-import-opt { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+          .fb-bookmarklet { padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(52,211,153,.45); background: rgba(52,211,153,.07); font-size: 14px; }
+          .fb-bookmarklet ol { margin: 6px 0 10px; padding-left: 20px; line-height: 1.6; }
+          .fb-bookmarklet-btn { display: inline-block; padding: 9px 16px; border-radius: 999px; font-weight: 800; text-decoration: none; color: #04130b; background: linear-gradient(135deg,#34d399,#10b981); cursor: grab; box-shadow: 0 6px 18px rgba(16,185,129,.4); }
           .fb-link-row { display: flex; gap: 8px; flex-wrap: wrap; }
           .fb-link-row input { flex: 1 1 260px; min-width: 0; }
           .fb-apify { font-size: 13px; opacity: .9; display: flex; flex-direction: column; gap: 6px; }
@@ -436,6 +439,15 @@
                 <input type="password" id="fbApifyToken" placeholder="apify_api_..." autocomplete="off" aria-label="Apify anahtarı" />
                 <button type="button" class="btn-ghost-sm" onclick="saveApifyToken()">Kaydet</button>
               </div>
+            </div>
+            <div class="fb-bookmarklet">
+              <b>⚡ En kolay yol: yer imi düğmesi</b>
+              <ol>
+                <li>Chrome'da <b>Ctrl+Shift+B</b> ile yer imleri çubuğunu açın.</li>
+                <li>Aşağıdaki yeşil düğmeyi fareyle tutup yer imleri çubuğuna sürükleyip bırakın.</li>
+                <li>Facebook'ta gönderinin tarihine tıklayıp gönderiyi açın, sonra çubuktaki <b>NewHal'e Gönder</b>'e basın.</li>
+              </ol>
+              <a class="fb-bookmarklet-btn" id="fbBookmarklet" href="#" onclick="event.preventDefault(); showToast('Bu düğmeye basmayın, yer imleri çubuğuna sürükleyin', 'error')">🟢 NewHal'e Gönder</a>
             </div>
             <p class="ad-hint" style="margin:0">⚡ <b>Chrome'da tek tık:</b> <a href="/newhal-facebook.user.js" target="_blank" rel="noopener">NewHal Facebook eklenti betiğini kur</a> (önce OrangeMonkey ya da Tampermonkey eklentisi gerekir). Kurunca Facebook'taki her gönderide "NewHal'e Gönder" düğmesi çıkar.</p>
             <p class="ad-hint" style="margin:0">Linkten getirme çalışmazsa (ör. kapalı grup) gönderiyi aşağıdaki kutuya kopyalayıp yapıştırabilirsiniz.</p>

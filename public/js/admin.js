@@ -1999,6 +1999,13 @@ function renderFbImportFound() {
 }
 
 function setupFbImport() {
+  // Yer imi düğmesi: Facebook'taki açık gönderinin linkini panele gönderir
+  const bm = document.getElementById('fbBookmarklet');
+  if (bm) {
+    const code = "(function(){var h=location.hostname;if(!/(^|\\.)facebook\\.com$/.test(h)){alert('Bu düğme Facebook gönderisi açıkken çalışır');return;}"
+      + "window.open('" + location.origin + "/admin.html?fbLink='+encodeURIComponent(location.href),'newhal_admin');})();";
+    bm.href = 'javascript:' + encodeURI(code);
+  }
   const paste = document.getElementById('fbImportPaste');
   if (!paste) return;
   paste.addEventListener('paste', (e) => {
