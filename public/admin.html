@@ -124,6 +124,10 @@
           <span aria-hidden="true">🖼️</span>
           Açılış Ekranı
         </button>
+        <button class="nav-item" id="navSponsor" onclick="showSection('sponsor')">
+          <span aria-hidden="true">📣</span>
+          Sponsorlu Reklam
+        </button>
         <button class="nav-item" id="navPromo" onclick="showSection('promo')">
           <span aria-hidden="true">💬</span>
           WhatsApp Reklam
@@ -646,6 +650,49 @@
               <label><input id="welcomeShowAgain" type="checkbox" style="width:auto;margin-right:8px" />Daha önce kapatanlara da bir kez daha göster</label>
             </div>
             <button type="submit" class="btn-sm btn-approve" id="welcomeSaveBtn">Kaydet</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="section" id="sectionSponsor">
+        <div class="section-head">
+          <div>
+            <h1>Sponsorlu Reklam</h1>
+            <p>Sitede "Sponsorlu" etiketiyle gösterilen reklam (QMove)</p>
+          </div>
+        </div>
+        <div class="broadcast-card">
+          <form id="sponsorForm" onsubmit="saveSponsor(event)">
+            <div class="form-group">
+              <label><input id="sponsorEnabled" type="checkbox" style="width:auto;margin-right:8px" />Reklam gösterilsin</label>
+            </div>
+            <div class="form-group">
+              <label>Gösterileceği yerler</label>
+              <label><input id="sponsorPlaceGrid" type="checkbox" style="width:auto;margin-right:8px" />İlan listesinde (6. kart)</label>
+              <label><input id="sponsorPlaceStrip" type="checkbox" style="width:auto;margin-right:8px" />Vitrinin altında bant</label>
+              <label><input id="sponsorPlaceDetail" type="checkbox" style="width:auto;margin-right:8px" />İşletme detay penceresinin altında</label>
+            </div>
+            <div class="form-group">
+              <label for="sponsorName">Reklam veren</label>
+              <input id="sponsorName" type="text" maxlength="40" required />
+            </div>
+            <div class="form-group">
+              <label for="sponsorTitle">Başlık</label>
+              <input id="sponsorTitle" type="text" maxlength="120" required />
+            </div>
+            <div class="form-group">
+              <label for="sponsorText">Yazı</label>
+              <textarea id="sponsorText" maxlength="300" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="sponsorButton">Düğme yazısı</label>
+              <input id="sponsorButton" type="text" maxlength="40" required />
+            </div>
+            <div class="form-group">
+              <label for="sponsorUrl">Bağlantı (https://)</label>
+              <input id="sponsorUrl" type="url" maxlength="500" pattern="https://.*" required />
+            </div>
+            <button type="submit" class="btn-sm btn-approve" id="sponsorSaveBtn">Kaydet</button>
           </form>
         </div>
       </section>

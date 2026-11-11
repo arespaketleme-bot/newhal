@@ -482,7 +482,8 @@ const sectionTitles = {
   stats:     'İstatistikler',
   logs:      'Aktivite Logları',
   welcome:   'Açılış Ekranı',
-  promo:     'WhatsApp Reklam',
+  sponsor:   'Sponsorlu Reklam',
+  promo:    'WhatsApp Reklam',
   engage:    'Kalma Süresi',
   audit:     'Raporlar',
   heatmap:   'Tıklama Haritası'
@@ -513,6 +514,8 @@ function showSection(name) {
     loadHeatmap();
   } else if (name === 'welcome') {
     loadWelcome();
+  } else if (name === 'sponsor') {
+    loadSponsor();
   } else if (name === 'promo') {
     loadPromo();
   } else if (name === 'engage') {
@@ -587,6 +590,34 @@ async function saveWelcome(event) {
   if (!res.ok) { showToast(data.error || 'Kaydedilemedi', 'error'); return; }
   document.getElementById('welcomeShowAgain').checked = false;
   showToast('Açılış ekranı kaydedildi', 'success');
+}
+
+// ── Sponsorlu reklam ayarı ───────────────────────────────────
+const SPONSOR_FIELDS = { sponsorName: 'name', sponsorTitle: 'title', sponsorText: 'text', sponsorButton: 'button', sponsorUrl: 'url' };
+const SPONSOR_PLACE_BOXES = { sponsorPlaceGrid: 'grid', sponsorPlaceStrip: 'strip', sponsorPlaceDetail: 'detail' };
+
+async function loadSponsor() {
+  try {
+    const res = await fetch('/api/sponsor');
+    const s = res.ok ? await res.json() : {};
+    document.getElementById('sponsorEnabled').checked = s.enabled === true;
+    for (const [id, key] of Object.entries(SPONSOR_FIELDS)) document.getElementById(id).value = s[key] || '';
+    for (const [id, key] of Object.entries(SPONSOR_PLACE_BOXES)) document.getElementById(id).checked = !!(s.places && s.places[key]);
+  } catch {
+    showToast('Sponsor ayarı okunamadı', 'error');
+  }
+}
+
+async function saveSponsor(event) {
+  event.preventDefault();
+  const body = { enabled: document.getElementById('sponsorEnabled').checked, places: {} };
+  for (const [id, key] of Object.entries(SPONSOR_FIELDS)) body[key] = document.getElementById(id).value;
+  for (const [id, key] of Object.entries(SPONSOR_PLACE_BOXES)) body.places[key] = document.getElementById(id).checked;
+  const res = await api('/api/admin/sponsor', { method: 'PUT', body: JSON.stringify(body) });
+  if (!res) return;
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { showToast(data.error || 'Kaydedilemedi', 'error'); return; }
+  showToast(data.enabled ? 'Sponsorlu reklam açık ve kaydedildi' : 'Sponsorlu reklam kapatıldı', 'success');
 }
 
 // ── WhatsApp reklam mesajı ───────────────────────────────────

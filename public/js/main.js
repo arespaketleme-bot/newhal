@@ -123,6 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadPins();
   initAdsSearch();
   loadAds();
+  loadSponsor();
   loadFbStories();
   setInterval(loadFbStories, 5 * 60 * 1000);
   initScrollEffect();
@@ -734,10 +735,83 @@ async function initPresence() {
 // ── Pin Detay ─────────────────────────────────────────────────
 let currentDetailPinId = null;
 
+// ── Sponsorlu reklam (yönetimden açılıp kapanır) ──────────────
+let sponsor = null;
+
+function sponsorOn(place) {
+  return !!(sponsor && sponsor.enabled && sponsor.places && sponsor.places[place]
+    && typeof sponsor.url === 'string' && sponsor.url.startsWith('https://'));
+}
+
+// Metinler textContent ile yazılır: yönetimden gelen yazı HTML olarak çalışmaz
+function buildSponsorCard(place) {
+  const card = document.createElement('a');
+  card.className = `sponsor-card sponsor-${place}`;
+  card.href = sponsor.url;
+  card.target = '_blank';
+  card.rel = 'sponsored noopener noreferrer';
+  const label = document.createElement('span');
+  label.className = 'sponsor-label';
+  label.textContent = `Sponsorlu · ${sponsor.name || ''}`;
+  const body = document.createElement('span');
+  body.className = 'sponsor-body';
+  const title = document.createElement('strong');
+  title.className = 'sponsor-title';
+  title.textContent = sponsor.title || '';
+  body.appendChild(title);
+  if (sponsor.text) {
+    const text = document.createElement('span');
+    text.className = 'sponsor-text';
+    text.textContent = sponsor.text;
+    body.appendChild(text);
+  }
+  const btn = document.createElement('span');
+  btn.className = 'sponsor-btn';
+  btn.textContent = sponsor.button || 'İncele';
+  card.append(label, body, btn);
+  card.addEventListener('click', (e) => {
+    e.stopPropagation();
+    try {
+      fetch('/api/logs', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: `Sponsorlu reklama tıkladı (${sponsor.name}, ${place})` }) });
+    } catch {}
+  });
+  return card;
+}
+
+function renderSponsorStrip() {
+  document.getElementById('sponsorStrip')?.remove();
+  const vitrin = document.getElementById('vitrin');
+  if (!vitrin || !sponsorOn('strip')) return;
+  const strip = buildSponsorCard('strip');
+  strip.id = 'sponsorStrip';
+  vitrin.insertAdjacentElement('afterend', strip);
+}
+
+function renderSponsorDetail() {
+  document.getElementById('sponsorDetail')?.remove();
+  const box = document.getElementById('pinDetailBox');
+  if (!box || !sponsorOn('detail')) return;
+  const card = buildSponsorCard('detail');
+  card.id = 'sponsorDetail';
+  box.appendChild(card);
+}
+
+async function loadSponsor() {
+  try {
+    const res = await fetch('/api/sponsor');
+    if (res.ok) sponsor = await res.json();
+  } catch {}
+  renderSponsorStrip();
+  // İlanlar önce geldiyse listeyi sponsor kartıyla yeniden çiz
+  if (document.getElementById('adsGrid')?.children.length) renderAdsGrid();
+}
+
 function showPinDetail(id) {
   const pin = allPins.find(p => p.id === id);
   if (!pin) return;
   currentDetailPinId = id;
+  renderSponsorDetail();
 
   // Reset report form
   const rForm = document.getElementById('reportFormContainer');
@@ -2333,6 +2407,8 @@ function renderAdsGrid() {
     ? regularAds.filter(ad => adMatchesSearch(ad, adsQuery)).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
     : regularAds.filter(ad => !ad.featured);
   list.forEach(ad => grid.appendChild(buildAdCard(ad)));
+  // Sponsorlu kart 6. sıraya (daha az ilan varsa sona) bir kez girer
+  if (list.length && sponsorOn('grid')) grid.insertBefore(buildSponsorCard('grid'), grid.children[5] || null);
   grid.scrollTop = 0;
   fitAdsGridRows();
   info.hidden = !adsQuery;

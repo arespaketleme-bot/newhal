@@ -2273,6 +2273,52 @@ app.put('/api/admin/welcome', requireAdmin, async (req, res) => {
   }
 });
 
+// ── Sponsorlu reklam (QMove; yönetimden açılır/kapanır) ────────
+const SPONSOR_FILE = 'sponsor.json';
+const SPONSOR_PLACES = ['grid', 'strip', 'detail'];   // ilan listesi, vitrin altı bant, işletme detayı
+const DEFAULT_SPONSOR = {
+  enabled: true,
+  name: 'QMove',
+  title: 'Halden çıkan malınıza araç mı lazım?',
+  text: 'QMove ile kamyonetten TIR’a uygun aracı bulun, fiyatı sipariş vermeden görün, yükünüzü canlı takip edin.',
+  button: 'QMove’da Araç Bul',
+  url: 'https://www.qmove.com/tr-tr/',
+  places: { grid: true, strip: true, detail: true },
+};
+let sponsorCache = null;
+async function getSponsorSettings() {
+  if (sponsorCache) return sponsorCache;
+  const saved = await db.getPrivateJson(SPONSOR_FILE);
+  sponsorCache = { ...DEFAULT_SPONSOR, ...(saved || {}), places: { ...DEFAULT_SPONSOR.places, ...((saved && saved.places) || {}) } };
+  return sponsorCache;
+}
+app.get('/api/sponsor', async (req, res) => {
+  try { res.json(await getSponsorSettings()); }
+  catch (err) { console.error('Sponsor ayarı okunamadı:', err.message); res.json({ enabled: false }); }
+});
+app.put('/api/admin/sponsor', requireAdmin, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const name = welcomeText(body.name, 40);
+    const title = welcomeText(body.title, 120);
+    const button = welcomeText(body.button, 40);
+    const url = welcomeText(body.url, 500);
+    if (!name || !title || !button) return res.status(400).json({ error: 'Ad, başlık ve düğme yazısı boş olamaz' });
+    let parsed = null;
+    try { parsed = new URL(url); } catch {}
+    if (!parsed || parsed.protocol !== 'https:') return res.status(400).json({ error: 'Bağlantı https:// ile başlamalı' });
+    const places = {};
+    for (const p of SPONSOR_PLACES) places[p] = !!(body.places && body.places[p]);
+    const next = { enabled: body.enabled === true, name, title, text: welcomeText(body.text, 300), button, url: parsed.href, places };
+    if (!(await db.savePrivateJson(SPONSOR_FILE, next))) return res.status(500).json({ error: 'Kaydedilemedi' });
+    sponsorCache = next;
+    res.json(next);
+  } catch (err) {
+    console.error('Sponsor ayarı kaydedilemedi:', err.message);
+    res.status(500).json({ error: 'Kaydedilemedi' });
+  }
+});
+
 // ── Kalma süresi ölçümü: kişi bilgisi tutulmaz, sadece kaynağa göre toplam sayılar ──
 const ENGAGE_FILE = 'engagement.json';
 const ENGAGE_LIMITS = [10, 30, 120, 600];
