@@ -1979,6 +1979,7 @@ function setupFbImport() {
     renderFbImportFound();
   });
   paste.addEventListener('input', () => { fbImportText = paste.innerText; renderFbImportFound(); });
+  document.getElementById('fbImport').addEventListener('toggle', (e) => { if (e.target.open) loadApifyStatus(); });
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupFbImport);
 else setupFbImport();
@@ -2036,6 +2037,71 @@ async function applyFbImport() {
   } finally {
     btn.disabled = false;
     btn.textContent = 'Ayır ve Forma Aktar';
+  }
+}
+
+// ── Facebook linkinden getir (Apify) ──────────────────────────
+async function loadApifyStatus() {
+  const status = document.getElementById('fbApifyStatus');
+  const form = document.getElementById('fbApifyForm');
+  if (!status) return;
+  try {
+    const res = await api('/api/admin/apify');
+    const data = res ? await res.json() : {};
+    if (data.configured) {
+      status.innerHTML = `✅ Apify bağlı (${escHtmlSafe(data.hint)}). <a href="#" onclick="document.getElementById('fbApifyForm').hidden=false;return false">Anahtarı değiştir</a>`;
+      form.hidden = true;
+    } else {
+      status.innerHTML = '⚠️ Linkten getirmek için Apify anahtarınızı bir kez kaydedin. Anahtarı Apify\'da <b>Settings → API &amp; Integrations</b> sayfasından kopyalayabilirsiniz.';
+      form.hidden = false;
+    }
+  } catch { status.textContent = 'Apify durumu okunamadı'; }
+}
+function escHtmlSafe(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+async function saveApifyToken() {
+  const input = document.getElementById('fbApifyToken');
+  const res = await api('/api/admin/apify', { method: 'PUT', body: JSON.stringify({ token: input.value.trim() }) });
+  if (!res) return;
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { showToast(data.error || 'Kaydedilemedi', 'error'); return; }
+  input.value = '';
+  showToast('Apify anahtarı kaydedildi', 'success');
+  loadApifyStatus();
+}
+
+async function fetchFbPost() {
+  const link = document.getElementById('fbImportLink').value.trim();
+  if (!link) { showToast('Önce Facebook linkini yapıştırın', 'error'); return; }
+  const btn = document.getElementById('fbFetchBtn');
+  btn.disabled = true;
+  let sec = 0;
+  btn.textContent = 'Gönderi okunuyor...';
+  const tick = setInterval(() => { sec++; btn.textContent = `Gönderi okunuyor... ${sec} sn`; }, 1000);
+  try {
+    const res = await api('/api/admin/ads/from-facebook', { method: 'POST', body: JSON.stringify({ url: link }) });
+    if (!res) return;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { showToast(data.error || 'Gönderi okunamadı', 'error'); return; }
+    let body = cleanFbText(data.text || '');
+    if (document.getElementById('fbImportAddLink').checked) body = `${body}\n\n${link}`.trim();
+    if (body) {
+      const area = document.getElementById('adBody');
+      area.value = body.slice(0, Number(area.maxLength) > 0 ? Number(area.maxLength) : 2120);
+      area.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    const room = AD_MAX_PHOTOS - adPhotoUrls.length - adPhotoBusy;
+    (data.images || []).slice(0, Math.max(0, room)).forEach(u => adPhotoUrls.push(u));
+    renderAdPhotos();
+    const n = Math.min((data.images || []).length, Math.max(0, room));
+    showToast(`Gönderi getirildi: ${body ? 'yazı' : 'yazı yok'}, ${n} resim${data.failed ? ` (${data.failed} resim alınamadı)` : ''}`, body || n ? 'success' : 'error');
+    document.getElementById('fbImportLink').value = '';
+    document.getElementById('fbImport').open = false;
+    document.getElementById('adBody').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } finally {
+    clearInterval(tick);
+    btn.disabled = false;
+    btn.textContent = '🔗 Linkten Getir';
   }
 }
 

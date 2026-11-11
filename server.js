@@ -1798,29 +1798,114 @@ app.post('/api/admin/ads/upload-url', requireAdmin, async (req, res) => {
 // Facebook gönderisinden kopyalanan resim adresini indirip ilan deposuna kaydeder.
 // Güvenlik: yalnızca Facebook'un resim sunucularından, en fazla 5 MB, sadece resim.
 const FB_IMAGE_HOST = /(^|\.)(fbcdn\.net|fbsbx\.com)$/i;
-app.post('/api/admin/ads/import-image', requireAdmin, async (req, res) => {
+async function importFbImage(href) {
   let url;
-  try { url = new URL(String(req.body.url || '')); } catch { return res.status(400).json({ error: 'Resim adresi geçersiz' }); }
-  if (url.protocol !== 'https:' || !FB_IMAGE_HOST.test(url.hostname)) {
-    return res.status(400).json({ error: 'Sadece Facebook resimleri alınabilir' });
-  }
+  try { url = new URL(String(href || '')); } catch { throw new Error('Resim adresi geçersiz'); }
+  if (url.protocol !== 'https:' || !FB_IMAGE_HOST.test(url.hostname)) throw new Error('Sadece Facebook resimleri alınabilir');
+  const r = await fetch(url.href, { signal: AbortSignal.timeout(15000), redirect: 'error' });
+  if (!r.ok) throw new Error(`Resim alınamadı (${r.status})`);
+  const type = String(r.headers.get('content-type') || '').split(';')[0].trim();
+  const ext = AD_UPLOAD_RULES.image.types[type];
+  if (!ext) throw new Error('Bu resim türü desteklenmiyor');
+  const buf = Buffer.from(await r.arrayBuffer());
+  if (!buf.length || buf.length > AD_UPLOAD_RULES.image.maxBytes) throw new Error('Resim çok büyük');
+  const target = await db.createAdUploadUrl(`ads/${Date.now()}-${crypto.randomUUID()}.${ext}`);
+  if (!target) throw new Error('Resim kaydedilemedi');
+  const up = await fetch(target.uploadUrl, { method: 'PUT', headers: { 'Content-Type': type }, body: buf });
+  if (!up.ok) throw new Error('Resim kaydedilemedi');
+  return target.publicUrl;
+}
+app.post('/api/admin/ads/import-image', requireAdmin, async (req, res) => {
+  try { res.json({ url: await importFbImage(req.body.url) }); }
+  catch (err) { res.status(400).json({ error: err.message || 'Resim alınamadı' }); }
+});
+
+// ── Facebook linkinden ilan (Apify ile okunur) ─────────────────
+// Apify anahtarı herkese kapalı depoda tutulur, tarayıcıya hiç gönderilmez.
+const APIFY_FILE = 'apify.json';
+async function getApifyToken() {
+  const saved = await db.getPrivateJson(APIFY_FILE);
+  return (saved && saved.token) || process.env.APIFY_TOKEN || process.env.APIFY_API_KEY || '';
+}
+app.get('/api/admin/apify', requireAdmin, async (req, res) => {
+  const token = await getApifyToken();
+  res.json({ configured: !!token, hint: token ? `…${token.slice(-4)}` : '' });
+});
+app.put('/api/admin/apify', requireAdmin, async (req, res) => {
+  const token = String(req.body.token || '').trim();
+  if (!/^apify_api_[A-Za-z0-9]{20,}$/.test(token)) return res.status(400).json({ error: 'Anahtar "apify_api_" ile başlamalı' });
   try {
-    const r = await fetch(url.href, { signal: AbortSignal.timeout(15000), redirect: 'error' });
-    if (!r.ok) return res.status(502).json({ error: `Resim alınamadı (${r.status})` });
-    const type = String(r.headers.get('content-type') || '').split(';')[0].trim();
-    const ext = AD_UPLOAD_RULES.image.types[type];
-    if (!ext) return res.status(400).json({ error: 'Bu resim türü desteklenmiyor' });
-    const buf = Buffer.from(await r.arrayBuffer());
-    if (!buf.length || buf.length > AD_UPLOAD_RULES.image.maxBytes) return res.status(400).json({ error: 'Resim çok büyük' });
-    const target = await db.createAdUploadUrl(`ads/${Date.now()}-${crypto.randomUUID()}.${ext}`);
-    if (!target) return res.status(500).json({ error: 'Resim kaydedilemedi' });
-    const up = await fetch(target.uploadUrl, { method: 'PUT', headers: { 'Content-Type': type }, body: buf });
-    if (!up.ok) return res.status(500).json({ error: 'Resim kaydedilemedi' });
-    res.json({ url: target.publicUrl });
+    const r = await fetch(`https://api.apify.com/v2/users/me?token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) return res.status(400).json({ error: 'Apify bu anahtarı kabul etmedi' });
+  } catch { return res.status(502).json({ error: 'Apify şu an yanıt vermiyor, biraz sonra deneyin' }); }
+  if (!(await db.savePrivateJson(APIFY_FILE, { token, saved_at: new Date().toISOString() }))) return res.status(500).json({ error: 'Kaydedilemedi' });
+  res.json({ configured: true, hint: `…${token.slice(-4)}` });
+});
+
+// Apify sonucundan gönderi resimlerini toplar: profil resimleri ve küçük simgeler atlanır
+function fbPostImages(item) {
+  const found = [];
+  const seen = new Set();
+  const skipKeys = new Set(['user', 'profilePic', 'pageName', 'comments', 'topComments', 'author', 'collaborators', 'pageAdLibrary']);
+  const walk = (v, depth) => {
+    if (depth > 6 || v == null) return;
+    if (typeof v === 'string') {
+      if (!/^https:\/\/[^/]*fbcdn\.net\//.test(v)) return;
+      if (/t39\.30808-1\/|\/rsrc\.php|emoji|ctp=s\d{2}x\d{2}|p\d{2}x\d{2}[^\d]/.test(v)) return;
+      const id = (v.match(/\/(\d+_\d+_\d+_[a-z])\.(jpg|png|webp)/) || [])[1] || v.split('?')[0];
+      if (seen.has(id)) return;
+      seen.add(id);
+      found.push(v);
+      return;
+    }
+    if (Array.isArray(v)) { v.forEach(x => walk(x, depth + 1)); return; }
+    if (typeof v === 'object') {
+      // Önce büyük resim adresi: photo_image.uri, image.uri
+      for (const k of ['photo_image', 'image', 'full_image']) if (v[k] && v[k].uri) walk(v[k].uri, depth + 1);
+      for (const [k, x] of Object.entries(v)) if (!skipKeys.has(k)) walk(x, depth + 1);
+    }
+  };
+  walk(item.media, 0);
+  walk(item.attachments, 0);
+  if (!found.length && item.sharedPost) { walk(item.sharedPost.media, 0); walk(item.sharedPost.attachments, 0); }
+  return found;
+}
+
+app.post('/api/admin/ads/from-facebook', requireAdmin, async (req, res) => {
+  let link;
+  try { link = new URL(String(req.body.url || '').trim()); } catch { return res.status(400).json({ error: 'Facebook linki geçersiz' }); }
+  if (!/(^|\.)(facebook\.com|fb\.com|fb\.watch)$/i.test(link.hostname)) return res.status(400).json({ error: 'Bu bir Facebook linki değil' });
+  const token = await getApifyToken();
+  if (!token) return res.status(400).json({ error: 'Önce Apify anahtarını kaydedin' });
+  const isGroup = /\/groups\//i.test(link.pathname);
+  const actor = isGroup ? 'apify~facebook-groups-scraper' : 'apify~facebook-posts-scraper';
+  let items;
+  try {
+    const r = await fetch(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=150`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ startUrls: [{ url: link.href }], resultsLimit: 1, viewOption: 'CHRONOLOGICAL' }),
+      signal: AbortSignal.timeout(170000),
+    });
+    items = await r.json().catch(() => null);
+    if (!r.ok) {
+      const msg = items && items.error && items.error.message;
+      console.error('Apify Facebook okuma hatası:', r.status, msg);
+      return res.status(502).json({ error: r.status === 402 ? 'Apify bakiyesi yetersiz' : 'Gönderi okunamadı, linki kontrol edin' });
+    }
   } catch (err) {
-    console.error('Facebook resmi alınamadı:', err.message);
-    res.status(502).json({ error: 'Resim alınamadı' });
+    console.error('Apify Facebook okuma hatası:', err.message);
+    return res.status(504).json({ error: 'Gönderi zamanında okunamadı, tekrar deneyin' });
   }
+  const item = Array.isArray(items) ? items.find(x => x && !x.error) : null;
+  if (!item) return res.status(404).json({ error: isGroup ? 'Gönderi okunamadı. Grup kapalıysa gönderi dışarıdan görülemez.' : 'Gönderi bulunamadı ya da herkese açık değil' });
+  const text = String(item.text || item.message || (item.sharedPost && item.sharedPost.text) || '').trim();
+  const urls = fbPostImages(item).slice(0, 5);
+  const images = [];
+  let failed = 0;
+  for (const u of urls) {
+    try { images.push(await importFbImage(u)); } catch { failed++; }
+  }
+  res.json({ text, images, failed, source: item.url || link.href, author: (item.user && item.user.name) || '' });
 });
 
 app.post('/api/admin/ads', requireAdmin, async (req, res) => {

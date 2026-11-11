@@ -402,6 +402,11 @@
           .fb-import-thumb { display: inline-block; width: 90px; height: 90px; object-fit: cover; border-radius: 8px; margin: 6px 6px 0 0; vertical-align: top; }
           .fb-import-found { font-weight: 700; color: #93c5fd; }
           .fb-import-opt { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+          .fb-link-row { display: flex; gap: 8px; flex-wrap: wrap; }
+          .fb-link-row input { flex: 1 1 260px; min-width: 0; }
+          .fb-apify { font-size: 13px; opacity: .9; display: flex; flex-direction: column; gap: 6px; }
+          .fb-apify-form { display: flex; gap: 8px; flex-wrap: wrap; }
+          .fb-apify-form input { flex: 1 1 220px; padding: 8px 10px; border-radius: 8px; font: inherit; }
         </style>
         <details class="fb-import" id="fbImport">
           <summary>📘 <strong>Facebook gönderisinden ilan yap</strong> <span class="ad-hint">Yapıştırın, yazı ve resimler otomatik ayrılsın</span></summary>
@@ -411,7 +416,18 @@
               <li>Aşağıdaki kutuya tıklayıp <b>Ctrl+V</b> ile yapıştırın. Resimleri tek tek kopyalayıp da yapıştırabilirsiniz.</li>
               <li><b>Ayır ve Forma Aktar</b>'a basın. Yazı ilan metnine, resimler resim kutusuna gelir.</li>
             </ol>
-            <input type="url" id="fbImportLink" placeholder="Facebook gönderi linki (isteğe bağlı)" aria-label="Facebook gönderi linki" />
+            <div class="fb-link-row">
+              <input type="url" id="fbImportLink" placeholder="Facebook gönderi linkini yapıştırın" aria-label="Facebook gönderi linki" />
+              <button type="button" class="btn-publish" id="fbFetchBtn" onclick="fetchFbPost()">🔗 Linkten Getir</button>
+            </div>
+            <div class="fb-apify" id="fbApifyBox">
+              <span id="fbApifyStatus">Apify bağlantısı kontrol ediliyor...</span>
+              <div class="fb-apify-form" id="fbApifyForm" hidden>
+                <input type="password" id="fbApifyToken" placeholder="apify_api_..." autocomplete="off" aria-label="Apify anahtarı" />
+                <button type="button" class="btn-ghost-sm" onclick="saveApifyToken()">Kaydet</button>
+              </div>
+            </div>
+            <p class="ad-hint" style="margin:0">Linkten getirme çalışmazsa (ör. kapalı grup) gönderiyi aşağıdaki kutuya kopyalayıp yapıştırabilirsiniz.</p>
             <div class="fb-import-paste" id="fbImportPaste" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Facebook gönderisini buraya yapıştırın" data-placeholder="Gönderiyi buraya yapıştırın (Ctrl+V)"></div>
             <div class="fb-import-found" id="fbImportFound" hidden></div>
             <label class="fb-import-opt"><input type="checkbox" id="fbImportAddLink" /> Linki ilan yazısının sonuna ekle</label>
