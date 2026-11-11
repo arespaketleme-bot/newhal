@@ -2345,6 +2345,39 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// ── En üstte kayan Google trendleri ───────────────────────────
+async function loadTrendBar() {
+  const bar = document.getElementById('trendBar');
+  const track = document.getElementById('trendBarTrack');
+  if (!bar || !track) return;
+  let items = [];
+  try { const r = await fetch('/api/trends'); if (r.ok) items = (await r.json()).items || []; } catch {}
+  if (!items.length) return;
+  track.innerHTML = '';
+  // Kesintisiz akması için liste iki kez yazılır
+  for (let copy = 0; copy < 2; copy++) {
+    items.forEach(t => {
+      const a = document.createElement('a');
+      a.className = 'trend-tag';
+      a.href = `https://www.google.com/search?q=${encodeURIComponent(t.term)}`;
+      a.target = '_blank';
+      a.rel = 'noopener nofollow';
+      a.title = t.news && t.news.title ? `${t.term} · ${t.news.title}` : t.term;
+      a.textContent = t.tag;
+      if (t.traffic) { const s = document.createElement('small'); s.textContent = t.traffic; a.appendChild(s); }
+      if (copy) a.setAttribute('aria-hidden', 'true'), a.tabIndex = -1;
+      track.appendChild(a);
+    });
+  }
+  // Hız: etiket sayısına göre, okunacak kadar yavaş
+  track.style.animationDuration = `${Math.max(40, items.length * 5)}s`;
+  bar.hidden = false;
+  document.body.classList.add('has-trends');
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { loadTrendBar(); });
+else loadTrendBar();
+setInterval(loadTrendBar, 20 * 60 * 1000);
+
 // ── Mobil uygulama duyurusu ───────────────────────────────────
 const APP_PROMO_KEY = 'appPromoClosedAt';
 const APP_PROMO_HIDE_DAYS = 7;

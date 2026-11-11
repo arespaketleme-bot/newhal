@@ -1617,6 +1617,35 @@ body.map-fs-open { overflow: hidden; }
 }
 @media (prefers-reduced-motion: reduce) { .nav-apk, .nav-apk-mobile { animation: none; } }
 
+/* En üstte kayan Google trend etiketleri */
+:root { --trend-h: 30px; }
+.trend-bar {
+  position: fixed; top: env(safe-area-inset-top); left: 0; right: 0; z-index: 101; height: var(--trend-h);
+  display: flex; align-items: center; overflow: hidden;
+  background: linear-gradient(90deg, #0b1220, #0f1a14); border-bottom: 1px solid rgba(52,211,153,0.25);
+}
+.trend-bar[hidden] { display: none; }
+.trend-bar-label {
+  flex-shrink: 0; height: 100%; display: flex; align-items: center; padding: 0 12px; font-size: 12px; font-weight: 800;
+  color: #04130b; background: linear-gradient(135deg, #fbbf24, #f97316); white-space: nowrap; z-index: 1;
+}
+.trend-bar-viewport { flex: 1; min-width: 0; overflow: hidden; height: 100%; display: flex; align-items: center;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent); }
+.trend-bar-track { display: flex; width: max-content; animation: trendScroll 60s linear infinite; }
+.trend-bar:hover .trend-bar-track, .trend-bar:focus-within .trend-bar-track { animation-play-state: paused; }
+@keyframes trendScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.trend-tag {
+  flex-shrink: 0; display: inline-flex; align-items: baseline; gap: 4px; margin: 0 14px; font-size: 13px; font-weight: 700;
+  color: #6ee7b7; text-decoration: none; white-space: nowrap;
+}
+.trend-tag:hover { color: #fff; text-decoration: underline; }
+.trend-tag small { font-size: 10px; font-weight: 600; color: #94a3b8; }
+body.has-trends { padding-top: calc(var(--trend-h) + env(safe-area-inset-top)); }
+body.has-trends .header { top: calc(var(--trend-h) + env(safe-area-inset-top)); }
+@media (max-width: 768px) { :root { --trend-h: 28px; } .trend-bar-label { padding: 0 8px; font-size: 11px; } .trend-tag { font-size: 12px; margin: 0 10px; } }
+@media (prefers-reduced-motion: reduce) { .trend-bar-track { animation-duration: 600s !important; } }
+
 /* Mobil uygulama duyurusu */
 .app-promo {
   position: relative; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: stretch;

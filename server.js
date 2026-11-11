@@ -2508,6 +2508,46 @@ app.put('/api/admin/app-promo', requireAdmin, async (req, res) => {
   res.json(next);
 });
 
+// ── Google Türkiye günlük trendleri (herkese açık RSS, 20 dakikada bir yenilenir) ──
+const TRENDS_URL = 'https://trends.google.com/trending/rss?geo=TR';
+const TRENDS_TTL_MS = 20 * 60 * 1000;
+let trendsCache = { at: 0, items: [] };
+const xmlText = s => String(s || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+  .replace(/&apos;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&amp;/g, '&').trim();
+function toHashtag(term) {
+  const words = String(term).replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean);
+  return '#' + words.map(w => w.charAt(0).toLocaleUpperCase('tr-TR') + w.slice(1)).join('');
+}
+async function getTrends() {
+  if (Date.now() - trendsCache.at < TRENDS_TTL_MS && trendsCache.items.length) return trendsCache.items;
+  try {
+    const r = await fetch(TRENDS_URL, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'NewHal/1.0 (https://newhal.com)' } });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const xml = await r.text();
+    const items = [];
+    for (const m of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+      const block = m[1];
+      const term = xmlText((block.match(/<title>([\s\S]*?)<\/title>/) || [])[1]);
+      if (!term) continue;
+      const traffic = xmlText((block.match(/<ht:approx_traffic>([\s\S]*?)<\/ht:approx_traffic>/) || [])[1]);
+      const newsUrl = xmlText((block.match(/<ht:news_item_url>([\s\S]*?)<\/ht:news_item_url>/) || [])[1]);
+      const newsTitle = xmlText((block.match(/<ht:news_item_title>([\s\S]*?)<\/ht:news_item_title>/) || [])[1]);
+      items.push({ term: term.slice(0, 80), tag: toHashtag(term).slice(0, 60), traffic: traffic.slice(0, 12),
+        news: /^https:\/\//.test(newsUrl) ? { url: newsUrl, title: newsTitle.slice(0, 140) } : null });
+      if (items.length >= 25) break;
+    }
+    if (items.length) trendsCache = { at: Date.now(), items };
+  } catch (err) {
+    console.error('Google trendleri alınamadı:', err.message);
+    trendsCache.at = Date.now() - TRENDS_TTL_MS + 2 * 60 * 1000;   // hata olunca 2 dakika sonra tekrar dene
+  }
+  return trendsCache.items;
+}
+app.get('/api/trends', async (req, res) => {
+  res.set('Cache-Control', 'public, max-age=300');
+  res.json({ items: await getTrends() });
+});
+
 app.get('/api/welcome', async (req, res) => {
   try { res.json(await getWelcomeSettings()); }
   catch (err) { console.error('Açılış ekranı okunamadı:', err.message); res.json(DEFAULT_WELCOME); }
