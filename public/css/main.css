@@ -1519,6 +1519,8 @@ body.map-fs-open { overflow: hidden; }
 .ads-head h2 { font-size: 26px; color: var(--text-1); margin-bottom: 4px; }
 .ads-head p { color: var(--text-3); font-size: 14px; }
 .ads-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+/* Duvar düzeni (JS her karta boyu kadar satır verir): dikey boşluk kartın kapladığı satırlara dahildir */
+.ads-grid.masonry { grid-auto-rows: 2px; row-gap: 0; }
 .ad-card {
   display: flex; flex-direction: column; overflow: hidden;
   background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);

@@ -2634,18 +2634,38 @@ function renderAdsMoreButton(remaining) {
 // Telefonda iç kaydırma yoktur: parmak listenin üstündeyken de sayfa kayar.
 const ADS_VISIBLE_ROWS = 2;
 
+// Duvar (masonry) düzeni: her kart kendi boyu kadar yer kaplar, kısa kartların altında boşluk kalmaz.
+// Izgara 2 px'lik ince satırlara bölünür; her kart boyuna göre o kadar satır kaplar.
+const ADS_MASONRY_ROW = 2;
+const ADS_GAP = 18;
+
+function layoutAdsMasonry(grid) {
+  const cards = [...grid.children];
+  const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length;
+  const on = cols > 1;
+  grid.classList.toggle('masonry', on);
+  for (const card of cards) {
+    card.style.gridRowEnd = on ? `span ${Math.ceil((card.offsetHeight + ADS_GAP) / ADS_MASONRY_ROW)}` : '';
+  }
+  return cols;
+}
+
 function fitAdsGridRows() {
   const grid = document.getElementById('adsGrid');
+  const cols = layoutAdsMasonry(grid);
   if (isAdsMobile()) {
     grid.classList.remove('scrollable');
     grid.style.maxHeight = '';
     return;
   }
-  const tops = [...new Set([...grid.children].map(c => c.offsetTop))].sort((a, b) => a - b);
-  const scrollable = tops.length > ADS_VISIBLE_ROWS;
+  // Kutu yaklaşık 2 kart boyu gösterir, fazlası içinde kaydırılır; en fazla ekranın %80'i
+  const cards = [...grid.children];
+  const scrollable = cards.length > cols * ADS_VISIBLE_ROWS;
   grid.classList.toggle('scrollable', scrollable);
-  // Kartlar uzunsa kutu ekrandan taşmasın: en fazla ekranın %80'i
-  const rowsHeight = scrollable ? tops[ADS_VISIBLE_ROWS] - tops[0] - 4 : 0;
+  const top0 = cards.length ? Math.min(...cards.map(c => c.offsetTop)) : 0;
+  const rowsHeight = scrollable
+    ? Math.max(...cards.slice(0, cols * ADS_VISIBLE_ROWS).map(c => c.offsetTop + c.offsetHeight)) - top0 + 4
+    : 0;
   grid.style.maxHeight = scrollable ? `${Math.min(rowsHeight, Math.round(window.innerHeight * 0.8))}px` : '';
 }
 
@@ -2657,6 +2677,13 @@ function fitAdsGridRows() {
   // Resimler yüklendikçe kart boyları değişir, ekran döndürülünce sütun sayısı değişir
   grid.addEventListener('load', refit, true);
   window.addEventListener('resize', refit);
+  // Kart boyu sonradan değişirse (yorumlar açılınca, video yüklenince) duvar düzeni yenilenir
+  if ('ResizeObserver' in window) {
+    const ro = new ResizeObserver(refit);
+    new MutationObserver(records => {
+      for (const r of records) r.addedNodes.forEach(n => { if (n.nodeType === 1) ro.observe(n); });
+    }).observe(grid, { childList: true });
+  }
   // Telefon ↔ masaüstü geçişinde (ör. tablet döndürülünce) sayfalama yeniden kurulur
   window.matchMedia('(max-width: 768px)').addEventListener('change', () => renderAdsGrid());
 })();
