@@ -2132,6 +2132,21 @@ async function saveApifyToken() {
   loadApifyStatus();
 }
 
+// OrangeMonkey için betiği panoya kopyalar
+async function copyFbUserscript(btn) {
+  try {
+    const res = await fetch('/newhal-facebook.user.js', { cache: 'no-store' });
+    if (!res.ok) throw new Error();
+    await navigator.clipboard.writeText(await res.text());
+    btn.textContent = '✅ Kopyalandı, şimdi OrangeMonkey\'e yapıştırın';
+    showToast('Betik kopyalandı', 'success');
+    setTimeout(() => { btn.textContent = '📋 Betiği Kopyala'; }, 6000);
+  } catch {
+    showToast('Kopyalanamadı. Betik yeni sekmede açılıyor, oradan Ctrl+A ve Ctrl+C yapın.', 'error');
+    window.open('/newhal-facebook.user.js', '_blank', 'noopener');
+  }
+}
+
 // Panodaki linki kutuya yapıştırır ve hemen sorgular
 async function pasteFbLinkAndFetch() {
   const input = document.getElementById('fbImportLink');

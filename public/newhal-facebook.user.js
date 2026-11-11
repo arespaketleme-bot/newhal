@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         NewHal: Facebook gönderisini ilana çevir
 // @namespace    https://newhal.com/
-// @version      1.0.0
+// @version      1.1.0
 // @description  Facebook gönderilerine "NewHal'e Gönder" düğmesi ekler. Basınca NewHal yönetim panelinde ilan formu kendiliğinden dolar.
 // @author       NewHal
 // @match        https://www.facebook.com/*
@@ -19,7 +19,7 @@
 
   const ADMIN_URL = 'https://newhal.com/admin.html';
   // Gönderi linki gibi görünen adresler
-  const POST_RX = /\/(posts|permalink|videos|reel|photo|photos)\/|\/(permalink|story|photo)\.php|story_fbid=|[?&]fbid=|\/share\/(p|v|r)\//i;
+  const POST_RX = /\/(posts|permalink|videos|reel|photo|photos)\/|\/(permalink|story|photo)\.php|story_fbid=|[?&]fbid=|multi_permalinks=|\/share\/(p|v|r)\//i;
 
   // Linki sadeleştirir: takip parametreleri atılır, gönderiyi bulan parçalar kalır
   function cleanLink(href) {
@@ -27,7 +27,7 @@
     try { u = new URL(href, location.href); } catch { return null; }
     if (!/(^|\.)facebook\.com$/i.test(u.hostname)) return null;
     if (u.searchParams.has('comment_id')) return null;   // yorum linki, gönderi değil
-    const keep = ['story_fbid', 'id', 'fbid', 'set', 'v'];
+    const keep = ['story_fbid', 'id', 'fbid', 'set', 'v', 'multi_permalinks'];
     const clean = new URL(u.origin + u.pathname);
     keep.forEach(k => { if (u.searchParams.has(k)) clean.searchParams.set(k, u.searchParams.get(k)); });
     clean.hostname = 'www.facebook.com';

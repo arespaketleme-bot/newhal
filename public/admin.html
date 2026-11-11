@@ -449,6 +449,17 @@
               </ol>
               <a class="fb-bookmarklet-btn" id="fbBookmarklet" href="#" onclick="event.preventDefault(); showToast('Bu düğmeye basmayın, yer imleri çubuğuna sürükleyin', 'error')">🟢 NewHal'e Gönder</a>
             </div>
+            <div class="fb-bookmarklet">
+              <b>🍊 OrangeMonkey ile kurulum</b>
+              <ol>
+                <li>Chrome Web Mağazası'ndan <b>OrangeMonkey</b> eklentisini kurun.</li>
+                <li>Aşağıdaki <b>Betiği Kopyala</b> düğmesine basın.</li>
+                <li>Chrome'un sağ üstündeki turuncu maymun simgesine basın, <b>Yeni betik oluştur</b> (Create a new script) seçin.</li>
+                <li>Açılan sayfadaki yazıların hepsini <b>Ctrl+A</b> ile seçip <b>Ctrl+V</b> ile yapıştırın, <b>Ctrl+S</b> ile kaydedin.</li>
+                <li>Facebook'u yenileyin: gönderilerde yeşil <b>NewHal'e Gönder</b> düğmesi çıkar.</li>
+              </ol>
+              <button type="button" class="fb-bookmarklet-btn" style="border:0;cursor:pointer" onclick="copyFbUserscript(this)">📋 Betiği Kopyala</button>
+            </div>
             <p class="ad-hint" style="margin:0">⚡ <b>Chrome'da tek tık:</b> <a href="/newhal-facebook.user.js" target="_blank" rel="noopener">NewHal Facebook eklenti betiğini kur</a> (önce OrangeMonkey ya da Tampermonkey eklentisi gerekir). Kurunca Facebook'taki her gönderide "NewHal'e Gönder" düğmesi çıkar.</p>
             <p class="ad-hint" style="margin:0">Linkten getirme çalışmazsa (ör. kapalı grup) gönderiyi aşağıdaki kutuya kopyalayıp yapıştırabilirsiniz.</p>
             <div class="fb-import-paste" id="fbImportPaste" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Facebook gönderisini buraya yapıştırın" data-placeholder="Gönderiyi buraya yapıştırın (Ctrl+V)"></div>
