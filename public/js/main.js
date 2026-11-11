@@ -794,13 +794,40 @@ function buildSponsorCard(place, s) {
   return card;
 }
 
-let stripSponsor = null;   // vitrin altı bant sayfa boyunca aynı sponsoru gösterir
+// Slayt gibi sırayla değişen alan: üstüne gelince durur, sekme gizliyken beklemez
+const SPONSOR_ROTATE_MS = 6000;
+function rotatingSlot(getItems, build, start = 0) {
+  const slot = document.createElement('div');
+  slot.className = 'rotate-slot';
+  let i = start;
+  const show = () => {
+    const items = getItems();
+    slot.hidden = !items.length;
+    if (!items.length) { slot.replaceChildren(); return; }
+    const el = build(items[i % items.length]);
+    if (slot.children.length) el.classList.add('rotate-in');
+    slot.replaceChildren(el);
+    i = (i % items.length) + 1;
+  };
+  show();
+  const timer = setInterval(() => {
+    if (!slot.isConnected && slot.dataset.placed) { clearInterval(timer); return; }
+    if (slot.isConnected) slot.dataset.placed = '1';
+    if (document.hidden || slot.matches(':hover')) return;
+    const items = getItems();
+    if (items.length === 1 && slot.children.length) return;
+    show();
+  }, SPONSOR_ROTATE_MS);
+  return slot;
+}
+
+const randomStart = place => Math.floor(Math.random() * Math.max(1, sponsorsFor(place).length));
+
 function renderSponsorStrip() {
   document.getElementById('sponsorStrip')?.remove();
   const vitrin = document.getElementById('vitrin');
-  if (!stripSponsor || !sponsorUsable(stripSponsor, 'strip')) stripSponsor = pickSponsor('strip');
-  if (!vitrin || !stripSponsor) return;
-  const strip = buildSponsorCard('strip', stripSponsor);
+  if (!vitrin || !sponsorsFor('strip').length) return;
+  const strip = rotatingSlot(() => sponsorsFor('strip'), s => buildSponsorCard('strip', s), randomStart('strip'));
   strip.id = 'sponsorStrip';
   vitrin.insertAdjacentElement('afterend', strip);
 }
@@ -808,11 +835,42 @@ function renderSponsorStrip() {
 function renderSponsorDetail() {
   document.getElementById('sponsorDetail')?.remove();
   const box = document.getElementById('pinDetailBox');
-  const s = pickSponsor('detail');
-  if (!box || !s) return;
-  const card = buildSponsorCard('detail', s);
-  card.id = 'sponsorDetail';
-  box.appendChild(card);
+  if (!box || !sponsorsFor('detail').length) return;
+  const slot = rotatingSlot(() => sponsorsFor('detail'), s => buildSponsorCard('detail', s), randomStart('detail'));
+  slot.id = 'sponsorDetail';
+  box.appendChild(slot);
+}
+
+// Yan alandaki ilan kartı: önce vitrin ilanları, yoksa resimli ilanlar
+function railAds() {
+  const list = Array.isArray(allAds) ? allAds : [];
+  const featured = list.filter(ad => ad.featured);
+  return featured.length >= 2 ? featured : list.filter(ad => (ad.images || []).length).slice(0, 20);
+}
+
+function buildRailAdCard(ad) {
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'rail-ad';
+  const cover = (ad.images || [])[0]
+    || (ad.video && ad.video.type === 'youtube' ? `https://i.ytimg.com/vi/${encodeURIComponent(ad.video.id)}/hqdefault.jpg` : AD_LOGO_URL);
+  const img = document.createElement('img');
+  img.className = 'rail-ad-img';
+  img.src = cover;
+  img.alt = '';
+  img.loading = 'lazy';
+  const label = document.createElement('span');
+  label.className = 'rail-ad-label';
+  label.textContent = ad.featured ? '⭐ Vitrin İlanı' : 'İlan';
+  const title = document.createElement('strong');
+  title.className = 'rail-ad-title';
+  title.textContent = ad.title || String(ad.body || '').split('\n')[0] || 'İlan';
+  const more = document.createElement('span');
+  more.className = 'rail-ad-more';
+  more.textContent = 'İlanı incele →';
+  card.append(img, label, title, more);
+  card.addEventListener('click', () => openAdViewer(ad, 0));
+  return card;
 }
 
 // İlan listesi: 6., 12. … sıralara birer sponsor kartı (az ilan varsa ilki sona)
@@ -828,18 +886,15 @@ function insertGridSponsors(grid, count) {
 }
 
 // Masaüstü sağ/sol reklam: yalnızca geniş ekranda (CSS) görünür; × ile o oturum boyunca kapanır.
-// İki sponsor varsa biri solda, diğeri sağda durur.
+// Her yanda üstte sırayla değişen sponsor, altında sırayla değişen bir ilan durur.
 const SPONSOR_SIDE_CLOSED = side => `sponsorSideClosed_${side}`;
 function renderSponsorSides() {
   document.querySelectorAll('.sponsor-rail').forEach(el => el.remove());
-  const list = sponsorsFor('side');
-  if (!list.length) return;
   ['left', 'right'].forEach((side, i) => {
     try { if (sessionStorage.getItem(SPONSOR_SIDE_CLOSED(side))) return; } catch {}
-    const s = list[i % list.length];
     const rail = document.createElement('aside');
     rail.className = `sponsor-rail sponsor-rail-${side}`;
-    rail.setAttribute('aria-label', `Sponsorlu reklam: ${s.name}`);
+    rail.setAttribute('aria-label', 'Sponsorlu reklam ve ilan');
     const close = document.createElement('button');
     close.type = 'button';
     close.className = 'sponsor-close';
@@ -849,7 +904,11 @@ function renderSponsorSides() {
       rail.remove();
       try { sessionStorage.setItem(SPONSOR_SIDE_CLOSED(side), '1'); } catch {}
     });
-    rail.append(close, buildSponsorCard('side', s));
+    // Sağ taraf listenin yarısından başlar: iki yanda aynı anda aynı şey görünmez
+    const half = n => (i ? Math.floor(n / 2) : 0);
+    const sponsorSlot = rotatingSlot(() => sponsorsFor('side'), s => buildSponsorCard('side', s), half(sponsorsFor('side').length));
+    const adSlot = rotatingSlot(() => { const a = railAds(); const h = half(a.length); return [...a.slice(h), ...a.slice(0, h)]; }, buildRailAdCard);
+    rail.append(close, sponsorSlot, adSlot);
     document.body.appendChild(rail);
   });
 }
