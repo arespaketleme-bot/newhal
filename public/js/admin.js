@@ -2070,6 +2070,26 @@ async function saveApifyToken() {
   loadApifyStatus();
 }
 
+// Panodaki linki kutuya yapıştırır ve hemen sorgular
+async function pasteFbLinkAndFetch() {
+  const input = document.getElementById('fbImportLink');
+  let text = '';
+  try {
+    text = (await navigator.clipboard.readText() || '').trim();
+  } catch {
+    input.focus();
+    showToast('Panoya erişim izni verilmedi. Linki kutuya Ctrl+V ile yapıştırıp Linkten Getir\'e basın.', 'error');
+    return;
+  }
+  const link = (text.match(/https?:\/\/\S+/) || [])[0] || '';
+  if (!/^https?:\/\/([^/]+\.)?(facebook\.com|fb\.com|fb\.watch)\//i.test(link)) {
+    showToast('Panoda Facebook linki yok. Önce Facebook\'ta gönderinin linkini kopyalayın.', 'error');
+    return;
+  }
+  input.value = link;
+  fetchFbPost();
+}
+
 async function fetchFbPost() {
   const link = document.getElementById('fbImportLink').value.trim();
   if (!link) { showToast('Önce Facebook linkini yapıştırın', 'error'); return; }
