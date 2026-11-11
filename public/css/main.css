@@ -1645,6 +1645,9 @@ body.has-trends { padding-top: calc(var(--trend-h) + env(safe-area-inset-top)); 
 body.has-trends .header { top: calc(var(--trend-h) + env(safe-area-inset-top)); }
 @media (max-width: 768px) { :root { --trend-h: 28px; } .trend-bar-label { padding: 0 8px; font-size: 11px; } .trend-tag { font-size: 12px; margin: 0 10px; } }
 @media (prefers-reduced-motion: reduce) { .trend-bar-track { animation-duration: 600s !important; } }
+/* Harita tam ekranken de şerit üstte görünür, harita onun altından başlar */
+body.has-trends .trend-bar { z-index: 200; }
+body.has-trends .map-panel.map-fullscreen { top: calc(var(--trend-h) + env(safe-area-inset-top)); height: auto; bottom: 0; }
 
 /* Mobil uygulama duyurusu */
 .app-promo {
