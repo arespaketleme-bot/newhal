@@ -113,6 +113,29 @@
       <span class="ads-ticker-label">📢 Son ilanlar</span>
       <div class="ads-ticker-viewport"><div class="ads-ticker-track" id="adsTickerTrack"></div></div>
     </div>
+    <!-- Mobil uygulama duyurusu: uygulamanın içinde ve kapatan kişide görünmez -->
+    <aside class="app-promo" id="appPromo" hidden aria-label="NewHal mobil uygulaması">
+      <button type="button" class="app-promo-close" onclick="closeAppPromo()" aria-label="Duyuruyu kapat">✕</button>
+      <picture class="app-promo-media">
+        <source media="(max-width: 640px)" srcset="/img/app/newhal-uygulama-640.webp" />
+        <img src="/img/app/newhal-uygulama.webp" width="1024" height="500" alt="NewHal mobil uygulaması: Mersin Hal Kompleksi cebinizde" loading="lazy" decoding="async" />
+      </picture>
+      <div class="app-promo-body">
+        <span class="app-promo-badge">🧪 Google Play'de test yayınında</span>
+        <h2 class="app-promo-title">NewHal artık <span>cebinizde!</span></h2>
+        <p class="app-promo-text">Android uygulamamız Google Play'de test aşamasında. Haritaya, ilanlara ve esnafa tek dokunuşla ulaşın. İlk deneyenlerden olun!</p>
+        <div class="app-promo-actions">
+          <a class="app-promo-btn primary" href="/indir/NewHal.apk" download="NewHal.apk" onclick="appPromoLog('APK indirdi')">
+            <span aria-hidden="true">⬇️</span> Uygulamayı İndir <small>APK · 1,4 MB</small>
+          </a>
+          <a class="app-promo-btn play" href="https://play.google.com/apps/testing/com.newhal.app" target="_blank" rel="noopener" onclick="appPromoLog('Google Play test linkine tıkladı')">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#34d399" d="M3.6 2.2 13.4 12l-9.8 9.8c-.4-.2-.6-.6-.6-1.1V3.3c0-.5.2-.9.6-1.1z"/><path fill="#fbbf24" d="m16.8 15.4-3.4-3.4 3.4-3.4 3.8 2.2c.9.5.9 1.8 0 2.3z"/><path fill="#60a5fa" d="M3.6 2.2c.3-.2.8-.2 1.2 0L16.8 8.6 13.4 12z"/><path fill="#f87171" d="M13.4 12l3.4 3.4-12 6.4c-.4.2-.9.2-1.2 0z"/></svg>
+            Google Play'de Test Et
+          </a>
+        </div>
+        <p class="app-promo-note">Sadece Android telefonlar için. İndirdikten sonra dosyayı açın; telefon "bilinmeyen uygulama" izni sorarsa izin verin.</p>
+      </div>
+    </aside>
     <div class="vitrin" id="vitrin" hidden>
       <div class="vitrin-head">
         <span class="vitrin-title">⭐ Vitrin</span>

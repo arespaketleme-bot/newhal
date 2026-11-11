@@ -2345,6 +2345,42 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// ── Mobil uygulama duyurusu ───────────────────────────────────
+const APP_PROMO_KEY = 'appPromoClosedAt';
+const APP_PROMO_HIDE_DAYS = 7;
+function inNativeApp() {
+  try {
+    if (document.referrer.startsWith('android-app://')) sessionStorage.setItem('inNativeApp', '1');
+    return sessionStorage.getItem('inNativeApp') === '1' || isStandaloneApp();
+  } catch { return isStandaloneApp(); }
+}
+function showAppPromo() {
+  const box = document.getElementById('appPromo');
+  if (!box || inNativeApp()) return;
+  let closedAt = 0;
+  try { closedAt = Number(localStorage.getItem(APP_PROMO_KEY)) || 0; } catch {}
+  if (Date.now() - closedAt < APP_PROMO_HIDE_DAYS * 864e5) return;
+  // iPhone'da APK çalışmaz: indirme yerine bilgi gösterilir
+  if (isIos()) {
+    box.querySelector('.app-promo-actions').innerHTML = '<span class="app-promo-soon">🍎 iPhone sürümü yakında</span>';
+    box.querySelector('.app-promo-note').textContent = 'Şimdilik sadece Android telefonlar için hazır.';
+  }
+  box.hidden = false;
+}
+function closeAppPromo() {
+  const box = document.getElementById('appPromo');
+  if (box) box.hidden = true;
+  try { localStorage.setItem(APP_PROMO_KEY, String(Date.now())); } catch {}
+}
+function appPromoLog(action) {
+  try {
+    fetch('/api/logs', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: `Mobil uygulama: ${action}` }) });
+  } catch {}
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { try { showAppPromo(); } catch {} });
+else setTimeout(() => { try { showAppPromo(); } catch {} }, 0);
+
 function isStandaloneApp() {
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 }
