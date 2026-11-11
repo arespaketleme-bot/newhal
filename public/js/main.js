@@ -2651,6 +2651,8 @@ function renderAdsGrid() {
   // Telefonda liste sayfanın akışında 6'şar 6'şar açılır (iç kaydırma kutusu parmağı tuzağa düşürüyordu)
   if (adsShownQuery !== adsQuery) { adsShownQuery = adsQuery; adsMobileShown = ADS_MOBILE_PAGE; }
   const shown = isAdsMobile() ? list.slice(0, adsMobileShown) : list;
+  adsFeedList = adsQuery ? list : [...featured, ...list];
+  renderAdsFeedButton(adsFeedList.length);
   shown.forEach(ad => grid.appendChild(buildAdCard(ad)));
   // Sponsorlu kartlar 6., 12. … sıraya (daha az ilan varsa ilki sona) girer
   insertGridSponsors(grid, shown.length);
@@ -2661,6 +2663,189 @@ function renderAdsGrid() {
   info.textContent = list.length
     ? `"${adsQuery}" için ${list.length} ilan bulundu`
     : `"${adsQuery}" için ilan bulunamadı`;
+}
+
+
+// ── Telefonda TikTok gibi dikey kaydırmalı ilan akışı ─────────
+let adsFeedList = [];
+let adFeedOpen = false;
+
+function openAdFeed(startAd) {
+  const list = adsFeedList.length ? adsFeedList : allAds.filter(ad => !ad.weather);
+  if (!list.length) return;
+  closeAdFeed(true);
+  const feed = document.createElement('div');
+  feed.id = 'adFeed';
+  feed.className = 'ad-feed';
+  feed.setAttribute('role', 'dialog');
+  feed.setAttribute('aria-modal', 'true');
+  feed.setAttribute('aria-label', 'İlan akışı');
+
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'ad-feed-close';
+  close.setAttribute('aria-label', 'Akışı kapat');
+  close.textContent = '✕';
+  close.onclick = () => history.back();
+  const hint = document.createElement('div');
+  hint.className = 'ad-feed-hint';
+  hint.textContent = 'Yukarı kaydırın ↑';
+
+  const track = document.createElement('div');
+  track.className = 'ad-feed-track';
+  list.forEach((ad, i) => track.appendChild(buildFeedSlide(ad, i, list.length)));
+  feed.append(track, close, hint);
+  document.body.appendChild(feed);
+  document.body.classList.add('ad-feed-on');
+  adFeedOpen = true;
+  history.pushState({ adFeed: 1 }, '');
+
+  // Görünen ilandaki video oynar, diğerleri durur
+  const io = new IntersectionObserver(entries => entries.forEach(en => {
+    const v = en.target.querySelector('video');
+    if (!v) return;
+    if (en.isIntersecting) { v.play().catch(() => {}); } else { v.pause(); }
+  }), { root: track, threshold: 0.6 });
+  [...track.children].forEach(sl => io.observe(sl));
+  feed._io = io;
+
+  const startIndex = Math.max(0, list.indexOf(startAd));
+  track.children[startIndex]?.scrollIntoView({ block: 'start' });
+  track.addEventListener('scroll', () => hint.classList.add('gone'), { once: true, passive: true });
+  setTimeout(() => hint.classList.add('gone'), 3500);
+}
+
+function closeAdFeed(silent) {
+  const feed = document.getElementById('adFeed');
+  if (!feed) return;
+  feed._io?.disconnect();
+  feed.querySelectorAll('video').forEach(v => v.pause());
+  feed.remove();
+  document.body.classList.remove('ad-feed-on');
+  adFeedOpen = false;
+  if (!silent && history.state && history.state.adFeed) history.back();
+}
+
+window.addEventListener('popstate', () => {
+  if (adFeedOpen && !(history.state && history.state.adFeed)) closeAdFeed(true);
+});
+
+function buildFeedSlide(ad, i, total) {
+  const slide = document.createElement('article');
+  slide.className = 'feed-slide';
+  observeAdView(slide, ad);
+
+  const media = document.createElement('div');
+  media.className = 'feed-media';
+  const covers = [];
+  if (ad.video && ad.video.type === 'file') {
+    const v = document.createElement('video');
+    v.src = ad.video.url;
+    v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'metadata';
+    v.className = 'feed-item';
+    v.onclick = () => { v.muted = !v.muted; };
+    media.appendChild(v);
+  } else if (ad.video && ad.video.type === 'youtube') {
+    const yt = document.createElement('button');
+    yt.type = 'button';
+    yt.className = 'feed-item feed-yt';
+    yt.style.backgroundImage = `url("https://i.ytimg.com/vi/${encodeURIComponent(ad.video.id)}/hqdefault.jpg")`;
+    yt.setAttribute('aria-label', 'Videoyu oynat');
+    yt.innerHTML = '<span class="feed-play">▶</span>';
+    yt.onclick = () => {
+      const f = document.createElement('iframe');
+      f.className = 'feed-item';
+      f.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(ad.video.id)}?autoplay=1&playsinline=1`;
+      f.allow = 'autoplay; encrypted-media; picture-in-picture';
+      f.allowFullscreen = true;
+      yt.replaceWith(f);
+    };
+    media.appendChild(yt);
+  }
+  (ad.images || []).forEach(url => covers.push(url));
+  if (!media.children.length && !covers.length) covers.push(AD_LOGO_URL);
+  covers.forEach((url, k) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'feed-item feed-img';
+    const bg = document.createElement('div');
+    bg.className = 'feed-bg';
+    bg.style.backgroundImage = `url("${String(url).replace(/"/g, '%22')}")`;
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = ad.title || 'İlan resmi';
+    img.loading = Math.abs(i) < 2 && k === 0 ? 'eager' : 'lazy';
+    img.decoding = 'async';
+    wrap.append(bg, img);
+    media.appendChild(wrap);
+  });
+  slide.appendChild(media);
+  const pieces = media.children.length;
+  if (pieces > 1) {
+    const count = document.createElement('span');
+    count.className = 'feed-count';
+    count.textContent = `1 / ${pieces}`;
+    media.addEventListener('scroll', () => {
+      count.textContent = `${Math.round(media.scrollLeft / media.clientWidth) + 1} / ${pieces}`;
+    }, { passive: true });
+    slide.appendChild(count);
+  }
+
+  const info = document.createElement('div');
+  info.className = 'feed-info';
+  const tags = document.createElement('div');
+  tags.className = 'feed-tags';
+  if (ad.featured) { const b = document.createElement('span'); b.className = 'vitrin-badge'; b.textContent = '⭐ Vitrin'; tags.appendChild(b); }
+  if (ad.no) { const n = document.createElement('span'); n.className = 'ad-no ad-no-light'; n.textContent = `#${ad.no}`; tags.appendChild(n); }
+  const pos = document.createElement('span');
+  pos.className = 'feed-pos';
+  pos.textContent = `${i + 1} / ${total}`;
+  tags.appendChild(pos);
+  info.appendChild(tags);
+  if (ad.title) { const h = document.createElement('h3'); appendTextWithPhoneLinks(h, ad.title); info.appendChild(h); }
+  if (ad.body) {
+    const p = document.createElement('p');
+    p.className = 'feed-body';
+    appendTextWithPhoneLinks(p, ad.body);
+    p.onclick = (e) => { if (!e.target.closest('a')) p.classList.toggle('open'); };
+    info.appendChild(p);
+  }
+  slide.appendChild(info);
+
+  const side = document.createElement('div');
+  side.className = 'feed-actions';
+  const mk = (icon, label, fn) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'feed-act';
+    b.innerHTML = `<span class="feed-act-ico">${icon}</span>`;
+    const t = document.createElement('span');
+    t.textContent = label;
+    b.appendChild(t);
+    b.onclick = (e) => { e.stopPropagation(); fn(); };
+    return b;
+  };
+  side.appendChild(mk('💬', 'Detay', () => openAdViewer(ad, 0)));
+  side.appendChild(mk(SHARE_ICONS.whatsapp, 'Paylaş', () => {
+    const url = adShareUrl(ad), text = adShareText(ad);
+    if (navigator.share) navigator.share({ title: text, url }).catch(() => {});
+    else window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`${text}\n${url}`)}`, '_blank', 'noopener');
+  }));
+  slide.appendChild(side);
+  return slide;
+}
+
+function renderAdsFeedButton(count) {
+  let btn = document.getElementById('adsFeedBtn');
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'adsFeedBtn';
+    btn.className = 'ads-feed-btn';
+    btn.addEventListener('click', () => openAdFeed(adsFeedList[0]));
+    document.getElementById('adsGrid').insertAdjacentElement('beforebegin', btn);
+  }
+  btn.hidden = !count;
+  btn.textContent = `▶ İlanları kaydırarak gez (${count})`;
 }
 
 // Telefonda sayfalama: iç kaydırma yok, "Daha fazla ilan göster" ile 6'şar ilan açılır
@@ -2863,7 +3048,9 @@ function buildAdCard(ad) {
   observeAdView(card, ad);
   card.addEventListener('click', (e) => {
     if (e.target.closest('video')) return;
-    openAdViewer(ad, 0);
+    // Telefonda ilan, kaydırmalı akışta açılır
+    if (isAdsMobile()) openAdFeed(ad);
+    else openAdViewer(ad, 0);
   });
   card.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAdViewer(ad, 0); }
@@ -3002,7 +3189,36 @@ function toTelNumber(raw) {
 }
 
 // Metni ekler; içindeki numaraları "tel:" bağlantısı yapar (HTML yorumlamadan, güvenli)
+// Yazıdaki linkler (https://..., www..., alanadi.com/...) tıklanabilir olur; kalan yazıda telefonlar aranır
+const URL_IN_TEXT = /(?:https?:\/\/|www\.)[^\s<>"']+|(?:[a-z0-9-]+\.)+(?:com|net|org|info|biz|tr|io|app|me|co|shop|store)(?:\.tr)?(?:\/[^\s<>"']*)?/gi;
 function appendTextWithPhoneLinks(parent, text) {
+  text = String(text || '');
+  let last = 0;
+  for (const match of text.matchAll(URL_IN_TEXT)) {
+    let raw = match[0];
+    const start = match.index;
+    if (start > 0 && /[@\w.]/.test(text[start - 1])) continue;   // e-posta adresinin parçası
+    raw = raw.replace(/[.,;:!?)\]]+$/, '');
+    if (!raw) continue;
+    const href = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    let ok = false;
+    try { ok = ['http:', 'https:'].includes(new URL(href).protocol); } catch {}
+    if (!ok) continue;
+    if (start > last) appendPhonesOnly(parent, text.slice(last, start));
+    const a = document.createElement('a');
+    a.href = href;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer nofollow ugc';
+    a.className = 'ad-link';
+    a.textContent = `🔗 ${raw.replace(/^https?:\/\//i, '')}`;
+    a.addEventListener('click', (e) => e.stopPropagation());   // karttaki büyütmeyi tetiklemesin
+    parent.appendChild(a);
+    last = start + raw.length;
+  }
+  if (last < text.length) appendPhonesOnly(parent, text.slice(last));
+}
+
+function appendPhonesOnly(parent, text) {
   let last = 0;
   for (const match of text.matchAll(PHONE_IN_TEXT)) {
     const tel = toTelNumber(match[0]);

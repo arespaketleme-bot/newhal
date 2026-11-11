@@ -1599,6 +1599,61 @@ body.map-fs-open { overflow: hidden; }
 .sponsor-detail .sponsor-title { font-size: 15px; }
 .sponsor-detail .sponsor-text { font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { .sponsor-card, .sponsor-card:hover { transition: none; transform: none; } }
+/* İlan yazısındaki linkler */
+.ad-link { color: #7dd3fc; text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; word-break: break-word; }
+.ad-link:hover { color: #bae6fd; }
+
+/* Telefonda TikTok gibi dikey ilan akışı */
+.ads-feed-btn { display: none; }
+@media (max-width: 768px) {
+  .ads-feed-btn:not([hidden]) {
+    display: flex; align-items: center; justify-content: center; width: 100%; margin: 0 0 14px; padding: 13px 16px;
+    border: 0; border-radius: 14px; font: inherit; font-weight: 800; font-size: 15px; cursor: pointer;
+    color: #04130b; background: linear-gradient(135deg, #34d399, #10b981); box-shadow: 0 10px 26px rgba(16,185,129,0.35);
+  }
+}
+body.ad-feed-on { overflow: hidden; }
+.ad-feed { position: fixed; inset: 0; z-index: 270; background: #000; }
+.ad-feed-track { height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior: contain; scrollbar-width: none; }
+.ad-feed-track::-webkit-scrollbar { display: none; }
+.feed-slide { position: relative; height: 100vh; height: 100dvh; scroll-snap-align: start; scroll-snap-stop: always; overflow: hidden; background: #000; }
+.feed-media { position: absolute; inset: 0; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.feed-media::-webkit-scrollbar { display: none; }
+.feed-item { position: relative; flex: 0 0 100%; height: 100%; scroll-snap-align: center; border: 0; padding: 0; background: #000; }
+video.feed-item, iframe.feed-item { width: 100%; object-fit: contain; }
+.feed-img { overflow: hidden; }
+.feed-bg { position: absolute; inset: -30px; background-size: cover; background-position: center; filter: blur(26px) brightness(0.45); }
+.feed-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.feed-yt { background-size: cover; background-position: center; cursor: pointer; }
+.feed-play { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 72px; height: 72px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; padding-left: 5px; font-size: 28px; color: #fff; background: rgba(220,38,38,0.92); }
+.feed-count { position: absolute; top: calc(16px + env(safe-area-inset-top)); right: 14px; z-index: 2; padding: 4px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; color: #fff; background: rgba(0,0,0,0.55); }
+.feed-info {
+  position: absolute; left: 0; right: 72px; bottom: 0; z-index: 2; display: flex; flex-direction: column; gap: 6px;
+  padding: 70px 16px calc(22px + env(safe-area-inset-bottom)); color: #fff; pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,0.65) 40%, rgba(0,0,0,0.9));
+}
+.feed-info > * { pointer-events: auto; }
+.feed-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.feed-pos { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.7); }
+.feed-info h3 { font-family: var(--font-head); font-size: 19px; line-height: 1.25; text-shadow: 0 2px 10px rgba(0,0,0,0.6); }
+.feed-body { font-size: 14px; line-height: 1.45; color: #e5e7eb; white-space: pre-line;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+.feed-body.open { -webkit-line-clamp: unset; display: block; max-height: 45vh; overflow-y: auto; }
+.feed-actions { position: absolute; right: 10px; bottom: calc(30px + env(safe-area-inset-bottom)); z-index: 3; display: flex; flex-direction: column; gap: 16px; }
+.feed-act { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; color: #fff; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.feed-act-ico { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px;
+  background: rgba(255,255,255,0.16); backdrop-filter: blur(6px); }
+.feed-act-ico svg { width: 24px; height: 24px; }
+.ad-feed-close { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 12px; z-index: 4; width: 42px; height: 42px; border-radius: 50%;
+  border: 0; font-size: 20px; color: #fff; background: rgba(0,0,0,0.55); cursor: pointer; }
+.ad-feed-hint { position: absolute; left: 50%; bottom: 46%; z-index: 4; transform: translateX(-50%); padding: 8px 16px; border-radius: 999px;
+  font-size: 13px; font-weight: 700; color: #fff; background: rgba(0,0,0,0.6); pointer-events: none; animation: feedHint 1.2s ease-in-out infinite alternate; transition: opacity .4s; }
+.ad-feed-hint.gone { opacity: 0; }
+@keyframes feedHint { from { transform: translate(-50%, 6px); } to { transform: translate(-50%, -6px); } }
+@media (prefers-reduced-motion: reduce) { .ad-feed-hint { animation: none; } }
+
 .ad-media { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #000; border: 0; }
 img.ad-media { object-fit: cover; }
 video.ad-media { object-fit: contain; }
