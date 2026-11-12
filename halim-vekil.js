@@ -29,7 +29,8 @@ const ATLANAN_YANIT = new Set([
   'strict-transport-security',
 ]);
 
-function halimVekil({ hedef = process.env.HALIM_URL || 'https://halim-lc2m.onrender.com', onek = '/halim', adres } = {}) {
+// Ayni vekil baska programlar icin de kullanilir (or. /halder); "ad" hata sayfalarinda gorunur.
+function halimVekil({ hedef = process.env.HALIM_URL || 'https://halim-lc2m.onrender.com', onek = '/halim', adres, ad = 'Halim' } = {}) {
   hedef = hedef.replace(/\/+$/, '');
 
   function konumDuzelt(deger) {
@@ -69,13 +70,13 @@ function halimVekil({ hedef = process.env.HALIM_URL || 'https://halim-lc2m.onren
     let kalan = yol.slice(onek.length);
     if (!kalan.startsWith('/')) kalan = '/' + kalan;
     aktar(req, res, kalan).catch(err => {
-      console.error('Halim aktarimi basarisiz:', err.message, err.cause ? String(err.cause) : '');
+      console.error(`${ad} aktarimi basarisiz:`, err.message, err.cause ? String(err.cause) : '');
       if (!res.headersSent && err.durum === 413) {
-        res.status(413).type('html').send('<!doctype html><meta charset="utf-8"><title>Halim</title>'
+        res.status(413).type('html').send(`<!doctype html><meta charset="utf-8"><title>${ad}</title>`
           + '<p style="font:18px sans-serif;padding:24px">Gönderilen dosya çok büyük. En fazla 20 MB olabilir.</p>');
       } else if (!res.headersSent) {
-        res.status(502).type('html').send('<!doctype html><meta charset="utf-8"><title>Halim</title>'
-          + '<p style="font:18px sans-serif;padding:24px">Halim şu anda açılamadı. Bir dakika sonra sayfayı yenile.</p>');
+        res.status(502).type('html').send(`<!doctype html><meta charset="utf-8"><title>${ad}</title>`
+          + `<p style="font:18px sans-serif;padding:24px">${ad} şu anda açılamadı. Bir dakika sonra sayfayı yenile.</p>`);
       } else {
         res.destroy();
       }

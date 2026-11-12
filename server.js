@@ -15,6 +15,10 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const app        = express();
 // newhal.com/halim adresi Halim programini kendi adresiyle gosterir
 app.use(require('./halim-vekil')());
+// newhal.com/halder adresi Halder (tüccar veresiye takip) servisini gösterir; Halder kendisi /halder altında çalışır
+app.use(require('./halim-vekil')({
+  hedef: process.env.HALDER_URL || 'https://halder.onrender.com/halder', onek: '/halder', ad: 'Halder',
+}));
 const PORT       = process.env.PORT       || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'newhal_secret';
 const cleanReferralCode = value => /^NH[1-9]\d{0,17}$/i.test(String(value || '').trim())
