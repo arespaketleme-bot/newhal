@@ -1991,10 +1991,41 @@ app.patch('/api/admin/ads/:id', requireAdmin, async (req, res) => {
   if (ad.active) delete ad.pending;   // yayına alınan kullanıcı ilanı artık onaylıdır
   if ('featured' in req.body) setFeatured(ad, !!req.body.featured, req.body.featured_days);
   if (req.body.featured) { ad.featured_request_status = 'approved'; ad.featured_approved_at = new Date().toISOString(); }
-  if (req.body.whatsapp_sent) ad.whatsapp_sent_at = new Date().toISOString();
+  if (req.body.whatsapp_sent) {
+    ad.whatsapp_sent_at = new Date().toISOString();
+    await countWaSent(ads);
+  }
   if (!(await db.saveAds(ads))) return res.status(500).json({ error: 'Kaydedilemedi' });
   if (req.body.active === true) void notifyAdAlerts(ad);
   res.json(ad);
+});
+
+// ── İlan sahiplerine gönderilen WhatsApp mesajı sayacı (gün gün, İstanbul saatiyle) ──
+const WA_SENT_FILE = 'wa-sent-counts.json';
+const istanbulDay = (d = new Date()) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
+async function countWaSent(ads) {
+  try {
+    const saved = (await db.getPrivateJson(WA_SENT_FILE)) || { days: {} };
+    const days = saved.days || {};
+    const key = istanbulDay();
+    // Günün ilk kaydında o gün daha önce gönderilenler de sayılır (bu gönderim dahil)
+    days[key] = days[key] ? days[key] + 1 : Math.max(1, (ads || []).filter(a => a.whatsapp_sent_at && istanbulDay(a.whatsapp_sent_at) === key).length);
+    // 90 günden eski kayıtlar silinir
+    const keep = Object.keys(days).sort().slice(-90);
+    await db.savePrivateJson(WA_SENT_FILE, { days: Object.fromEntries(keep.map(k => [k, days[k]])) });
+  } catch (err) {
+    console.error('WhatsApp sayacı yazılamadı:', err.message);
+  }
+}
+app.get('/api/admin/wa-sent-counts', requireAdmin, async (req, res) => {
+  const saved = (await db.getPrivateJson(WA_SENT_FILE)) || { days: {} };
+  const today = istanbulDay();
+  const yesterday = istanbulDay(Date.now() - 24 * 60 * 60 * 1000);
+  // Sayaç başlamadan önceki gönderimler ilanlardaki "gönderildi" tarihinden sayılır
+  const ads = await db.getAds();
+  const fromAds = day => ads.filter(a => a.whatsapp_sent_at && istanbulDay(a.whatsapp_sent_at) === day).length;
+  const pick = day => Math.max((saved.days || {})[day] || 0, fromAds(day));
+  res.json({ today: pick(today), yesterday: pick(yesterday), todayDate: today, yesterdayDate: yesterday });
 });
 
 app.delete('/api/admin/ads/:id', requireAdmin, async (req, res) => {

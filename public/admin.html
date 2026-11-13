@@ -535,7 +535,20 @@
           </div>
         </form>
 
-        <h2 class="ad-list-title">Yayındaki ve gizlenen ilanlar</h2>
+        <div class="ad-list-head">
+          <h2 class="ad-list-title">Yayındaki ve gizlenen ilanlar</h2>
+          <div class="wa-sent-counts" id="waSentCounts" title="İlan sahiplerine panelden açılan WhatsApp mesajları">
+            <span>💬 Bugün gönderilen: <b id="waSentToday">…</b></span>
+            <span>Dün gönderilen: <b id="waSentYesterday">…</b></span>
+          </div>
+          <style>
+            .ad-list-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+            .ad-list-head .ad-list-title { margin-bottom: 0; }
+            .wa-sent-counts { display:flex; gap:8px; flex-wrap:wrap; font-size:13px; }
+            .wa-sent-counts span { padding:6px 12px; border-radius:999px; background:rgba(37,211,102,.12); border:1px solid rgba(37,211,102,.4); white-space:nowrap; }
+            .wa-sent-counts b { color:#25d366; font-size:15px; }
+          </style>
+        </div>
         <div class="ad-list" id="adList"></div>
       </section>
 

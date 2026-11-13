@@ -1773,6 +1773,16 @@ async function loadAds() {
   renderAdList(ads);
   renderAdPhotos();
   updateAdsBadge(ads);
+  loadWaSentCounts();
+}
+
+// İlanlar başlığının yanında: bugün ve dün ilan sahiplerine gönderilen WhatsApp mesajı sayısı
+async function loadWaSentCounts() {
+  const res = await api('/api/admin/wa-sent-counts');
+  if (!res || !res.ok) return;
+  const d = await res.json().catch(() => ({}));
+  document.getElementById('waSentToday').textContent = d.today ?? 0;
+  document.getElementById('waSentYesterday').textContent = d.yesterday ?? 0;
 }
 
 async function saveAdStorySettings() {
