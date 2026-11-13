@@ -319,8 +319,29 @@ app.get('/auth/google', (req, res, next) => {
   next();
 }, passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
 
-app.get('/auth/google/callback', 
-  passport.authenticate('google', { session: false, failureRedirect: '/?error=google_auth_failed' }),
+// Google'dan dönüşte hata olursa çıplak "Internal Server Error" yerine siteye dönülür ve hata yöneticiye bildirilir
+let googleAuthFailNotifiedAt = 0;
+function googleAuthCallback(req, res, next) {
+  passport.authenticate('google', { session: false }, (err, user) => {
+    if (err || !user) {
+      const reason = err
+        ? `${err.name || 'Hata'}: ${err.message || ''}${err.oauthError && err.oauthError.data ? ` · ${String(err.oauthError.data).slice(0, 200)}` : ''}`
+        : 'Kullanıcı bilgisi alınamadı';
+      console.error('Google giriş hatası:', reason, '| tarayıcı:', String(req.headers['user-agent'] || '').slice(0, 120));
+      // Aynı hata art arda gelirse Telegram'ı doldurmasın: 10 dakikada en fazla bir bildirim
+      if (Date.now() - googleAuthFailNotifiedAt > 10 * 60 * 1000) {
+        googleAuthFailNotifiedAt = Date.now();
+        sendTelegram(`⚠️ <b>Google ile giriş başarısız</b>\n${tgEsc(reason)}\n📱 ${tgEsc(describeDevice(req.headers['user-agent'] || ''))}`).catch(() => {});
+      }
+      return res.redirect('/?error=google_auth_failed');
+    }
+    req.user = user;
+    next();
+  })(req, res, next);
+}
+
+app.get('/auth/google/callback',
+  googleAuthCallback,
   async function(req, res) {
     const cookie = String(req.headers.cookie || '').split(';').map(part => part.trim()).find(part => part.startsWith('newhal_referral='));
     let referralCode = '';

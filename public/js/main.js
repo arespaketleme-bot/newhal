@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     localStorage.removeItem('newhalReferralCode');
     setTimeout(() => showToast(`✅ Başarıyla giriş yapıldı. Hoş geldin, ${name}!${points}`, 'success'), 500);
   } else if (urlParams.get('error') === 'google_auth_failed') {
-    showToast('❌ Google ile giriş yapılamadı.', 'error');
+    showToast('❌ Google ile giriş tamamlanamadı. Lütfen bir kez daha deneyin.', 'error');
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 
