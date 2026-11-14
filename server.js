@@ -2796,8 +2796,10 @@ const DEFAULT_SPONSORS = [
 ];
 const withDefaultPlaces = s => ({ ...s, places: { grid: true, strip: true, detail: true, side: true, ...((s && s.places) || {}) } });
 let sponsorCache = null;
+let sponsorCacheAt = 0;
 async function getSponsorSettings() {
-  if (sponsorCache) return sponsorCache;
+  // 5 dakikada bir depodan yeniden okunur
+  if (sponsorCache && Date.now() - sponsorCacheAt < 5 * 60 * 1000) return sponsorCache;
   const saved = await db.getPrivateJson(SPONSOR_FILE);
   let sponsors;
   if (saved && Array.isArray(saved.sponsors)) sponsors = saved.sponsors;
@@ -2805,6 +2807,7 @@ async function getSponsorSettings() {
   else if (saved && saved.name) sponsors = [{ ...DEFAULT_SPONSORS[0], ...saved, id: 'qmove' }, DEFAULT_SPONSORS[1]];
   else sponsors = DEFAULT_SPONSORS;
   // Sağ/sol reklamda kapatma (×) düğmesi: kayıt yoksa açık
+  sponsorCacheAt = Date.now();
   sponsorCache = { sponsors: sponsors.map(withDefaultPlaces), sideClose: !(saved && saved.sideClose === false) };
   return sponsorCache;
 }
