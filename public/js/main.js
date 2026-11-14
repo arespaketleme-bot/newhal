@@ -1682,6 +1682,8 @@ function bottomNavGo(tab) {
     return;
   }
   setChatOpen(false);
+  // Profil açıkken alt menüden başka yere geçilirse profil kapanır
+  if (document.getElementById('profileModal')?.classList.contains('open')) closeProfileModal();
   // Harita tuşu haritayı tam ekran açar; diğerleri tam ekrandan çıkıp ilgili bölüme gider
   if (tab === 'map') {
     if (!isMapFullscreen()) toggleMapFullscreen(true);

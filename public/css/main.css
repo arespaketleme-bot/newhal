@@ -2863,3 +2863,10 @@ body {
 @keyframes pfPageIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { #profileModal .pf-modal { animation: none; } }
 body.profile-page-open { overflow: hidden; }
+
+/* Telefonda tam ekran profil alt menünün üstünde biter, alt menü görünür kalır */
+@media (max-width: 768px) {
+  body.profile-page-open .bottom-nav { z-index: 270; }
+  #profileModal .pf { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+  #profileModal .pf-id { padding-right: 52px; }
+}
