@@ -2950,7 +2950,7 @@ function renderAdsGrid() {
   adsFeedList = adsQuery ? list : [...featured, ...list];
   renderAdsTools();
   renderAdsFeedButton(adsFeedList.length);
-  if (!adsQuery) fbStories.ads.slice().reverse().forEach((s, i) => grid.appendChild(buildFbStoryCard(s, i)));
+  if (!adsQuery) selectedFbStories().forEach(s => grid.appendChild(buildFbStoryCard(s)));
   shown.forEach(ad => grid.appendChild(buildAdCard(ad)));
   // Sponsorlu kartlar 6., 12. … sıraya (daha az ilan varsa ilki sona) girer
   insertGridSponsors(grid, shown.length);
@@ -5269,10 +5269,14 @@ async function loadFeaturedPinsForVitrin() {
   if (featuredPinList.length && document.getElementById('adsGrid')) renderAdsGrid();
 }
 // Yönetim açtıysa Facebook sayfasının hikayeleri vitrinde de döner
-function fbStoryVitrinSlides() {
+// Yönetimin seçtiği Facebook hikayeleri (vitrin ve ilan listesi için), en yenisi önce
+function selectedFbStories() {
   if (!adStorySettings.fbVitrin || !fbStories.ads.length) return [];
   const ids = new Set(adStorySettings.fbVitrinIds || []);
-  return fbStories.ads.filter(s => adStorySettings.fbVitrinAll !== false || ids.has(s.id)).reverse().map(s => ({
+  return fbStories.ads.filter(s => adStorySettings.fbVitrinAll !== false || ids.has(s.id)).reverse();
+}
+function fbStoryVitrinSlides() {
+  return selectedFbStories().map(s => ({
     id: `vfb-${s.id}`, fbStory: true, featured: true,
     title: (fbStories.page && fbStories.page.name) || 'Facebook hikayesi',
     body: '', images: s.images.length ? s.images : (s.thumb ? [s.thumb] : []),
