@@ -13,6 +13,19 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const app        = express();
+// Yollardaki beklenmeyen hatalar sunucuyu çökertmesin, isteği askıda bırakmasın:
+// async işleyicilerin hataları en sondaki hata işleyiciye gider.
+const wrapAsync = fn => function wrapped(req, res, next) {
+  try {
+    const result = fn.call(this, req, res, next);
+    if (result && typeof result.catch === 'function') result.catch(next);
+  } catch (err) { next(err); }
+};
+for (const method of ['get', 'post', 'put', 'patch', 'delete', 'use']) {
+  const original = app[method].bind(app);
+  app[method] = (...args) => original(...args.map(a => (typeof a === 'function' && a.length < 4 ? wrapAsync(a) : a)));
+}
+process.on('unhandledRejection', err => console.error('Yakalanmamış hata:', err && err.message ? err.message : err));
 // newhal.com/halim adresi Halim programini kendi adresiyle gosterir
 app.use(require('./halim-vekil')());
 // newhal.com/halder adresi Halder (tüccar veresiye takip) servisini gösterir; Halder kendisi /halder altında çalışır
@@ -171,14 +184,23 @@ async function sendBrowserPushMany(userIds, payload) {
 const sendBrowserPush = (userId, payload) => sendBrowserPushMany([userId], payload);
 
 // ── PUBLIC: Admin Girişi ──────────────────────────────────────
+const adminLoginFails = new Map();   // IP → yanlış deneme zamanları
 app.post('/api/admin/login', (req, res) => {
-  const { username, password } = req.body;
+  const ip = String(getIp(req)).split(',')[0].trim();
+  const fails = (adminLoginFails.get(ip) || []).filter(t => t > Date.now() - 15 * 60 * 1000);
+  if (fails.length >= 5) return res.status(429).json({ error: 'Çok fazla yanlış deneme. 15 dakika sonra tekrar deneyin.' });
+  const { username, password } = req.body || {};
+  if (!process.env.ADMIN_PASSWORD) return res.status(503).json({ error: 'Yönetici şifresi ayarlanmamış' });
   if (
     username !== (process.env.ADMIN_USERNAME || 'admin') ||
     password !== (process.env.ADMIN_PASSWORD || 'newhal2024')
   ) {
+    fails.push(Date.now());
+    adminLoginFails.set(ip, fails);
+    if (fails.length === 5) sendTelegram(`🚨 <b>Yönetim paneline 5 yanlış giriş denemesi</b>\nIP: <code>${tgEsc(ip)}</code>`).catch(() => {});
     return res.status(401).json({ error: 'Kullanıcı adı veya şifre hatalı' });
   }
+  adminLoginFails.delete(ip);
   const token = jwt.sign({ username, role: 'admin' }, JWT_SECRET, { expiresIn: '8h' });
   res.json({ token, username });
 });
@@ -1810,11 +1832,13 @@ app.post('/api/my-ads/:id/vitrin-application', requireAuth, async (req, res) => 
   if (balance < VITRIN_APPLICATION_POINTS) return res.status(400).json({ error: `Vitrin başvurusu için ${VITRIN_APPLICATION_POINTS.toLocaleString('tr-TR')} Para Puan gerekir` });
   const { error } = await db.supabase.from('newhal_points_ledger').insert({
     user_id: req.user.id, amount: VITRIN_APPLICATION_POINTS, reason: 'admin_credit',
-    idempotency_key: `vitrin-request:${ad.id}`, created_by: 'economy:vitrin_purchase',
+    // Her başvuru ayrı sayılır: vitrin süresi bitince aynı ilan için tekrar başvurulabilir
+    idempotency_key: `vitrin-request:${ad.id}:${(Number(ad.featured_request_count) || 0) + 1}`, created_by: 'economy:vitrin_purchase',
   });
   if (error && error.code !== '23505') return res.status(500).json({ error: 'Para Puan kullanılamadı' });
   if (error) return res.status(409).json({ error: 'Bu ilan için vitrin başvurusu zaten yapıldı' });
   ad.featured_request_status = 'pending'; ad.featured_requested_at = new Date().toISOString();
+  ad.featured_request_count = (Number(ad.featured_request_count) || 0) + 1;
   if (!(await db.saveAds(ads))) return res.status(500).json({ error: 'Başvuru kaydedilemedi' });
   res.status(201).json({ message: 'Vitrin başvurunuz alındı', points_spent: VITRIN_APPLICATION_POINTS, balance: balance - VITRIN_APPLICATION_POINTS });
 });
@@ -3098,6 +3122,19 @@ for (const sayfa of ['hakkimizda', 'iletisim', 'kullanim-sartlari']) {
 
 app.get('/gizlilik', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'gizlilik.html'));
+});
+
+// En son: beklenmeyen hatalarda düzgün cevap
+app.use((err, req, res, next) => {
+  console.error('İstek hatası:', req.method, req.path, err && err.message ? err.message : err);
+  if (res.headersSent) return next(err);
+  const wantsJson = req.path.startsWith('/api/');
+  // Bozuk istek gibi istemci hataları (4xx) kendi koduyla döner
+  const status = Number(err && (err.status || err.statusCode));
+  if (status >= 400 && status < 500) return res.status(status).json({ error: 'İstek anlaşılamadı' });
+  res.status(500);
+  if (wantsJson) return res.json({ error: 'Bir sorun oluştu, lütfen biraz sonra tekrar deneyin' });
+  res.redirect('/?error=server');
 });
 
 app.listen(PORT, () => {

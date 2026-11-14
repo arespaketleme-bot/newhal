@@ -12,6 +12,8 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 const PIN_IMAGE_BUCKET = 'pin-images';
 const AD_MEDIA_BUCKET  = 'ad-media';   // ilan resim ve videoları (herkese açık okuma)
+// Depoda dosya gerçekten yok mu (ilk kullanım), yoksa geçici bir hata mı?
+const isStorageNotFound = e => !!e && (/not.?found/i.test(String(e.message || '')) || String(e.statusCode) === '404');
 const APP_DATA_BUCKET  = 'app-data';   // ilan listesi (özel)
 const ADS_FILE         = 'ads.json';
 const ADS_CACHE_MS     = 60 * 1000;
@@ -222,8 +224,18 @@ const db = {
     if (adsCache && Date.now() - adsCache.at < ADS_CACHE_MS) return adsCache.list;
     const { data, error } = await supabase.storage.from(APP_DATA_BUCKET).download(ADS_FILE);
     let list = [];
+    // Depo geçici olarak yanıt vermezse liste "boş" sayılmaz: yoksa ilk kayıtta tüm ilanların üzerine yazılırdı
+    if (error && !isStorageNotFound(error)) {
+      console.error('İlanlar okunamadı:', error.message);
+      if (adsCache) return adsCache.list;   // elde eski liste varsa onunla devam
+      throw new Error('İlanlar şu an okunamadı, lütfen biraz sonra tekrar deneyin');
+    }
     if (!error && data) {
-      try { list = JSON.parse(await data.text()); } catch { list = []; }
+      const text = await data.text();
+      try { list = JSON.parse(text); } catch {
+        throw new Error('İlan dosyası okunamadı (bozuk)');
+      }
+      if (!Array.isArray(list)) throw new Error('İlan dosyası beklenen biçimde değil');
     }
     adsCache = { at: Date.now(), list };
     if (assignAdNumbers(list)) await this.saveAds(list);   // eski ilanlar ilk okumada numaralanır
@@ -243,10 +255,21 @@ const db = {
   },
 
   /** Özel ayar dosyaları (ör. Facebook sayfa bağlantısı) — herkese kapalı depoda */
+  // Dosya yoksa null döner. Depo yanıt vermezse ya da dosya bozuksa hata fırlatır:
+  // böylece "boş" sanılıp üzerine yazılmaz (ör. telefonla üye olanların şifre dosyası).
   async getPrivateJson(name) {
     const { data, error } = await supabase.storage.from(APP_DATA_BUCKET).download(name);
-    if (error || !data) return null;
-    try { return JSON.parse(await data.text()); } catch { return null; }
+    if (error) {
+      if (isStorageNotFound(error)) return null;
+      console.error(`${name} okunamadı:`, error.message);
+      throw new Error(`${name} şu an okunamadı`);
+    }
+    if (!data) return null;
+    const text = await data.text();
+    try { return JSON.parse(text); } catch {
+      console.error(`${name} bozuk, okunamadı`);
+      throw new Error(`${name} okunamadı (bozuk)`);
+    }
   },
 
   async savePrivateJson(name, value) {
