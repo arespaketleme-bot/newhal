@@ -3935,7 +3935,11 @@ async function openProfileModal() {
   }
   profileAvatarUrl = myProfile.avatar;
   document.getElementById('profileAvatar').innerHTML = avatarHtml(myProfile.name, profileAvatarUrl);
-  document.getElementById('profilePointsBalance').textContent = `${Number(myProfile.points_balance || 0).toLocaleString('tr-TR')} Para Puan`;
+  document.getElementById('profilePointsBalance').textContent = Number(myProfile.points_balance || 0).toLocaleString('tr-TR');
+  document.getElementById('profileHeroName').textContent = myProfile.name || 'Profilim';
+  let lastTab = 'ads';
+  try { lastTab = sessionStorage.getItem('profileTab') || 'ads'; } catch {}
+  setProfileTab(lastTab);
   document.getElementById('profileLevelLabel').textContent = `Seviye ${Number(myProfile.level || 1)}`;
   document.getElementById('profileLevelProgressText').textContent = `${Number(myProfile.level_progress || 0).toLocaleString('tr-TR')} / 1.000 puan`;
   document.getElementById('profileLevelProgressBar').style.width = `${Math.max(0, Math.min(100, Number(myProfile.level_progress || 0) / 10))}%`;
@@ -4048,6 +4052,17 @@ function renderInviteNudge() {
   const grid = document.getElementById('adsGrid');
   (document.getElementById('adsTools') || grid).insertAdjacentElement('beforebegin', card);
   loadInviteStats();
+}
+
+// Profil sekmeleri: son açılan sekme hatırlanır
+function setProfileTab(name) {
+  document.querySelectorAll('#profileModal .pf-tab').forEach(t => {
+    const on = t.dataset.tab === name;
+    t.classList.toggle('active', on);
+    t.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('#profileModal .pf-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === name));
+  try { sessionStorage.setItem('profileTab', name); } catch {}
 }
 
 async function copyReferralLink() {

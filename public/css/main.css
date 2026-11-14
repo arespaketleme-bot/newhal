@@ -1750,6 +1750,61 @@ body.has-trends .map-panel.map-fullscreen { top: calc(var(--trend-h) + env(safe-
 .invite-mini { width: 42px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); color: inherit; font-size: 16px; cursor: pointer; }
 @media (max-width: 520px) { .invite-nudge-actions { width: 100%; } .invite-nudge-actions .join-nudge-btn { flex: 1; } }
 
+/* ── Profil: kimlik kartı, hızlı işlemler, sekmeler ── */
+.pf-modal { max-width: 560px; padding: 0; overflow: hidden; }
+.pf { position: relative; display: flex; flex-direction: column; max-height: min(88vh, 860px); overflow-y: auto; }
+.pf-close { position: absolute; top: 12px; right: 12px; z-index: 3; }
+.pf-hero {
+  display: grid; grid-template-columns: auto 1fr; gap: 14px 16px; align-items: center; padding: 26px 22px 18px;
+  background: radial-gradient(120% 140% at 0% 0%, rgba(16,185,129,0.28), transparent 60%), radial-gradient(120% 140% at 100% 0%, rgba(56,189,248,0.18), transparent 55%), #0d1626;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.pf-avatar-wrap { position: relative; cursor: pointer; grid-row: span 2; }
+.pf-avatar { width: 76px; height: 76px; border-radius: 50%; overflow: hidden; border: 3px solid rgba(52,211,153,0.7); box-shadow: 0 8px 24px rgba(0,0,0,0.4); font-size: 30px; }
+.pf-avatar-cam { position: absolute; right: -2px; bottom: -2px; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; background: #10b981; border: 2px solid #0d1626; }
+.pf-id { min-width: 0; padding-right: 30px; }
+.pf-id h3 { margin: 0; font-family: var(--font-head); font-size: 20px; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-id p { margin: 2px 0 10px; font-size: 12px; color: #94a3b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-level-top { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; color: #cbd5e1; }
+.pf-level-top strong { color: #fbbf24; }
+.pf-points { grid-column: 2; justify-self: start; display: inline-flex; align-items: baseline; gap: 8px; padding: 6px 14px; border-radius: 999px;
+  background: linear-gradient(135deg, rgba(251,191,36,0.22), rgba(245,158,11,0.10)); border: 1px solid rgba(251,191,36,0.45); }
+.pf-points span { font-size: 12px; color: #fde68a; }
+.pf-points strong { font-size: 18px; color: #fbbf24; font-family: var(--font-head); }
+.pf-quick { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 14px 16px 6px; }
+.pf-tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.07); background: rgba(255,255,255,0.03); color: #e2e8f0; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; transition: var(--trans); }
+.pf-tile span { font-size: 20px; }
+.pf-tile:hover { border-color: rgba(52,211,153,0.4); background: rgba(16,185,129,0.08); transform: translateY(-1px); }
+.pf-tile em { position: absolute; top: 6px; right: 10px; font-style: normal; }
+.pf-tabs { position: sticky; top: 0; z-index: 2; display: flex; gap: 4px; margin: 8px 16px 0; padding: 4px; border-radius: 14px; background: rgba(8,12,22,0.92); border: 1px solid rgba(255,255,255,0.06); overflow-x: auto; scrollbar-width: none; }
+.pf-tabs::-webkit-scrollbar { display: none; }
+.pf-tab { flex: 1 0 auto; padding: 9px 10px; border: 0; border-radius: 10px; background: none; color: #94a3b8; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.pf-tab.active { background: linear-gradient(135deg, #10b981, #059669); color: #fff; box-shadow: 0 4px 14px rgba(16,185,129,0.35); }
+.pf-panel { display: none; flex-direction: column; gap: 12px; padding: 16px 18px 22px; }
+.pf-panel.active { display: flex; animation: pfIn 0.2s ease; }
+@keyframes pfIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.pf-panel .profile-section { margin: 0; }
+.pf-panel .form-group { margin: 0; }
+.pf-wide { width: 100%; justify-content: center; padding: 12px; }
+.pf-invite-hero { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 14px; background: linear-gradient(135deg, rgba(37,211,102,0.18), rgba(56,189,248,0.10)); border: 1px solid rgba(37,211,102,0.4); }
+.pf-invite-hero span { font-size: 13px; color: #cbd5e1; }
+.pf-note { margin: 0; font-size: 12.5px; color: #94a3b8; line-height: 1.5; }
+.pf-details { border-radius: 12px; }
+.pf-danger { display: flex; justify-content: space-between; gap: 8px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); }
+.profile-rewards.pf-panel { background: none; border: 0; }
+@media (max-width: 520px) {
+  .pf { max-height: 92vh; }
+  .pf-hero { padding: 22px 16px 16px; }
+  .pf-avatar { width: 64px; height: 64px; }
+  .pf-quick { grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 12px 12px 4px; }
+  .pf-tile { font-size: 10.5px; padding: 8px 2px; }
+  .pf-tabs { margin: 8px 12px 0; }
+  .pf-panel { padding: 14px 14px 20px; }
+}
+@media (prefers-reduced-motion: reduce) { .pf-panel.active { animation: none; } }
+
 /* Favori ve ilan takibi */
 .ad-card { position: relative; }
 .fav-btn { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 50%;

@@ -675,83 +675,104 @@
 
   <!-- ── MODAL: PROFİLİM ─────────────────────────────────────────────── -->
   <div class="modal-overlay" id="profileModal" onclick="if (event.target === this) closeProfileModal()">
-    <div class="modal modal-sm">
-      <div class="modal-header">
-        <div class="modal-title-wrap">
-          <div class="modal-icon">👤</div>
-          <div><h3>Profilim</h3><p id="profileLoginInfo">—</p></div>
-        </div>
-        <button class="modal-close" onclick="closeProfileModal()">✕</button>
-      </div>
-      <form class="modal-form" id="profileForm" onsubmit="saveProfile(event)">
-        <div class="profile-top">
-          <div class="profile-avatar" id="profileAvatar"></div>
-          <label class="btn-outline profile-photo-btn">📷 Fotoğrafı değiştir
+    <div class="modal modal-sm pf-modal">
+      <form class="pf" id="profileForm" onsubmit="saveProfile(event)">
+        <button type="button" class="modal-close pf-close" onclick="closeProfileModal()" aria-label="Profili kapat">✕</button>
+
+        <!-- Kimlik kartı -->
+        <header class="pf-hero">
+          <label class="pf-avatar-wrap" title="Fotoğrafı değiştir">
+            <div class="profile-avatar pf-avatar" id="profileAvatar"></div>
+            <span class="pf-avatar-cam" aria-hidden="true">📷</span>
             <input type="file" id="profilePhotoInput" accept="image/*" hidden onchange="changeProfilePhoto(this)" />
           </label>
-        </div>
-        <div class="profile-section profile-community-actions">
-          <h4>👥 Topluluk</h4>
-          <div class="profile-links">
-            <button type="button" class="profile-link" onclick="openMemberSearch()">👥 Üye Ara</button>
-            <button type="button" class="profile-link" onclick="openMessages()">✉ Mesajlar <span class="message-unread-badge" id="profileMessageUnreadBadge" hidden></span></button>
+          <div class="pf-id">
+            <h3 id="profileHeroName">Profilim</h3>
+            <p id="profileLoginInfo">—</p>
+            <div class="pf-level">
+              <div class="pf-level-top"><strong id="profileLevelLabel">Seviye 1</strong><span id="profileLevelProgressText">0 / 1.000 puan</span></div>
+              <div class="profile-level-track"><span id="profileLevelProgressBar"></span></div>
+            </div>
           </div>
+          <div class="pf-points"><span>💰 Para Puan</span><strong id="profilePointsBalance">0</strong></div>
+        </header>
+
+        <!-- Hızlı işlemler -->
+        <nav class="pf-quick" aria-label="Hızlı işlemler">
+          <button type="button" class="pf-tile" onclick="openMessages()"><span>✉️</span>Mesajlar<em class="message-unread-badge" id="profileMessageUnreadBadge" hidden></em></button>
+          <button type="button" class="pf-tile" onclick="closeProfileModal(); openFavorites()"><span>❤️</span>Favoriler</button>
+          <button type="button" class="pf-tile" onclick="closeProfileModal(); openAdAlerts()"><span>🔔</span>İlan Takibi</button>
+          <button type="button" class="pf-tile" onclick="openMemberSearch()"><span>👥</span>Üye Ara</button>
+          <button type="button" class="pf-tile" onclick="openPublicProfile(myProfile && myProfile.id)"><span>👁️</span>Profilimi Gör</button>
+        </nav>
+
+        <!-- Sekmeler -->
+        <div class="pf-tabs" role="tablist">
+          <button type="button" class="pf-tab active" data-tab="ads" role="tab" onclick="setProfileTab('ads')">📢 İlanlarım</button>
+          <button type="button" class="pf-tab" data-tab="rewards" role="tab" onclick="setProfileTab('rewards')">🎁 Puan & Davet</button>
+          <button type="button" class="pf-tab" data-tab="info" role="tab" onclick="setProfileTab('info')">⚙️ Bilgilerim</button>
+          <button type="button" class="pf-tab" data-tab="activity" role="tab" onclick="setProfileTab('activity')">🕘 Aktiviteler</button>
         </div>
-        <section class="profile-rewards" aria-label="Para Puan ve davet bağlantısı">
-          <div class="profile-rewards-balance"><span>💰 Para Puan bakiyen</span><strong id="profilePointsBalance">0 Para Puan</strong></div>
-          <div class="profile-level-box">
-            <div><strong id="profileLevelLabel">Seviye 1</strong><span id="profileLevelProgressText">0 / 1.000 puan</span></div>
-            <div class="profile-level-track"><span id="profileLevelProgressBar"></span></div>
+
+        <section class="pf-panel active" data-panel="ads">
+          <div class="profile-section" id="profileShopsBox" hidden>
+            <h4>🏪 Dükkanlarım</h4>
+            <div class="profile-links" id="profileShops"></div>
           </div>
-          <p>Her gün girişte 100 Para Puan kazan. Davet bağlantınla katılan <b>her yeni üye için 100 Para Puan</b> daha al. Davet ettiğin kişi de üye olunca <b>150 Para Puan</b> hediye alır.</p>
-          <div class="invite-stats" id="profileInviteStats"><span>👥 <b id="profileInviteCount">0</b> kişi davetinle katıldı</span><span>💰 <b id="profileInvitePoints">0</b> Para Puan kazandın</span></div>
+          <div class="profile-section">
+            <h4>📢 İlanlarım</h4>
+            <div class="profile-links" id="profileAds"></div>
+          </div>
+          <button type="button" class="btn-primary pf-wide" onclick="closeProfileModal(); openUserAdModal()">+ Yeni İlan Ver</button>
+        </section>
+
+        <section class="pf-panel profile-rewards" data-panel="rewards" aria-label="Para Puan ve davet">
+          <div class="pf-invite-hero">
+            <b>👥 Arkadaşını davet et, 100 Para Puan kazan</b>
+            <span>Davet ettiğin kişi de üye olunca 150 Para Puan hediye alır.</span>
+          </div>
+          <div class="invite-stats" id="profileInviteStats"><span>👥 <b id="profileInviteCount">0</b> kişi katıldı</span><span>💰 <b id="profileInvitePoints">0</b> puan kazandın</span></div>
           <div class="invite-actions">
             <button type="button" class="invite-btn wa" onclick="shareInvite('whatsapp')">💬 WhatsApp'ta Gönder</button>
             <button type="button" class="invite-btn" onclick="shareInvite('share')">📤 Paylaş</button>
-            <button type="button" class="invite-btn" onclick="shareInvite('copy')">🔗 Linki Kopyala</button>
           </div>
           <div class="profile-referral-share">
             <input id="profileReferralLink" type="text" readonly aria-label="Davet bağlantın" />
-            <button type="button" class="btn-primary" onclick="copyReferralLink()">Bağlantıyı kopyala</button>
+            <button type="button" class="btn-outline" onclick="copyReferralLink()">🔗 Kopyala</button>
+          </div>
+          <p class="pf-note">💡 Her gün girişte 100 Para Puan, ilan verince ve beğeni, yorum, takip ile ek puan kazanırsın. Her 1.000 puanda seviye atlarsın.</p>
+        </section>
+
+        <section class="pf-panel" data-panel="info">
+          <div class="form-group full">
+            <label for="profileName">Ad Soyad</label>
+            <input type="text" id="profileName" maxlength="60" required />
+          </div>
+          <div class="form-group full">
+            <label for="profileAbout">Hakkımda <span class="field-hint">(isteğe bağlı)</span></label>
+            <textarea id="profileAbout" rows="3" maxlength="400" placeholder="Örn: 20 yıldır halde domates ve biber komisyonculuğu yapıyorum."></textarea>
+          </div>
+          <div class="form-group full">
+            <label for="profileContactPhone">İletişim telefonu <span class="field-hint">(isteğe bağlı)</span></label>
+            <input type="tel" id="profileContactPhone" inputmode="tel" placeholder="05xx xxx xx xx" />
+            <label class="profile-check"><input type="checkbox" id="profileShowPhone" /> Profilimde herkese göster</label>
+          </div>
+          <button type="submit" class="btn-primary pf-wide" id="profileSaveBtn">💾 Kaydet</button>
+          <details class="profile-section pf-details" id="profilePasswordBox" hidden>
+            <summary>🔒 Şifremi değiştir</summary>
+            <div class="form-group full"><label for="profileOldPass">Mevcut şifre</label><input type="password" id="profileOldPass" autocomplete="current-password" /></div>
+            <div class="form-group full"><label for="profileNewPass">Yeni şifre</label><input type="password" id="profileNewPass" autocomplete="new-password" minlength="6" /></div>
+            <button type="button" class="btn-outline" onclick="changePassword()">Şifreyi değiştir</button>
+          </details>
+          <div class="pf-danger">
+            <button type="button" class="btn-ghost profile-logout" onclick="logoutUser()">↩ Çıkış Yap</button>
+            <button type="button" class="btn-ghost profile-delete" onclick="deleteMyAccount()">Hesabımı sil</button>
           </div>
         </section>
-        <div class="form-row"><div class="form-group full">
-          <label for="profileName">Ad Soyad</label>
-          <input type="text" id="profileName" maxlength="60" required />
-        </div></div>
-        <div class="form-row"><div class="form-group full">
-          <label for="profileAbout">Hakkımda <span class="field-hint">(isteğe bağlı)</span></label>
-          <textarea id="profileAbout" rows="3" maxlength="400" placeholder="Örn: 20 yıldır halde domates ve biber komisyonculuğu yapıyorum."></textarea>
-        </div></div>
-        <div class="form-row"><div class="form-group full">
-          <label for="profileContactPhone">İletişim telefonu <span class="field-hint">(isteğe bağlı)</span></label>
-          <input type="tel" id="profileContactPhone" inputmode="tel" placeholder="05xx xxx xx xx" />
-          <label class="profile-check"><input type="checkbox" id="profileShowPhone" /> Profilimde herkese göster</label>
-        </div></div>
-        <div class="profile-section" id="profileShopsBox" hidden>
-          <h4>🏪 Dükkanlarım</h4>
-          <div class="profile-links" id="profileShops"></div>
-        </div>
-        <div class="profile-section">
-          <h4>📢 İlanlarım</h4>
-          <div class="profile-links" id="profileAds"></div>
-        </div>
-        <div class="profile-section">
-          <h4>🕘 Aktivitelerim</h4>
+
+        <section class="pf-panel" data-panel="activity">
           <div class="profile-activities" id="profileActivities"></div>
-        </div>
-        <details class="profile-section" id="profilePasswordBox" hidden>
-          <summary>🔒 Şifremi değiştir</summary>
-          <div class="form-group full"><label for="profileOldPass">Mevcut şifre</label><input type="password" id="profileOldPass" autocomplete="current-password" /></div>
-          <div class="form-group full"><label for="profileNewPass">Yeni şifre</label><input type="password" id="profileNewPass" autocomplete="new-password" minlength="6" /></div>
-          <button type="button" class="btn-outline" onclick="changePassword()">Şifreyi değiştir</button>
-        </details>
-        <div class="modal-actions profile-actions">
-          <button type="button" class="btn-ghost profile-logout" onclick="logoutUser()">Çıkış Yap</button>
-          <button type="button" class="btn-ghost profile-delete" onclick="deleteMyAccount()">Hesabımı sil</button>
-          <button type="button" class="btn-outline" onclick="openPublicProfile(myProfile && myProfile.id)">Profilimi gör</button>
-          <button type="submit" class="btn-primary" id="profileSaveBtn">Kaydet</button>
-        </div>
+        </section>
       </form>
     </div>
   </div>
