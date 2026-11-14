@@ -5012,8 +5012,8 @@ function renderVitrin(ads) {
   box.hidden = !ads.length;
   if (!ads.length) return;
   box.classList.toggle('single', ads.length === 1);
-  // Günlük hava durumu vitrinin ilk kartı olur
-  ads = [...ads].sort((a, b) => (b.weather ? 1 : 0) - (a.weather ? 1 : 0));
+  // Günlük hava durumu vitrinin son kartı olur
+  ads = [...ads].sort((a, b) => (a.weather ? 1 : 0) - (b.weather ? 1 : 0));
 
   ads.forEach((ad, i) => {
     const slide = document.createElement('article');
