@@ -4077,8 +4077,12 @@ async function copyReferralLink() {
   }
 }
 
-function closeProfileModal() {
+function closeProfileModal(fromHistory) {
+  const wasOpen = document.getElementById('profileModal').classList.contains('open');
   document.getElementById('profileModal').classList.remove('open');
+  document.body.classList.remove('profile-page-open');
+  // Tam ekran profil telefonun geri tuşuyla da kapanır
+  if (wasOpen && !fromHistory && history.state && history.state.profilePage) history.back();
   if (bottomNavSection === 'profile') bottomNavSection = bottomNavPreviousSection;
   updateBottomNav();
 }
@@ -5696,3 +5700,18 @@ document.addEventListener('click', e => {
   if (href.startsWith('tel:')) logEvent(`${pinName ? `'${pinName.trim().slice(0, 60)}' işletmesini` : href.slice(4)} telefonla aradı`);
   else if (/google\.com\/maps|maps\.apple|yandex/.test(href)) logEvent(`${pinName ? `'${pinName.trim().slice(0, 60)}' için ` : ''}yol tarifi aldı`);
 }, true);
+
+// Profil açılınca geçmişe bir adım eklenir: geri tuşu profili kapatır
+(function () {
+  const modal = document.getElementById('profileModal');
+  if (!modal) return;
+  new MutationObserver(() => {
+    if (modal.classList.contains('open') && !(history.state && history.state.profilePage)) {
+      document.body.classList.add('profile-page-open');
+      history.pushState({ profilePage: 1 }, '');
+    }
+  }).observe(modal, { attributes: true, attributeFilter: ['class'] });
+  window.addEventListener('popstate', () => {
+    if (modal.classList.contains('open') && !(history.state && history.state.profilePage)) closeProfileModal(true);
+  });
+})();

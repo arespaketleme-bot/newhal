@@ -2848,3 +2848,18 @@ body {
   .ad-card, .ad-card .ad-media, .nav .btn-ghost::after { transition: none; }
   .ad-card:hover, .ad-card:hover img.ad-media { transform: none; }
 }
+
+/* Profil tam ekran sayfa gibi açılır (pencere değil) */
+#profileModal { background: var(--bg); z-index: 260; justify-content: center; align-items: stretch; padding: 0; }
+#profileModal .pf-modal {
+  width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; border: 0; border-radius: 0; box-shadow: none;
+  background: radial-gradient(900px 500px at 10% -10%, rgba(16,185,129,0.12), transparent 60%), var(--bg);
+  animation: pfPageIn 0.25s ease;
+}
+#profileModal .pf { height: 100%; max-height: none; max-width: 760px; margin: 0 auto; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+#profileModal .pf-hero { border-radius: 0 0 24px 24px; padding-top: calc(28px + env(safe-area-inset-top)); }
+#profileModal .pf-close { position: fixed; top: calc(14px + env(safe-area-inset-top)); right: 16px; width: 40px; height: 40px; background: rgba(0,0,0,0.45); }
+@media (min-width: 800px) { #profileModal .pf-close { right: calc(50% - 380px + 14px); } }
+@keyframes pfPageIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { #profileModal .pf-modal { animation: none; } }
+body.profile-page-open { overflow: hidden; }
