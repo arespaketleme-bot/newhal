@@ -703,7 +703,13 @@
             <div><strong id="profileLevelLabel">Seviye 1</strong><span id="profileLevelProgressText">0 / 1.000 puan</span></div>
             <div class="profile-level-track"><span id="profileLevelProgressBar"></span></div>
           </div>
-          <p>Her gün girişte 100 Para Puan kazan. Davet bağlantınla katılan her yeni üye için 100 Para Puan daha al.</p>
+          <p>Her gün girişte 100 Para Puan kazan. Davet bağlantınla katılan <b>her yeni üye için 100 Para Puan</b> daha al. Davet ettiğin kişi de üye olunca <b>150 Para Puan</b> hediye alır.</p>
+          <div class="invite-stats" id="profileInviteStats"><span>👥 <b id="profileInviteCount">0</b> kişi davetinle katıldı</span><span>💰 <b id="profileInvitePoints">0</b> Para Puan kazandın</span></div>
+          <div class="invite-actions">
+            <button type="button" class="invite-btn wa" onclick="shareInvite('whatsapp')">💬 WhatsApp'ta Gönder</button>
+            <button type="button" class="invite-btn" onclick="shareInvite('share')">📤 Paylaş</button>
+            <button type="button" class="invite-btn" onclick="shareInvite('copy')">🔗 Linki Kopyala</button>
+          </div>
           <div class="profile-referral-share">
             <input id="profileReferralLink" type="text" readonly aria-label="Davet bağlantın" />
             <button type="button" class="btn-primary" onclick="copyReferralLink()">Bağlantıyı kopyala</button>

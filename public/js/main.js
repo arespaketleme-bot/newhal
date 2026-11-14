@@ -30,6 +30,7 @@ function closeAuthModal() {
 function updateAuthUI(name) {
   if (name) { try { localStorage.setItem('hasLoggedInBefore', '1'); } catch {} }
   document.getElementById('joinNudge')?.remove();
+  if (name && document.getElementById('adsGrid')) setTimeout(renderInviteNudge, 0);
   const btn1 = document.getElementById('authBtn');
   const btn2 = document.getElementById('mobileAuthBtn');
   const setupBtn = (btn) => {
@@ -3112,6 +3113,7 @@ function renderJoinNudge() {
 
 function renderAdsTools() {
   renderJoinNudge();
+  renderInviteNudge();
   if (document.getElementById('adsTools')) { updateFavCount(); return; }
   const bar = document.createElement('div');
   bar.id = 'adsTools';
@@ -3937,7 +3939,8 @@ async function openProfileModal() {
   document.getElementById('profileLevelLabel').textContent = `Seviye ${Number(myProfile.level || 1)}`;
   document.getElementById('profileLevelProgressText').textContent = `${Number(myProfile.level_progress || 0).toLocaleString('tr-TR')} / 1.000 puan`;
   document.getElementById('profileLevelProgressBar').style.width = `${Math.max(0, Math.min(100, Number(myProfile.level_progress || 0) / 10))}%`;
-  document.getElementById('profileReferralLink').value = `${location.origin}/?ref=${encodeURIComponent(myProfile.referral_code)}`;
+  document.getElementById('profileReferralLink').value = inviteLink(myProfile.referral_code);
+  loadInviteStats();
   document.getElementById('profileLoginInfo').textContent = myProfile.login === 'telefon'
     ? `Telefonla giriş: ${myProfile.login_phone}` : `Google ile giriş${myProfile.email ? ': ' + myProfile.email : ''}`;
   document.getElementById('profileName').value = myProfile.name;
@@ -3982,6 +3985,69 @@ async function openProfileModal() {
   }
 
   document.getElementById('profileModal').classList.add('open');
+}
+
+// ── Üye daveti: tek dokunuşla WhatsApp, paylaş, kopyala ──────
+function myReferralCode() {
+  const t = readToken('userToken');
+  return t && t.payload && t.payload.id ? `NH${t.payload.id}` : '';
+}
+const inviteLink = code => `${location.origin}/u/${encodeURIComponent(code || myReferralCode())}`;
+function inviteMessage() {
+  return `Selam! Mersin Hal Kompleksi'ndeki işletmeler, ilanlar ve esnafla mesajlaşma NewHal'de tek yerde 🍅🍋\n` +
+    `Bu linkle üye olursan 150 Para Puan hediye kazanırsın 🎁\n${inviteLink()}`;
+}
+async function shareInvite(how) {
+  if (!myReferralCode()) { openAuthModal(); setAuthTab('register'); return; }
+  const text = inviteMessage();
+  logEvent(`Davet paylaştı (${how})`);
+  if (how === 'whatsapp') {
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+  } else if (how === 'share' && navigator.share) {
+    try { await navigator.share({ title: 'NewHal\'e davetlisin', text, url: inviteLink() }); } catch {}
+  } else {
+    try { await navigator.clipboard.writeText(text); showToast('Davet mesajı ve linki kopyalandı. İstediğin yere yapıştır.', 'success'); }
+    catch { showToast(inviteLink(), 'success'); }
+  }
+}
+async function loadInviteStats() {
+  const t = readToken('userToken');
+  if (!t) return;
+  try {
+    const r = await fetch('/api/profile/referrals', { headers: { Authorization: 'Bearer ' + t.token } });
+    if (!r.ok) return;
+    const d = await r.json();
+    const c = document.getElementById('profileInviteCount'), p = document.getElementById('profileInvitePoints');
+    if (c) c.textContent = Number(d.count || 0).toLocaleString('tr-TR');
+    if (p) p.textContent = Number(d.points || 0).toLocaleString('tr-TR');
+    const n = document.querySelector('#inviteNudge .invite-nudge-count');
+    if (n && d.count) n.textContent = ` · Şimdiye kadar ${d.count} kişi davetinle katıldı`;
+  } catch {}
+}
+// Üyelere ilanların üstünde davet kartı (kapatılırsa 3 gün çıkmaz)
+function renderInviteNudge() {
+  if (!readToken('userToken') || document.getElementById('inviteNudge')) return;
+  try { if (Date.now() - (Number(localStorage.getItem('inviteNudgeClosedAt')) || 0) < 3 * 864e5) return; } catch {}
+  const card = document.createElement('div');
+  card.id = 'inviteNudge';
+  card.className = 'join-nudge invite-nudge';
+  card.innerHTML = `<div class="join-nudge-text"><b>👥 Esnaf arkadaşını davet et, 100 Para Puan kazan</b><span>Davet ettiğin kişi de 150 Para Puan hediye alır.<span class="invite-nudge-count"></span></span></div>
+    <div class="invite-nudge-actions">
+      <button type="button" class="join-nudge-btn wa">💬 WhatsApp</button>
+      <button type="button" class="invite-mini">📤</button>
+    </div>
+    <button type="button" class="join-nudge-close" aria-label="Kapat">✕</button>`;
+  card.querySelector('.wa').onclick = () => shareInvite('whatsapp');
+  const more = card.querySelector('.invite-mini');
+  more.setAttribute('aria-label', navigator.share ? 'Paylaş' : 'Linki kopyala');
+  more.onclick = () => shareInvite(navigator.share ? 'share' : 'copy');
+  card.querySelector('.join-nudge-close').onclick = () => {
+    card.remove();
+    try { localStorage.setItem('inviteNudgeClosedAt', String(Date.now())); } catch {}
+  };
+  const grid = document.getElementById('adsGrid');
+  (document.getElementById('adsTools') || grid).insertAdjacentElement('beforebegin', card);
+  loadInviteStats();
 }
 
 async function copyReferralLink() {

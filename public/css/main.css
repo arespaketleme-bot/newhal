@@ -1737,6 +1737,19 @@ body.has-trends .map-panel.map-fullscreen { top: calc(var(--trend-h) + env(safe-
 .join-nudge-close { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(255,255,255,0.08); color: inherit; cursor: pointer; }
 @media (max-width: 520px) { .join-nudge { flex-wrap: wrap; } .join-nudge-text { flex-basis: calc(100% - 42px); } .join-nudge-btn { width: 100%; } }
 
+/* Üye daveti */
+.invite-stats { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 10px; }
+.invite-stats span { padding: 6px 12px; border-radius: 999px; font-size: 13px; background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.35); }
+.invite-stats b { color: #34d399; }
+.invite-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.invite-btn { flex: 1 1 auto; padding: 11px 14px; border-radius: 12px; border: 1px solid rgba(148,163,184,0.3); background: rgba(255,255,255,0.05); color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+.invite-btn.wa { background: #25d366; border-color: #25d366; color: #052e16; }
+.invite-nudge { background: linear-gradient(135deg, rgba(37,211,102,0.16), rgba(56,189,248,0.10)); border-color: rgba(37,211,102,0.45); }
+.invite-nudge-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.invite-nudge .join-nudge-btn.wa { background: #25d366; color: #052e16; box-shadow: 0 6px 18px rgba(37,211,102,0.35); }
+.invite-mini { width: 42px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); color: inherit; font-size: 16px; cursor: pointer; }
+@media (max-width: 520px) { .invite-nudge-actions { width: 100%; } .invite-nudge-actions .join-nudge-btn { flex: 1; } }
+
 /* Favori ve ilan takibi */
 .ad-card { position: relative; }
 .fav-btn { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 50%;

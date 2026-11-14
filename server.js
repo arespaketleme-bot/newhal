@@ -2941,6 +2941,48 @@ const SHARE_LINKS = {
   tanitim: { image: 'genel', kaynak: 'tanitim', title: 'Mersin Hali artık cebinizde!', description: 'Hal esnafı tek haritada. Esnafa tek dokunuşla ulaşın, ücretsiz ilan verin.' },
   'ilan-ver': { image: 'ilan', kaynak: 'ilan', title: 'İlanınız hal esnafına ulaşsın', description: 'Ücretsiz ilan verin, 1 dakikada yayında.' },
 };
+// ── Üye davet linki: /u/NH123 · WhatsApp'ta "X seni davet ediyor" önizlemesi çıkar ──
+const htmlEsc = s => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+app.get('/u/:code', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!/^NH[1-9]\d{0,17}$/.test(code)) return res.redirect('/');
+  let name = '';
+  try {
+    const { data } = await db.supabase.from('users').select('name').eq('id', Number(code.slice(2))).maybeSingle();
+    name = data && data.name ? String(data.name).split(' ')[0].slice(0, 30) : '';
+  } catch {}
+  const target = `/?ref=${encodeURIComponent(code)}&kaynak=davet`;
+  const title = name ? `${name} seni NewHal'e davet ediyor 🎁` : 'NewHal\'e davetlisin 🎁';
+  const description = 'Mersin Hal Kompleksi cebinde: işletmeler haritada, ücretsiz ilan, esnafla mesajlaşma. Üye ol, 150 Para Puan hediye!';
+  res.type('html').send(`<!doctype html><html lang="tr"><head><meta charset="utf-8">
+<title>${htmlEsc(title)}</title>
+<meta name="robots" content="noindex">
+<meta name="description" content="${htmlEsc(description)}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="NewHal">
+<meta property="og:title" content="${htmlEsc(title)}">
+<meta property="og:description" content="${htmlEsc(description)}">
+<meta property="og:url" content="https://newhal.com/u/${code}">
+<meta property="og:image" content="https://newhal.com/img/ads/newhal-yatay.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="628">
+<meta name="twitter:card" content="summary_large_image">
+<meta http-equiv="refresh" content="0;url=${target}">
+<script>location.replace(${JSON.stringify(target)});</script>
+</head><body><a href="${target}">NewHal'e git</a></body></html>`);
+});
+
+// Üyenin davet sonuçları: kaç kişi katıldı, kaç puan kazandı
+app.get('/api/profile/referrals', requireAuth, async (req, res) => {
+  if (req.user.role !== 'user' || !req.user.id) return res.status(403).json({ error: 'Giriş gerekli' });
+  try {
+    const { count } = await db.supabase.from('newhal_referrals').select('referred_id', { count: 'exact', head: true }).eq('referrer_id', req.user.id);
+    res.json({ count: count || 0, points: (count || 0) * 100, perInvite: 100, code: `NH${req.user.id}` });
+  } catch {
+    res.json({ count: 0, points: 0, perInvite: 100, code: `NH${req.user.id}` });
+  }
+});
+
 Object.entries(SHARE_LINKS).forEach(([slug, link]) => {
   app.get(`/${slug}`, (req, res) => {
     const target = `/?kaynak=${link.kaynak}`;
