@@ -833,12 +833,53 @@ function rotatingSlot(getItems, build, start = 0) {
 
 const randomStart = place => Math.floor(Math.random() * Math.max(1, sponsorsFor(place).length));
 
+// ── Kapatılan sponsorlu reklam 15 dakika sonra geri gelir (yönetimden × açıksa) ──
+const SPONSOR_REOPEN_MS = 15 * 60 * 1000;
+const sponsorClosedKey = place => `sponsorClosedUntil_${place}`;
+function sponsorClosed(place) {
+  if (!sponsorSideClose) return false;
+  try { return Date.now() < (Number(localStorage.getItem(sponsorClosedKey(place))) || 0); } catch { return false; }
+}
+const sponsorReopenTimers = {};
+function closeSponsorPlace(place, rerender) {
+  try { localStorage.setItem(sponsorClosedKey(place), String(Date.now() + SPONSOR_REOPEN_MS)); } catch {}
+  clearTimeout(sponsorReopenTimers[place]);
+  sponsorReopenTimers[place] = setTimeout(rerender, SPONSOR_REOPEN_MS + 500);
+}
+function sponsorCloseButton(place, onClose) {
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'sponsor-close';
+  close.setAttribute('aria-label', 'Reklamı kapat');
+  close.title = 'Reklamı kapat (15 dakika sonra tekrar görünür)';
+  close.textContent = '×';
+  close.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); onClose(); });
+  return close;
+}
+// Kapatıldıysa ne zaman geri geleceğini planlar (sayfa yenilense de süre devam eder)
+function scheduleSponsorReturn(place, rerender) {
+  let until = 0;
+  try { until = Number(localStorage.getItem(sponsorClosedKey(place))) || 0; } catch {}
+  if (until > Date.now()) {
+    clearTimeout(sponsorReopenTimers[place]);
+    sponsorReopenTimers[place] = setTimeout(rerender, until - Date.now() + 500);
+  }
+}
+
 function renderSponsorStrip() {
   document.getElementById('sponsorStrip')?.remove();
   const vitrin = document.getElementById('vitrin');
   if (!vitrin || !sponsorsFor('strip').length) return;
-  const strip = rotatingSlot(() => sponsorsFor('strip'), s => buildSponsorCard('strip', s), randomStart('strip'));
+  if (sponsorClosed('strip')) { scheduleSponsorReturn('strip', renderSponsorStrip); return; }
+  // Dönen alan her değişimde içini yeniler; × düğmesi kaybolmasın diye dış kutuya konur
+  const strip = document.createElement('div');
   strip.id = 'sponsorStrip';
+  strip.className = 'sponsor-wrap';
+  strip.appendChild(rotatingSlot(() => sponsorsFor('strip'), s => buildSponsorCard('strip', s), randomStart('strip')));
+  if (sponsorSideClose) {
+    strip.classList.add('closable');
+    strip.appendChild(sponsorCloseButton('strip', () => { strip.remove(); closeSponsorPlace('strip', renderSponsorStrip); }));
+  }
   vitrin.insertAdjacentElement('afterend', strip);
 }
 
@@ -846,8 +887,15 @@ function renderSponsorDetail() {
   document.getElementById('sponsorDetail')?.remove();
   const box = document.getElementById('pinDetailBox');
   if (!box || !sponsorsFor('detail').length) return;
-  const slot = rotatingSlot(() => sponsorsFor('detail'), s => buildSponsorCard('detail', s), randomStart('detail'));
+  if (sponsorClosed('detail')) return;   // detay penceresi bir sonraki açılışta yeniden bakar
+  const slot = document.createElement('div');
   slot.id = 'sponsorDetail';
+  slot.className = 'sponsor-wrap';
+  slot.appendChild(rotatingSlot(() => sponsorsFor('detail'), s => buildSponsorCard('detail', s), randomStart('detail')));
+  if (sponsorSideClose) {
+    slot.classList.add('closable');
+    slot.appendChild(sponsorCloseButton('detail', () => { slot.remove(); closeSponsorPlace('detail', () => {}); }));
+  }
   box.appendChild(slot);
 }
 
@@ -887,21 +935,32 @@ function buildRailAdCard(ad) {
 function insertGridSponsors(grid, count) {
   const list = sponsorsFor('grid');
   if (!count || !list.length) return;
+  if (sponsorClosed('grid')) { scheduleSponsorReturn('grid', () => renderAdsGrid()); return; }
   const start = Math.floor(Math.random() * list.length);
   list.forEach((s, k) => {
     const pos = 5 + k * 6;
     if (k > 0 && pos > count + k) return;
-    grid.insertBefore(buildSponsorCard('grid', list[(start + k) % list.length]), grid.children[pos] || null);
+    const card = buildSponsorCard('grid', list[(start + k) % list.length]);
+    if (sponsorSideClose) {
+      card.classList.add('closable');
+      // Bir kart kapatılınca listedeki tüm sponsor kartları 15 dakika gizlenir
+      card.appendChild(sponsorCloseButton('grid', () => {
+        grid.querySelectorAll('.sponsor-grid').forEach(c => c.remove());
+        if (typeof fitAdsGridRows === 'function') fitAdsGridRows();
+        closeSponsorPlace('grid', () => renderAdsGrid());
+      }));
+    }
+    grid.insertBefore(card, grid.children[pos] || null);
   });
 }
 
-// Masaüstü sağ/sol reklam: yalnızca geniş ekranda (CSS) görünür; × ile o oturum boyunca kapanır.
+// Masaüstü sağ/sol reklam: yalnızca geniş ekranda (CSS) görünür; × ile kapanır, 15 dakika sonra geri gelir.
 // Her yanda üstte sırayla değişen sponsor, altında sırayla değişen bir ilan durur.
 const SPONSOR_SIDE_CLOSED = side => `sponsorSideClosed_${side}`;
 function renderSponsorSides() {
   document.querySelectorAll('.sponsor-rail').forEach(el => el.remove());
   ['left', 'right'].forEach((side, i) => {
-    if (sponsorSideClose) { try { if (sessionStorage.getItem(SPONSOR_SIDE_CLOSED(side))) return; } catch {} }
+    if (sponsorClosed(`side_${side}`)) { scheduleSponsorReturn(`side_${side}`, renderSponsorSides); return; }
     const rail = document.createElement('aside');
     rail.className = `sponsor-rail sponsor-rail-${side}`;
     rail.setAttribute('aria-label', 'Sponsorlu reklam ve ilan');
@@ -912,7 +971,7 @@ function renderSponsorSides() {
     close.textContent = '×';
     close.addEventListener('click', () => {
       rail.remove();
-      try { sessionStorage.setItem(SPONSOR_SIDE_CLOSED(side), '1'); } catch {}
+      closeSponsorPlace(`side_${side}`, renderSponsorSides);
     });
     // Sağ taraf listenin yarısından başlar: iki yanda aynı anda aynı şey görünmez
     const half = n => (i ? Math.floor(n / 2) : 0);
