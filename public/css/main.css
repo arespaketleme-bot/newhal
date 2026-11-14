@@ -2872,3 +2872,9 @@ body.profile-page-open { overflow: hidden; }
 }
 /* Profilde içerik uzayınca kimlik kartı, hızlı işlemler ve sekmeler ezilmesin */
 .pf > * { flex-shrink: 0; }
+
+/* Profil ekran genişliğini asla aşmaz; uzun ilan/dükkan adları satıra sığmazsa "…" ile kısalır */
+#profileModal .pf { width: 100%; box-sizing: border-box; min-width: 0; }
+#profileModal .pf-panel, #profileModal .profile-section, #profileModal .profile-links { min-width: 0; max-width: 100%; }
+#profileModal .profile-link { display: block; width: 100%; max-width: 100%; box-sizing: border-box; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
