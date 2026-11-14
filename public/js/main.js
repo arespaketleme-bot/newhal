@@ -2373,7 +2373,8 @@ function showSurvey() {
   const card = document.getElementById('surveyCard');
   if (!card || !surveyInfo) return;
   // Başka bir pencere açıksa biraz sonra tekrar dene
-  if (document.querySelector('.modal-overlay.open, #adFeed, .ad-viewer:not([hidden])')) { setTimeout(showSurvey, 20000); return; }
+  // Açılış ekranı, çerez kutusu ya da başka bir pencere açıksa biraz sonra tekrar dene
+  if (document.querySelector('.modal-overlay.open, #welcomePopup.open, [aria-label="Çerez tercihi"], #adFeed, .ad-viewer:not([hidden]), .landing-card')) { setTimeout(showSurvey, 20000); return; }
   document.getElementById('surveyQuestion').textContent = surveyInfo.question;
   const box = document.getElementById('surveyStars');
   box.innerHTML = '';
