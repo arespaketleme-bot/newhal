@@ -2038,6 +2038,14 @@ const FBBOT_DEFAULT = {
   keywords: ['sebze', 'meyve', 'domates', 'biber', 'salatalık', 'patlıcan', 'kabak', 'fasulye', 'limon', 'portakal', 'mandalina',
     'greyfurt', 'muz', 'çilek', 'karpuz', 'kavun', 'üzüm', 'elma', 'armut', 'nar', 'patates', 'soğan', 'lahana', 'marul',
     'maydanoz', 'roka', 'enginar', 'brokoli', 'karnabahar', 'havuç', 'ıspanak', 'kiraz', 'kayısı', 'şeftali', 'erik', 'avokado', 'hurma', 'ton', 'kasa'],
+  catalog: [
+    { name: 'Mersin Hal (grup)', url: 'https://www.facebook.com/groups/mersinhal', stars: 4 },
+    { name: 'Mersin Hal Kompleksi Sebze Meyve', url: 'https://www.facebook.com/halkompleksi33/', stars: 4 },
+    { name: 'Özerler Komisyon (Mersin)', url: 'https://www.facebook.com/Ozerler.Komisyon.Ltd.srt/', stars: 3 },
+    { name: 'İstanbulluoğlu Sebze Meyve Komisyonu (Mersin)', url: 'https://www.facebook.com/IstanbulluogluOtomotiv/', stars: 2 },
+    { name: 'Defne Sebze Meyve Komisyonculuğu (Antalya)', url: 'https://www.facebook.com/people/Defne-Sebze-Meyve-Komisyonculu%C4%9Fu/100063556180892/', stars: 2 },
+    { name: 'Star Komisyon (Antalya)', url: 'https://www.facebook.com/p/Star-Komisyon-100064114081495/', stars: 2 },
+  ],
   perSource: 15,
   maxAgeHours: 24,      // yalnız son X saatte paylaşılanlar (0 = sınır yok)
   publish: 'pending',   // 'pending' = onay bekler, 'live' = hemen yayınlanır
@@ -2070,6 +2078,11 @@ app.put('/api/admin/fb-bot', requireAdmin, async (req, res) => {
     perSource: Math.min(50, Math.max(1, Math.round(Number(b.perSource) || FBBOT_DEFAULT.perSource))),
     publish: b.publish === 'live' ? 'live' : 'pending',
     photoPosts: b.photoPosts !== false,
+    catalog: (Array.isArray(b.catalog) ? b.catalog : s.settings.catalog || []).map(c => ({
+      name: String(c && c.name || '').trim().slice(0, 80),
+      url: String(c && c.url || '').trim(),
+      stars: Math.min(5, Math.max(0, Math.round(Number(c && c.stars) || 0))),
+    })).filter(c => /^https:\/\/([^/]+\.)?facebook\.com\//i.test(c.url)).slice(0, 60),
     maxAgeHours: Math.min(720, Math.max(0, Math.round(Number(b.maxAgeHours) || 0))),
   };
   if (!(await saveFbBot())) return res.status(500).json({ error: 'Kaydedilemedi' });

@@ -882,8 +882,59 @@ async function loadFbBot() {
     document.getElementById('fbBotPublish').value = d.settings.publish;
     document.getElementById('fbBotMaxAge').value = String(d.settings.maxAgeHours ?? 24);
     document.getElementById('fbBotPhotoPosts').checked = d.settings.photoPosts !== false;
+    fbCatalog = d.settings.catalog || [];
+    renderFbCatalog();
   }
   renderFbBotStatus(d);
+}
+let fbCatalog = [];
+const fbNorm = u => String(u || '').trim().replace(/\/+$/, '').toLowerCase();
+function fbSourceLines() {
+  return document.getElementById('fbBotSources').value.split(/\n+/).map(x => x.trim()).filter(Boolean);
+}
+function renderFbCatalog() {
+  const box = document.getElementById('fbBotCatalog');
+  if (!box) return;
+  const lines = new Set(fbSourceLines().map(fbNorm));
+  const list = fbCatalog.map((c, i) => ({ c, i })).sort((a, b) => (b.c.stars || 0) - (a.c.stars || 0));
+  box.innerHTML = list.length ? list.map(({ c, i }) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;border:1px solid rgba(148,163,184,.25)">
+      <input type="checkbox" ${lines.has(fbNorm(c.url)) ? 'checked' : ''} onchange="fbCatToggle(${i}, this.checked)" style="width:18px;height:18px;flex-shrink:0" />
+      <a href="${esc(c.url)}" target="_blank" rel="noopener" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:inherit">${esc(c.name || c.url)}</a>
+      <span style="white-space:nowrap;flex-shrink:0">${[1, 2, 3, 4, 5].map(n => `<span onclick="fbCatStar(${i},${n})" title="${n} yıldız" style="cursor:pointer;font-size:18px;color:${n <= (c.stars || 0) ? '#fbbf24' : 'rgba(148,163,184,.45)'}">★</span>`).join('')}</span>
+      <button type="button" onclick="fbCatRemove(${i})" title="Listeden çıkar" style="background:none;border:0;color:inherit;opacity:.6;cursor:pointer;font-size:16px">✕</button>
+    </div>`).join('') : '<small style="opacity:.7">Liste boş.</small>';
+}
+function fbCatToggle(i, on) {
+  const c = fbCatalog[i]; if (!c) return;
+  let lines = fbSourceLines().filter(l => fbNorm(l) !== fbNorm(c.url));
+  if (on) lines.push(c.url);
+  document.getElementById('fbBotSources').value = lines.join('\n');
+  renderFbCatalog();
+}
+function fbCatStar(i, n) {
+  if (!fbCatalog[i]) return;
+  fbCatalog[i].stars = fbCatalog[i].stars === n ? 0 : n;
+  renderFbCatalog();
+  saveFbBot();
+}
+function fbCatRemove(i) {
+  if (!fbCatalog[i] || !confirm('Bu grup listeden çıkarılsın mı?')) return;
+  fbCatToggle(i, false);
+  fbCatalog.splice(i, 1);
+  renderFbCatalog();
+  saveFbBot();
+}
+function fbCatAdd() {
+  const name = document.getElementById('fbBotCatName').value.trim();
+  const url = document.getElementById('fbBotCatUrl').value.trim();
+  if (!/^https:\/\/([^/]+\.)?facebook\.com\//i.test(url)) { showToast('Geçerli bir Facebook linki yazın', 'error'); return; }
+  if (fbCatalog.some(c => fbNorm(c.url) === fbNorm(url))) { showToast('Bu link listede zaten var', 'error'); return; }
+  fbCatalog.push({ name: name || url, url, stars: 3 });
+  document.getElementById('fbBotCatName').value = '';
+  document.getElementById('fbBotCatUrl').value = '';
+  renderFbCatalog();
+  saveFbBot();
 }
 async function saveFbBot(event) {
   if (event) event.preventDefault();
@@ -894,6 +945,7 @@ async function saveFbBot(event) {
     publish: document.getElementById('fbBotPublish').value,
     maxAgeHours: Number(document.getElementById('fbBotMaxAge').value),
     photoPosts: document.getElementById('fbBotPhotoPosts').checked,
+    catalog: fbCatalog,
   };
   const res = await api('/api/admin/fb-bot', { method: 'PUT', body: JSON.stringify(body) });
   if (!res) return false;

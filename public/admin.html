@@ -779,8 +779,17 @@
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
           <form onsubmit="saveFbBot(event)" style="display:flex;flex-direction:column;gap:14px;flex:1 1 360px;max-width:560px">
+            <div style="display:flex;flex-direction:column;gap:6px"><b>Grup ve sayfa listesi</b>
+              <small style="opacity:.75">Tiklediğiniz alttaki link kutusuna eklenir. Yıldıza basarak kalitesini puanlayın.</small>
+              <div id="fbBotCatalog" style="display:flex;flex-direction:column;gap:6px"></div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <input id="fbBotCatName" placeholder="Grup adı" style="flex:1 1 140px;padding:8px 10px;border-radius:10px;font:inherit" />
+                <input id="fbBotCatUrl" placeholder="https://www.facebook.com/groups/..." style="flex:2 1 200px;padding:8px 10px;border-radius:10px;font:inherit" />
+                <button type="button" class="btn-sm" onclick="fbCatAdd()">+ Listeye ekle</button>
+              </div>
+            </div>
             <label style="display:flex;flex-direction:column;gap:6px"><b>Facebook sayfa ve grup linkleri</b>
-              <textarea id="fbBotSources" rows="4" placeholder="https://www.facebook.com/groups/mersinhal" style="padding:10px 12px;border-radius:10px;font:inherit"></textarea>
+              <textarea id="fbBotSources" oninput="renderFbCatalog()" rows="4" placeholder="https://www.facebook.com/groups/mersinhal" style="padding:10px 12px;border-radius:10px;font:inherit"></textarea>
               <small style="opacity:.75">Her satıra bir link. Sadece herkese açık sayfa ve gruplar okunabilir.</small>
             </label>
             <label style="display:flex;flex-direction:column;gap:6px"><b>Anahtar kelimeler</b>
