@@ -592,7 +592,13 @@ function renderSearchResults() {
 
   const head = document.createElement('div');
   head.className = 'map-search-count';
-  head.textContent = matches.length ? `${matches.length} işletme bulundu` : 'Sonuç bulunamadı';
+  // Haritadan aramada eşleşen ilanlar da gösterilir
+  const adHits = allAds.filter(ad => !ad.weather && adMatchesSearch(ad, searchQuery))
+    .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+  const parts = [];
+  if (matches.length) parts.push(`${matches.length} işletme`);
+  if (adHits.length) parts.push(`${adHits.length} ilan`);
+  head.textContent = parts.length ? `${parts.join(' ve ')} bulundu` : 'Sonuç bulunamadı';
   box.appendChild(head);
 
   matches.slice(0, MAX_SEARCH_RESULTS).forEach(pin => {
@@ -614,6 +620,35 @@ function renderSearchResults() {
     row.onclick = () => focusPin(pin.id);
     box.appendChild(row);
   });
+  if (adHits.length) {
+    const adHead = document.createElement('div');
+    adHead.className = 'map-search-count map-search-adhead';
+    adHead.textContent = `📢 İlanlar (${adHits.length})`;
+    box.appendChild(adHead);
+    adHits.slice(0, MAX_SEARCH_RESULTS).forEach(ad => {
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'map-search-item';
+      const icon = document.createElement('span');
+      icon.className = 'map-search-icon';
+      icon.textContent = '📢';
+      const text = document.createElement('span');
+      text.className = 'map-search-text';
+      const title = document.createElement('strong');
+      title.textContent = `${ad.no ? `#${ad.no} ` : ''}${ad.title || 'İlan'}`;
+      const sub = document.createElement('small');
+      sub.textContent = String(ad.body || '').replace(/\s+/g, ' ').slice(0, 70);
+      text.append(title, sub);
+      row.append(icon, text);
+      row.onclick = () => {
+        trackSearch('map', searchQuery, true);
+        box.hidden = true;
+        document.getElementById('mapSearch').blur();
+        openAdViewer(ad, 0);
+      };
+      box.appendChild(row);
+    });
+  }
   box.hidden = false;
 }
 
