@@ -2881,7 +2881,7 @@ body.profile-page-open { overflow: hidden; }
 
 /* Profil menüsü tek ızgara: 4 bölüm + 5 hızlı işlem aynı kutularda */
 #profileModal .pf-quick { grid-template-columns: repeat(5, 1fr); padding: 14px 16px 4px; }
-#profileModal .pf-tile.pf-tab { flex: initial; }
+#profileModal .pf-tile.pf-tab { flex: initial; border-radius: 14px; border: 1px solid rgba(255,255,255,0.07); background: rgba(255,255,255,0.03); color: #e2e8f0; font-weight: 600; white-space: normal; }
 #profileModal .pf-tile.pf-tab.active {
   background: linear-gradient(135deg, #10b981, #059669); border-color: #10b981; color: #fff;
   box-shadow: 0 6px 18px rgba(16,185,129,0.35);
