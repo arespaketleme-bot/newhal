@@ -1964,10 +1964,11 @@ function renderMapCategoryBar(categories) {
     bar.appendChild(b);
   };
   chip('all', 'Tümü');
-  // En çok işletmesi olan kategori önde, "Genel" en sonda
+  // En çok işletmesi olan kategori önde; sonda önce "Genel", en sonda "Oto & Servis"
+  const rank = name => (name === 'Oto & Servis' ? 2 : name === 'Genel' ? 1 : 0);
   const count = name => (allPins || []).filter(p => p.category === name).length;
   [...categories]
-    .sort((a, b) => (a.name === 'Genel') - (b.name === 'Genel') || count(b.name) - count(a.name))
+    .sort((a, b) => rank(a.name) - rank(b.name) || count(b.name) - count(a.name))
     .forEach(cat => chip(cat.name, `${cat.icon || '📦'} ${cat.name}`));
   // Listedeki eski kategori düğmeleri de aynı seçimi gösterir
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === activeFilter));
