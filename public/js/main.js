@@ -1953,7 +1953,17 @@ function renderMapCategoryBar(categories) {
     bar.appendChild(b);
   };
   chip('all', 'Tümü');
-  categories.forEach(cat => chip(cat.name, `${cat.icon || '📦'} ${cat.name}`));
+  // En çok işletmesi olan kategori önde, "Genel" en sonda
+  const count = name => (allPins || []).filter(p => p.category === name).length;
+  [...categories]
+    .sort((a, b) => (a.name === 'Genel') - (b.name === 'Genel') || count(b.name) - count(a.name))
+    .forEach(cat => chip(cat.name, `${cat.icon || '📦'} ${cat.name}`));
+  if (!(allPins || []).length && !renderMapCategoryBar.waiting) {
+    // İşletmeler henüz gelmediyse geldikten sonra sıralama yenilenir
+    renderMapCategoryBar.waiting = true;
+    const t = setInterval(() => { if ((allPins || []).length) { clearInterval(t); renderMapCategoryBar.waiting = false; renderMapCategoryBar(categories); } }, 500);
+    setTimeout(() => clearInterval(t), 20000);
+  }
 }
 
 function renderCategorySelect(categories) {
