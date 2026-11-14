@@ -1969,6 +1969,9 @@ function renderMapCategoryBar(categories) {
   [...categories]
     .sort((a, b) => (a.name === 'Genel') - (b.name === 'Genel') || count(b.name) - count(a.name))
     .forEach(cat => chip(cat.name, `${cat.icon || '📦'} ${cat.name}`));
+  // Listedeki eski kategori düğmeleri de aynı seçimi gösterir
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === activeFilter));
+  bar.querySelector('.map-cat-chip.active')?.scrollIntoView({ block: 'nearest', inline: 'center' });
   if (!(allPins || []).length && !renderMapCategoryBar.waiting) {
     // İşletmeler henüz gelmediyse geldikten sonra sıralama yenilenir
     renderMapCategoryBar.waiting = true;
