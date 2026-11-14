@@ -872,6 +872,7 @@ async function loadFbBot() {
     document.getElementById('fbBotKeywords').value = (d.settings.keywords || []).join(', ');
     document.getElementById('fbBotPerSource').value = d.settings.perSource;
     document.getElementById('fbBotPublish').value = d.settings.publish;
+    document.getElementById('fbBotPhotoPosts').checked = d.settings.photoPosts !== false;
   }
   renderFbBotStatus(d);
 }
@@ -882,6 +883,7 @@ async function saveFbBot(event) {
     keywords: document.getElementById('fbBotKeywords').value,
     perSource: Number(document.getElementById('fbBotPerSource').value),
     publish: document.getElementById('fbBotPublish').value,
+    photoPosts: document.getElementById('fbBotPhotoPosts').checked,
   };
   const res = await api('/api/admin/fb-bot', { method: 'PUT', body: JSON.stringify(body) });
   if (!res) return false;

@@ -2040,6 +2040,7 @@ const FBBOT_DEFAULT = {
     'maydanoz', 'roka', 'enginar', 'brokoli', 'karnabahar', 'havuç', 'ıspanak', 'kiraz', 'kayısı', 'şeftali', 'erik', 'avokado', 'hurma', 'ton', 'kasa'],
   perSource: 15,
   publish: 'pending',   // 'pending' = onay bekler, 'live' = hemen yayınlanır
+  photoPosts: true,     // yazısız ama resimli ve telefonlu gönderiler de alınır
 };
 let fbBotState = null;   // { settings, seen: [], lastRun }
 let fbBotRunning = false;
@@ -2067,6 +2068,7 @@ app.put('/api/admin/fb-bot', requireAdmin, async (req, res) => {
     sources, keywords,
     perSource: Math.min(50, Math.max(1, Math.round(Number(b.perSource) || FBBOT_DEFAULT.perSource))),
     publish: b.publish === 'live' ? 'live' : 'pending',
+    photoPosts: b.photoPosts !== false,
   };
   if (!(await saveFbBot())) return res.status(500).json({ error: 'Kaydedilemedi' });
   res.json({ settings: s.settings });
@@ -2090,7 +2092,7 @@ function fbBotCleanText(text) {
 
 async function runFbBot() {
   const s = await getFbBot();
-  const { sources, keywords, perSource, publish } = s.settings;
+  const { sources, keywords, perSource, publish, photoPosts } = s.settings;
   const token = await getApifyToken();
   const log = [];
   const run = { at: new Date().toISOString(), status: 'running', read: 0, matched: 0, added: 0, skipped: 0, log };
@@ -2121,16 +2123,27 @@ async function runFbBot() {
       run.read++;
       const url = String(item.url || item.facebookUrl || '').split('?')[0];
       const key = item.postId || url;
-      const text = fbBotCleanText(item.text || item.message || '');
+      let text = fbBotCleanText(item.text || item.message || '');
       if (!key || seen.has(key) || known.has(url)) { run.skipped++; continue; }
       seen.add(key);
       const low = trLower(text);
-      if (text.length < 15 || !keywords.some(k => low.includes(k))) { run.skipped++; continue; }
+      const photos = fbPostImages(item);
+      const hasPhone = (text.replace(/\D/g, '').match(/0?5\d{9}/) || []).length > 0;
+      const keywordHit = text.length >= 15 && keywords.some(k => low.includes(k));
+      // Grupta çoğu ilan sadece fotoğraf + telefon: ayar açıksa bunlar da alınır
+      const photoHit = photoPosts && photos.length > 0 && hasPhone;
+      if (!keywordHit && !photoHit) { run.skipped++; continue; }
+      if (!keywordHit) {
+        const who = (item.user && item.user.name) || '';
+        text = `📸 Hal ilanı${who ? ` · ${who}` : ''}
+${text}`;
+      }
       run.matched++;
       const images = [];
-      for (const u of fbPostImages(item).slice(0, 5)) {
+      for (const u of photos.slice(0, 5)) {
         try { images.push(await importFbImage(u)); } catch {}
       }
+      if (!keywordHit && !images.length) { run.skipped++; continue; }
       const ad = cleanAd({ body: text, images });
       if (!ad.title) { run.skipped++; continue; }
       newAds.push({
