@@ -66,7 +66,7 @@ const CATEGORY_ICONS = {
   'Kuru Gıda': '🏪',
   'Balık': '🐟',
   'Et & Tavuk': '🥩',
-  'Genel': '📦',
+  'Genel': '📍',
 };
 
 // Mersin Hal Kompleksi merkezi koordinatları
