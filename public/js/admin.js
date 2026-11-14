@@ -539,6 +539,7 @@ const sectionTitles = {
   appPromo:  'Uygulama İndirme',
   trends:    'Gündem Şeridi',
   survey:    'Memnuniyet Anketi',
+  fbBot:     'İlan Botu',
   promo:    'WhatsApp Reklam',
   engage:    'Kalma Süresi',
   audit:     'Raporlar',
@@ -578,6 +579,8 @@ function showSection(name) {
     loadTrendSetting();
   } else if (name === 'survey') {
     loadSurvey();
+  } else if (name === 'fbBot') {
+    loadFbBot();
   } else if (name === 'promo') {
     loadPromo();
   } else if (name === 'engage') {
@@ -836,6 +839,65 @@ async function loadSponsor() {
   } catch {
     showToast('Sponsor ayarı okunamadı', 'error');
   }
+}
+
+// ── Facebook ilan botu ────────────────────────────────────────
+let fbBotPoll = null;
+function renderFbBotStatus(d) {
+  const box = document.getElementById('fbBotStatus');
+  const r = d.lastRun;
+  const btn = document.getElementById('fbBotRunBtn');
+  btn.disabled = !!d.running;
+  btn.textContent = d.running ? '⏳ Çalışıyor...' : '▶ Çalıştır';
+  let html = d.apify ? '' : '<p style="color:#fbbf24">⚠️ Apify anahtarı kayıtlı değil. İlanlar → Facebook kutusundan kaydedin.</p>';
+  if (d.running) html += '<p><b>⏳ Bot çalışıyor.</b> Gönderiler okunuyor, birkaç dakika sürebilir. Bu sayfa kendiliğinden yenilenir.</p>';
+  if (r) {
+    html += `<div style="padding:14px;border-radius:12px;border:1px solid rgba(148,163,184,.3)">
+      <b>Son çalışma:</b> ${esc(new Date(r.at).toLocaleString('tr-TR'))}<br>
+      📖 ${r.read} gönderi okundu · 🥬 ${r.matched} uygun · ✅ <b>${r.added} ilan eklendi</b> · ⏭ ${r.skipped} atlandı
+      ${(r.log || []).map(l => `<div style="font-size:13px;margin-top:6px">${esc(l)}</div>`).join('')}
+    </div>`;
+    if (r.added && d.settings.publish === 'pending') html += '<p style="margin-top:10px">Eklenen ilanlar <b>İlanlar</b> bölümünde "Onay bekliyor" olarak duruyor.</p>';
+  } else if (!d.running) html += '<p style="opacity:.75">Bot henüz hiç çalıştırılmadı.</p>';
+  box.innerHTML = html;
+  clearTimeout(fbBotPoll);
+  if (d.running) fbBotPoll = setTimeout(loadFbBot, 5000);
+}
+async function loadFbBot() {
+  const res = await api('/api/admin/fb-bot');
+  if (!res || !res.ok) return;
+  const d = await res.json();
+  if (document.activeElement?.id?.startsWith('fbBot') !== true) {
+    document.getElementById('fbBotSources').value = (d.settings.sources || []).join('\n');
+    document.getElementById('fbBotKeywords').value = (d.settings.keywords || []).join(', ');
+    document.getElementById('fbBotPerSource').value = d.settings.perSource;
+    document.getElementById('fbBotPublish').value = d.settings.publish;
+  }
+  renderFbBotStatus(d);
+}
+async function saveFbBot(event) {
+  if (event) event.preventDefault();
+  const body = {
+    sources: document.getElementById('fbBotSources').value,
+    keywords: document.getElementById('fbBotKeywords').value,
+    perSource: Number(document.getElementById('fbBotPerSource').value),
+    publish: document.getElementById('fbBotPublish').value,
+  };
+  const res = await api('/api/admin/fb-bot', { method: 'PUT', body: JSON.stringify(body) });
+  if (!res) return false;
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) { showToast(d.error || 'Kaydedilemedi', 'error'); return false; }
+  if (event) showToast('Bot ayarları kaydedildi', 'success');
+  return true;
+}
+async function runFbBot() {
+  if (!(await saveFbBot())) return;
+  const res = await api('/api/admin/fb-bot/run', { method: 'POST' });
+  if (!res) return;
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) { showToast(d.error || 'Bot başlatılamadı', 'error'); return; }
+  showToast('🤖 Bot çalışmaya başladı', 'success');
+  loadFbBot();
 }
 
 // ── Memnuniyet anketi ─────────────────────────────────────────

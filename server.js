@@ -2030,6 +2030,136 @@ app.post('/api/admin/ads/from-facebook', requireAdmin, async (req, res) => {
   res.json({ text, images, failed, source: item.url || link.href, author: (item.user && item.user.name) || '' });
 });
 
+// ── Facebook ilan botu: yönetimden "Çalıştır" denince seçili Facebook sayfa/gruplarındaki
+// sebze-meyve gönderilerini okur (Apify), daha önce eklenmeyenleri ilan olarak ekler.
+const FBBOT_FILE = 'fb-bot.json';
+const FBBOT_DEFAULT = {
+  sources: ['https://www.facebook.com/groups/mersinhal'],
+  keywords: ['sebze', 'meyve', 'domates', 'biber', 'salatalık', 'patlıcan', 'kabak', 'fasulye', 'limon', 'portakal', 'mandalina',
+    'greyfurt', 'muz', 'çilek', 'karpuz', 'kavun', 'üzüm', 'elma', 'armut', 'nar', 'patates', 'soğan', 'lahana', 'marul',
+    'maydanoz', 'roka', 'enginar', 'brokoli', 'karnabahar', 'havuç', 'ıspanak', 'kiraz', 'kayısı', 'şeftali', 'erik', 'avokado', 'hurma', 'ton', 'kasa'],
+  perSource: 15,
+  publish: 'pending',   // 'pending' = onay bekler, 'live' = hemen yayınlanır
+};
+let fbBotState = null;   // { settings, seen: [], lastRun }
+let fbBotRunning = false;
+async function getFbBot() {
+  if (!fbBotState) {
+    const saved = (await db.getPrivateJson(FBBOT_FILE)) || {};
+    fbBotState = { settings: { ...FBBOT_DEFAULT, ...(saved.settings || {}) }, seen: saved.seen || [], lastRun: saved.lastRun || null };
+  }
+  return fbBotState;
+}
+const saveFbBot = () => db.savePrivateJson(FBBOT_FILE, fbBotState);
+
+app.get('/api/admin/fb-bot', requireAdmin, async (req, res) => {
+  const s = await getFbBot();
+  res.json({ settings: s.settings, lastRun: s.lastRun, running: fbBotRunning, apify: !!(await getApifyToken()) });
+});
+app.put('/api/admin/fb-bot', requireAdmin, async (req, res) => {
+  const s = await getFbBot();
+  const b = req.body || {};
+  const sources = (Array.isArray(b.sources) ? b.sources : String(b.sources || '').split(/\n+/))
+    .map(x => String(x).trim()).filter(x => /^https:\/\/([^/]+\.)?facebook\.com\//i.test(x)).slice(0, 15);
+  const keywords = (Array.isArray(b.keywords) ? b.keywords : String(b.keywords || '').split(/[,\n]+/))
+    .map(x => trLower(x).trim()).filter(x => x.length >= 2).slice(0, 120);
+  s.settings = {
+    sources, keywords,
+    perSource: Math.min(50, Math.max(1, Math.round(Number(b.perSource) || FBBOT_DEFAULT.perSource))),
+    publish: b.publish === 'live' ? 'live' : 'pending',
+  };
+  if (!(await saveFbBot())) return res.status(500).json({ error: 'Kaydedilemedi' });
+  res.json({ settings: s.settings });
+});
+app.post('/api/admin/fb-bot/run', requireAdmin, async (req, res) => {
+  if (fbBotRunning) return res.status(409).json({ error: 'Bot zaten çalışıyor' });
+  const s = await getFbBot();
+  if (!s.settings.sources.length) return res.status(400).json({ error: 'Önce en az bir Facebook sayfa ya da grup linki ekleyin' });
+  if (!(await getApifyToken())) return res.status(400).json({ error: 'Önce Apify anahtarını kaydedin (İlanlar → Facebook kutusu)' });
+  fbBotRunning = true;
+  res.status(202).json({ started: true });
+  runFbBot().catch(err => console.error('İlan botu hatası:', err.message)).finally(() => { fbBotRunning = false; });
+});
+
+function fbBotCleanText(text) {
+  return String(text || '').replace(/\r/g, '')
+    .split('\n').map(l => l.replace(/\s+/g, ' ').trim())
+    .filter(l => l && !/^(… )?(daha fazla gör|see more|beğen|yorum yap|paylaş)$/i.test(l))
+    .join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+async function runFbBot() {
+  const s = await getFbBot();
+  const { sources, keywords, perSource, publish } = s.settings;
+  const token = await getApifyToken();
+  const log = [];
+  const run = { at: new Date().toISOString(), status: 'running', read: 0, matched: 0, added: 0, skipped: 0, log };
+  s.lastRun = run;
+  const seen = new Set(s.seen);
+  const ads = await db.getAds();
+  const known = new Set(ads.map(a => a.source && a.source.url).filter(Boolean));
+  const newAds = [];
+  for (const source of sources) {
+    const isGroup = /\/groups\//i.test(source);
+    const actor = isGroup ? 'apify~facebook-groups-scraper' : 'apify~facebook-posts-scraper';
+    let items = [];
+    try {
+      const r = await fetch(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=280`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startUrls: [{ url: source }], resultsLimit: perSource, viewOption: 'CHRONOLOGICAL' }),
+        signal: AbortSignal.timeout(300000),
+      });
+      items = await r.json().catch(() => []);
+      if (!r.ok || !Array.isArray(items)) { log.push(`❌ ${source}: okunamadı (${r.status})`); continue; }
+    } catch (err) {
+      log.push(`❌ ${source}: ${err.message}`);
+      continue;
+    }
+    let srcAdded = 0;
+    for (const item of items) {
+      if (!item || item.error) continue;
+      run.read++;
+      const url = String(item.url || item.facebookUrl || '').split('?')[0];
+      const key = item.postId || url;
+      const text = fbBotCleanText(item.text || item.message || '');
+      if (!key || seen.has(key) || known.has(url)) { run.skipped++; continue; }
+      seen.add(key);
+      const low = trLower(text);
+      if (text.length < 15 || !keywords.some(k => low.includes(k))) { run.skipped++; continue; }
+      run.matched++;
+      const images = [];
+      for (const u of fbPostImages(item).slice(0, 5)) {
+        try { images.push(await importFbImage(u)); } catch {}
+      }
+      const ad = cleanAd({ body: text, images });
+      if (!ad.title) { run.skipped++; continue; }
+      newAds.push({
+        id: crypto.randomUUID(), ...ad, featured: false, active: true,
+        ...(publish === 'pending' ? { pending: true } : {}),
+        created_at: new Date().toISOString(),
+        source: { type: 'facebook', url, author: (item.user && item.user.name) || '', bot: true },
+      });
+      srcAdded++;
+    }
+    log.push(`✅ ${source}: ${items.length} gönderi okundu, ${srcAdded} ilan eklendi`);
+  }
+  if (newAds.length) {
+    const fresh = await db.getAds();
+    if (!(await db.saveAds([...newAds, ...fresh]))) {
+      log.push('❌ İlanlar kaydedilemedi');
+      run.status = 'error';
+    } else if (publish === 'live') {
+      newAds.forEach(ad => { void notifyAdAlerts(ad); });
+    }
+  }
+  run.added = newAds.length;
+  if (run.status === 'running') run.status = 'done';
+  run.finishedAt = new Date().toISOString();
+  s.seen = [...seen].slice(-3000);
+  await saveFbBot();
+  sendTelegram(`🤖 <b>İlan botu bitti</b>\n📖 ${run.read} gönderi okundu · ✅ ${run.added} ilan eklendi${publish === 'pending' && run.added ? ' (onay bekliyor)' : ''}`).catch(() => {});
+}
+
 app.post('/api/admin/ads', requireAdmin, async (req, res) => {
   const ad = cleanAd(req.body);
   if (!ad.title && !ad.body && !ad.images.length && !ad.video) {

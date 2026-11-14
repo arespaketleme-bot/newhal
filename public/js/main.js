@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const total = (urlParams.get('points') === '100' ? 100 : 0) + welcome;
     const points = total ? ` ${welcome ? '🎁 Hoş geldin hediyesiyle birlikte ' : ''}${total} Para Puan kazandın!` : '';
     localStorage.removeItem('newhalReferralCode');
-    setTimeout(() => showToast(`✅ Başarıyla giriş yapıldı. Hoş geldin, ${name}!${points}`, 'success'), 500);
+    setTimeout(() => showWelcomeCard({ name, points: total, isNew: welcome > 0 }), 500);
   } else if (urlParams.get('error') === 'google_auth_failed') {
     showToast('❌ Google ile giriş tamamlanamadı. Lütfen bir kez daha deneyin.', 'error');
     window.history.replaceState({}, document.title, window.location.pathname);
@@ -3873,6 +3873,32 @@ function setAuthTab(tab) {
   document.getElementById(login ? 'loginPhone' : 'registerName').focus();
 }
 
+// Giriş/üyelik sonrası şık karşılama kartı (birkaç saniye sonra kendiliğinden kapanır)
+function showWelcomeCard({ name, points = 0, isNew = false, extra = '' }) {
+  document.getElementById('welcomeCard')?.remove();
+  const first = String(name || '').trim().split(/\s+/)[0] || 'Hoş geldin';
+  const card = document.createElement('div');
+  card.id = 'welcomeCard';
+  card.className = 'welcome-card';
+  card.setAttribute('role', 'status');
+  const hour = Number(new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Europe/Istanbul' }));
+  const greet = hour < 11 ? 'Günaydın' : hour < 18 ? 'İyi günler' : 'İyi akşamlar';
+  card.innerHTML = `
+    <div class="wc-avatar">${escHtml(first.charAt(0).toLocaleUpperCase('tr-TR'))}</div>
+    <div class="wc-text">
+      <strong>${isNew ? '🎉 Aramıza hoş geldin' : `${greet}`}, ${escHtml(first)}!</strong>
+      <span>${isNew ? 'Hesabın açıldı. Artık ilan verebilir, esnafla mesajlaşabilirsin.' : 'Başarıyla giriş yaptın.'}</span>
+      ${points ? `<em class="wc-points">💰 +${Number(points).toLocaleString('tr-TR')} Para Puan kazandın</em>` : ''}
+      ${extra ? `<small>${escHtml(extra)}</small>` : ''}
+    </div>
+    <button type="button" class="wc-close" aria-label="Kapat">✕</button>
+    <div class="wc-bar"></div>`;
+  const close = () => { card.classList.add('out'); setTimeout(() => card.remove(), 350); };
+  card.querySelector('.wc-close').onclick = close;
+  document.body.appendChild(card);
+  setTimeout(close, points ? 6500 : 4500);
+}
+
 function onLoggedIn({ token, name, pointsAwarded, referralAwarded, welcomeBonus }, message) {
   logEvent(/açıldı/.test(message || '') ? 'Yeni üye oldu' : 'Üye girişi yaptı');
   localStorage.setItem('userToken', token);
@@ -3883,7 +3909,7 @@ function onLoggedIn({ token, name, pointsAwarded, referralAwarded, welcomeBonus 
   const totalPoints = (pointsAwarded ? 100 : 0) + (Number(welcomeBonus) || 0);
   const reward = totalPoints ? ` ${welcomeBonus ? '🎁 Hoş geldin hediyesiyle birlikte ' : ''}${totalPoints} Para Puan kazandın!` : '';
   const referral = referralAwarded ? ' Davet bağlantısıyla kayıt olduğun için davet eden kişi 100 Para Puan kazandı.' : '';
-  showToast(message + reward + referral, 'success');
+  showWelcomeCard({ name, points: totalPoints, isNew: /açıldı/.test(message || ''), extra: referral.trim() });
   loadMyClaims();
   loadPins();
   refreshMessageBadges();

@@ -98,6 +98,10 @@
           İlanlar
           <span class="nav-badge" id="adsBadge" style="background:#f59e0b;"></span>
         </button>
+        <button class="nav-item" id="navFbBot" onclick="showSection('fbBot')">
+          <span aria-hidden="true">🤖</span>
+          İlan Botu
+        </button>
         <button class="nav-item" id="navSponsor" onclick="showSection('sponsor')">
           <span aria-hidden="true">📣</span>
           Sponsorlu Reklam
@@ -766,6 +770,42 @@
         .pin-vitrin.on { color:#fbbf24; font-weight:700; }
         .pin-vitrin.on button { background:rgba(148,163,184,.2); color:inherit; }
       </style>
+      <section class="section" id="sectionFbBot">
+        <div class="section-head">
+          <div>
+            <h1>🤖 İlan Botu</h1>
+            <p>"Çalıştır"a basınca aşağıdaki Facebook sayfa ve gruplarındaki son gönderileri okur; sebze-meyve ile ilgili olanları, daha önce eklenmediyse resimleriyle ilan olarak ekler.</p>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+          <form onsubmit="saveFbBot(event)" style="display:flex;flex-direction:column;gap:14px;flex:1 1 360px;max-width:560px">
+            <label style="display:flex;flex-direction:column;gap:6px"><b>Facebook sayfa ve grup linkleri</b>
+              <textarea id="fbBotSources" rows="4" placeholder="https://www.facebook.com/groups/mersinhal" style="padding:10px 12px;border-radius:10px;font:inherit"></textarea>
+              <small style="opacity:.75">Her satıra bir link. Sadece herkese açık sayfa ve gruplar okunabilir.</small>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px"><b>Anahtar kelimeler</b>
+              <textarea id="fbBotKeywords" rows="4" style="padding:10px 12px;border-radius:10px;font:inherit"></textarea>
+              <small style="opacity:.75">Virgülle ayırın. Gönderide bu kelimelerden biri geçerse ilan olur.</small>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px"><b>Her kaynaktan en fazla kaç gönderi okunsun?</b>
+              <input type="number" id="fbBotPerSource" min="1" max="50" style="padding:10px 12px;border-radius:10px;font:inherit;max-width:140px" />
+              <small style="opacity:.75">Her gönderi yaklaşık 25 kuruş (Apify).</small>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px"><b>Eklenen ilanlar</b>
+              <select id="fbBotPublish" style="padding:10px 12px;border-radius:10px;font:inherit;max-width:320px">
+                <option value="pending">Onay beklesin (İlanlar bölümünden yayınlarım)</option>
+                <option value="live">Hemen yayınlansın</option>
+              </select>
+            </label>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button type="submit" class="btn-sm">💾 Ayarları Kaydet</button>
+              <button type="button" class="btn-sm btn-approve" id="fbBotRunBtn" onclick="runFbBot()">▶ Çalıştır</button>
+            </div>
+          </form>
+          <div style="flex:1 1 300px;min-width:0" id="fbBotStatus"></div>
+        </div>
+      </section>
+
       <section class="section" id="sectionSurvey">
         <div class="section-head">
           <div>
