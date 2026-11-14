@@ -30,7 +30,7 @@ function cleanName(input) {
   return name.split(' ').filter(w => /\p{L}/u.test(w)).length >= 2 ? name : null;
 }
 
-module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET, requireAuth, getIp, notifyNewMember }) {
+module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET, requireAuth, getIp, notifyNewMember, awardEconomyPoints }) {
   // Gizli depodaki iki dosya, okunduktan sonra bellekte tutulur
   const stores = {};
   async function load(file) {
@@ -117,9 +117,13 @@ module.exports = function registerAccounts(app, { db, supabase, jwt, JWT_SECRET,
     }
     const pointsAwarded = await awardDailyLogin(user.id);
     const referralAwarded = await awardReferral(user.id, req.body.referralCode);
+    // Hoş geldin hediyesi: yeni üyeye bir kez Para Puan
+    const welcomeBonus = awardEconomyPoints
+      ? (await awardEconomyPoints(user.id, 'welcome_bonus', `welcome:${user.id}`).catch(() => ({ amount: 0 }))).amount
+      : 0;
     tries.push(Date.now());
     registers.set(ip, tries);
-    res.status(201).json({ token: signToken(user), name: user.name, pointsAwarded, referralAwarded });
+    res.status(201).json({ token: signToken(user), name: user.name, pointsAwarded, referralAwarded, welcomeBonus });
     if (notifyNewMember) {
       notifyNewMember(user).catch(err => console.error('Yeni üye Telegram bildirimi gönderilemedi:', err.message));
     }

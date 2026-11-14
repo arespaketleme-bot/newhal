@@ -1717,6 +1717,9 @@ body.has-trends .map-panel.map-fullscreen { top: calc(var(--trend-h) + env(safe-
 @media (prefers-reduced-motion: reduce) { .app-promo { animation: none; } .app-promo-btn:hover { transform: none; } }
 
 /* Üyelik avantajları ve davet kartı */
+.auth-gift { margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; text-align: center; font-weight: 700; font-size: 14px;
+  color: #1c1003; background: linear-gradient(135deg, #fde68a, #f59e0b); box-shadow: 0 6px 18px rgba(245,158,11,0.35); }
+.auth-gift[hidden] { display: none; }
 .auth-perks { list-style: none; margin: 0 0 18px; padding: 12px; display: grid; gap: 8px; border-radius: 14px;
   background: linear-gradient(160deg, rgba(16,185,129,0.12), rgba(251,191,36,0.06)); border: 1px solid rgba(16,185,129,0.3); }
 .auth-perks li { display: grid; grid-template-columns: 28px 1fr; column-gap: 8px; align-items: center; text-align: left; }

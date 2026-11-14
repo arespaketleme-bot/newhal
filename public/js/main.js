@@ -90,7 +90,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     window.history.replaceState({}, document.title, window.location.pathname);
-    const points = urlParams.get('points') === '100' ? ' 100 Para Puan kazandın!' : '';
+    const welcome = Number(urlParams.get('welcome')) || 0;
+    const total = (urlParams.get('points') === '100' ? 100 : 0) + welcome;
+    const points = total ? ` ${welcome ? '🎁 Hoş geldin hediyesiyle birlikte ' : ''}${total} Para Puan kazandın!` : '';
     localStorage.removeItem('newhalReferralCode');
     setTimeout(() => showToast(`✅ Başarıyla giriş yapıldı. Hoş geldin, ${name}!${points}`, 'success'), 500);
   } else if (urlParams.get('error') === 'google_auth_failed') {
@@ -3018,6 +3020,18 @@ function renderAdAlertWords(max = 10) {
   });
 }
 
+// Hoş geldin hediyesi miktarı: giriş penceresinde ve davet kartında duyurulur
+let welcomeGiftPoints = 0;
+fetch('/api/welcome-bonus').then(r => r.ok ? r.json() : null).then(d => {
+  if (!d) return;
+  welcomeGiftPoints = (Number(d.amount) || 0) + (Number(d.daily) || 0);
+  if (!welcomeGiftPoints) return;
+  const box = document.getElementById('authGift');
+  if (box) { document.getElementById('authGiftPoints').textContent = welcomeGiftPoints; box.hidden = false; }
+  const t = document.querySelector('#joinNudge .join-nudge-text b');
+  if (t) t.textContent = `🎁 Üye olun, ${welcomeGiftPoints} Para Puan hediye`;
+}).catch(() => {});
+
 // Üye olmayanlara ilanların üstünde küçük bir davet kartı (kapatılırsa 3 gün çıkmaz)
 function renderJoinNudge() {
   if (readToken('userToken') || document.getElementById('joinNudge')) return;
@@ -3025,7 +3039,7 @@ function renderJoinNudge() {
   const card = document.createElement('div');
   card.id = 'joinNudge';
   card.className = 'join-nudge';
-  card.innerHTML = `<div class="join-nudge-text"><b>🎁 Ücretsiz üye olun</b><span>İlan verin, aradığınız ürün gelince haber alın, esnafla mesajlaşın, Para Puan kazanın.</span></div>
+  card.innerHTML = `<div class="join-nudge-text"><b>${welcomeGiftPoints ? `🎁 Üye olun, ${welcomeGiftPoints} Para Puan hediye` : '🎁 Ücretsiz üye olun'}</b><span>İlan verin, aradığınız ürün gelince haber alın, esnafla mesajlaşın, Para Puan kazanın.</span></div>
     <button type="button" class="join-nudge-btn">Hemen Üye Ol</button>
     <button type="button" class="join-nudge-close" aria-label="Kapat">✕</button>`;
   card.querySelector('.join-nudge-btn').onclick = () => { openAuthModal(); setAuthTab('register'); };
@@ -3771,14 +3785,15 @@ function setAuthTab(tab) {
   document.getElementById(login ? 'loginPhone' : 'registerName').focus();
 }
 
-function onLoggedIn({ token, name, pointsAwarded, referralAwarded }, message) {
+function onLoggedIn({ token, name, pointsAwarded, referralAwarded, welcomeBonus }, message) {
   logEvent(/açıldı/.test(message || '') ? 'Yeni üye oldu' : 'Üye girişi yaptı');
   localStorage.setItem('userToken', token);
   localStorage.setItem('userName', name);
   updateAuthUI(name);
   closeAuthModal();
   localStorage.removeItem('newhalReferralCode');
-  const reward = pointsAwarded ? ' 100 Para Puan kazandın!' : '';
+  const totalPoints = (pointsAwarded ? 100 : 0) + (Number(welcomeBonus) || 0);
+  const reward = totalPoints ? ` ${welcomeBonus ? '🎁 Hoş geldin hediyesiyle birlikte ' : ''}${totalPoints} Para Puan kazandın!` : '';
   const referral = referralAwarded ? ' Davet bağlantısıyla kayıt olduğun için davet eden kişi 100 Para Puan kazandı.' : '';
   showToast(message + reward + referral, 'success');
   loadMyClaims();

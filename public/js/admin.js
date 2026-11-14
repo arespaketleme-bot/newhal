@@ -153,6 +153,7 @@ async function loadEconomyRules() {
   if (!res || !res.ok) return;
   try {
     const rules = await readApiJson(res, 'Ekonomi ayarları şu an yüklenemedi. Lütfen tekrar deneyin.');
+    document.getElementById('economyWelcomeBonus').value = Number(rules.welcomeBonus) || 0;
     document.getElementById('economyAdCreated').value = Number(rules.adCreated) || 0;
     document.getElementById('economyAdLike').value = Number(rules.adLike) || 0;
     document.getElementById('economyAdComment').value = Number(rules.adComment) || 0;
@@ -167,6 +168,7 @@ async function loadEconomyRules() {
 async function saveEconomyRules(event) {
   event.preventDefault();
   const payload = {
+    welcomeBonus: Number(document.getElementById('economyWelcomeBonus').value),
     adCreated: Number(document.getElementById('economyAdCreated').value),
     adLike: Number(document.getElementById('economyAdLike').value),
     adComment: Number(document.getElementById('economyAdComment').value),

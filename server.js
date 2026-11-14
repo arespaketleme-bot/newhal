@@ -377,10 +377,12 @@ app.get('/auth/google/callback',
       JWT_SECRET,
       { expiresIn: '7d' }
     );
+    let welcomeBonus = 0;
     if (req.user._newhalCreated) {
+      welcomeBonus = (await awardEconomyPoints(req.user.id, 'welcome_bonus', `welcome:${req.user.id}`)).amount;
       notifyNewMember(req.user).catch(err => console.error('Yeni üye Telegram bildirimi gönderilemedi:', err.message));
     }
-    res.redirect(`/?googleAuth=success&token=${token}&name=${encodeURIComponent(req.user.name)}${pointsAwarded ? '&points=100' : ''}`);
+    res.redirect(`/?googleAuth=success&token=${token}&name=${encodeURIComponent(req.user.name)}${pointsAwarded ? '&points=100' : ''}${welcomeBonus ? `&welcome=${welcomeBonus}` : ''}`);
   }
 );
 
@@ -1590,7 +1592,7 @@ app.post('/api/ads/:id/comments', requireAuth, async (req, res) => {
 
 // ── Kullanıcı ilanları: giriş yapan herkes verebilir, hemen yayınlanır (yönetici gizleyip silebilir) ──
 const USER_MAX_ADS_PER_DAY = 10;
-const ECONOMY_DEFAULTS = Object.freeze({ adCreated: 25, followGiven: 5, followedReceived: 10, adLike: 2, adComment: 5 });
+const ECONOMY_DEFAULTS = Object.freeze({ adCreated: 25, followGiven: 5, followedReceived: 10, adLike: 2, adComment: 5, welcomeBonus: 50 });
 let economyRulesCache = null;
 let economyRulesCacheAt = 0;
 
@@ -1611,7 +1613,7 @@ async function getEconomyRules() {
 }
 
 async function awardEconomyPoints(userId, reason, idempotencyKey) {
-  const ruleForReason = { ad_created: 'adCreated', follow_given: 'followGiven', followed_received: 'followedReceived', ad_like: 'adLike', ad_comment: 'adComment' };
+  const ruleForReason = { ad_created: 'adCreated', follow_given: 'followGiven', followed_received: 'followedReceived', ad_like: 'adLike', ad_comment: 'adComment', welcome_bonus: 'welcomeBonus' };
   const amount = (await getEconomyRules())[ruleForReason[reason]] || 0;
   if (!amount) return { awarded: false, amount: 0 };
   // Mevcut Para Puan muhasebe şemasıyla uyumlu kalır; ödül kaynağı denetim alanında korunur.
@@ -1626,13 +1628,19 @@ async function awardEconomyPoints(userId, reason, idempotencyKey) {
 }
 
 app.get('/api/admin/economy-rules', requireAdmin, async (req, res) => res.json(await getEconomyRules()));
+// Herkese açık: giriş penceresindeki "hoş geldin hediyesi" yazısı için
+app.get('/api/welcome-bonus', async (req, res) => {
+  res.set('Cache-Control', 'public, max-age=300');
+  try { res.json({ amount: (await getEconomyRules()).welcomeBonus || 0, daily: 100 }); } catch { res.json({ amount: 0, daily: 100 }); }
+});
 app.put('/api/admin/economy-rules', requireAdmin, async (req, res) => {
-  const rules = normalizeEconomyRules(req.body);
+  if (req.body && req.body.welcomeBonus === undefined) req.body.welcomeBonus = (await getEconomyRules()).welcomeBonus;
   for (const key of Object.keys(ECONOMY_DEFAULTS)) {
     if (!Number.isInteger(Number(req.body && req.body[key])) || Number(req.body[key]) < 0 || Number(req.body[key]) > 100000) {
       return res.status(400).json({ error: 'Her ekonomi kuralı 0 ile 100.000 arasında tam sayı olmalı' });
     }
   }
+  const rules = normalizeEconomyRules(req.body);
   if (!(await db.savePrivateJson('economy-rules.json', rules))) return res.status(500).json({ error: 'Ekonomi kuralları kaydedilemedi' });
   economyRulesCache = rules; economyRulesCacheAt = Date.now();
   res.json(rules);
@@ -2988,7 +2996,7 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
 });
 
 // ── Telefon + şifre ile hesap ve kullanıcı profilleri ──
-const accounts = require('./accounts')(app, { db, supabase: db.supabase, jwt, JWT_SECRET, requireAuth, getIp, notifyNewMember });
+const accounts = require('./accounts')(app, { db, supabase: db.supabase, jwt, JWT_SECRET, requireAuth, getIp, notifyNewMember, awardEconomyPoints });
 require('./social')(app, {
   supabase: db.supabase, jwt, JWT_SECRET, requireAuth, sendBrowserPush,
   sendNotificationEmail: emailNotifications.sendNotificationEmail, awardEconomyPoints,
