@@ -859,6 +859,14 @@ function renderFbBotStatus(d) {
     </div>`;
     if (r.added && d.settings.publish === 'pending') html += '<p style="margin-top:10px">Eklenen ilanlar <b>İlanlar</b> bölümünde "Onay bekliyor" olarak duruyor.</p>';
   } else if (!d.running) html += '<p style="opacity:.75">Bot henüz hiç çalıştırılmadı.</p>';
+  const past = (d.history || []).filter(h => !(r && h.at === r.at));
+  if (past.length) {
+    html += `<details style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">📜 Eski çalışmalar (${past.length})</summary>` +
+      past.map(h => `<details style="margin-top:8px;padding:10px 12px;border-radius:10px;border:1px solid rgba(148,163,184,.25)">
+        <summary style="cursor:pointer">${esc(new Date(h.at).toLocaleString('tr-TR'))} · 📖 ${h.read} · ✅ ${h.added} ilan · ⏭ ${h.skipped}${h.status === 'error' ? ' · ❌' : ''}</summary>
+        ${(h.log || []).length ? h.log.map(l => `<div style="font-size:13px;margin-top:6px">${esc(l)}</div>`).join('') : '<div style="font-size:13px;margin-top:6px;opacity:.7">Not yok.</div>'}
+      </details>`).join('') + '</details>';
+  }
   box.innerHTML = html;
   clearTimeout(fbBotPoll);
   if (d.running) fbBotPoll = setTimeout(loadFbBot, 5000);

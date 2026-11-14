@@ -2048,7 +2048,7 @@ let fbBotRunning = false;
 async function getFbBot() {
   if (!fbBotState) {
     const saved = (await db.getPrivateJson(FBBOT_FILE)) || {};
-    fbBotState = { settings: { ...FBBOT_DEFAULT, ...(saved.settings || {}) }, seen: saved.seen || [], lastRun: saved.lastRun || null };
+    fbBotState = { settings: { ...FBBOT_DEFAULT, ...(saved.settings || {}) }, seen: saved.seen || [], lastRun: saved.lastRun || null, history: saved.history || [] };
   }
   return fbBotState;
 }
@@ -2056,7 +2056,7 @@ const saveFbBot = () => db.savePrivateJson(FBBOT_FILE, fbBotState);
 
 app.get('/api/admin/fb-bot', requireAdmin, async (req, res) => {
   const s = await getFbBot();
-  res.json({ settings: s.settings, lastRun: s.lastRun, running: fbBotRunning, apify: !!(await getApifyToken()) });
+  res.json({ settings: s.settings, lastRun: s.lastRun, history: s.history || [], running: fbBotRunning, apify: !!(await getApifyToken()) });
 });
 app.put('/api/admin/fb-bot', requireAdmin, async (req, res) => {
   const s = await getFbBot();
@@ -2176,6 +2176,7 @@ ${text}`;
   if (run.status === 'running') run.status = 'done';
   run.finishedAt = new Date().toISOString();
   s.seen = [...seen].slice(-3000);
+  s.history = [run, ...(s.history || [])].slice(0, 50);
   await saveFbBot();
   sendTelegram(`🤖 <b>İlan botu bitti</b>\n📖 ${run.read} gönderi okundu · ✅ ${run.added} ilan eklendi${publish === 'pending' && run.added ? ' (onay bekliyor)' : ''}`).catch(() => {});
 }
