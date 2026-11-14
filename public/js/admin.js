@@ -1973,6 +1973,8 @@ async function loadAds() {
     document.getElementById('adStoryDays').value = Number(settings.days) || 7;
     document.getElementById('adStoryGroupSize').value = Number(settings.groupSize) || 10;
     document.getElementById('adStoryFbVitrin').checked = settings.fbVitrin === true;
+    fbPick = { all: settings.fbVitrinAll !== false, ids: new Set(settings.fbVitrinIds || []) };
+    loadFbStoryPicker();
   }
   // Onay bekleyenler en üstte
   ads.sort((a, b) => (b.pending ? 1 : 0) - (a.pending ? 1 : 0));
@@ -1991,12 +1993,51 @@ async function loadWaSentCounts() {
   document.getElementById('waSentYesterday').textContent = d.yesterday ?? 0;
 }
 
+// Vitrine çıkacak Facebook hikayelerini seçme
+let fbPick = { all: true, ids: new Set() };
+let fbPickStories = [];
+async function loadFbStoryPicker() {
+  try {
+    const r = await fetch('/api/fb-stories');
+    fbPickStories = r.ok ? ((await r.json()).stories || []) : [];
+  } catch { fbPickStories = []; }
+  renderFbStoryPicker();
+}
+function renderFbStoryPicker() {
+  const box = document.getElementById('fbStoryPicker');
+  if (!box) return;
+  if (!document.getElementById('adStoryFbVitrin').checked) { box.innerHTML = ''; return; }
+  if (!fbPickStories.length) { box.innerHTML = '<small style="opacity:.75">Şu an son 24 saatte paylaşılmış Facebook hikayesi yok.</small>'; return; }
+  box.innerHTML = `<label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" ${fbPick.all ? 'checked' : ''} onchange="fbPickAll(this.checked)" /> Hepsini seç (yeni gelen hikayeler de otomatik çıkar)</label>
+    <div style="display:flex;flex-wrap:wrap;gap:10px">${fbPickStories.map(s => {
+      const on = fbPick.all || fbPick.ids.has(s.id);
+      const img = s.type === 'photo' ? s.src : s.thumb;
+      return `<label style="position:relative;width:92px;cursor:pointer;opacity:${on ? 1 : .45}">
+        <img src="${esc(img || '')}" alt="" style="width:92px;height:150px;object-fit:cover;border-radius:10px;border:3px solid ${on ? '#22c55e' : 'transparent'};display:block" />
+        <input type="checkbox" ${on ? 'checked' : ''} ${fbPick.all ? 'disabled' : ''} onchange="fbPickOne('${esc(s.id)}', this.checked)" style="position:absolute;top:6px;left:6px;width:18px;height:18px" />
+        ${s.type === 'video' ? '<span style="position:absolute;bottom:22px;right:6px;color:#fff;font-size:16px;text-shadow:0 1px 3px #000">▶</span>' : ''}
+        <small style="display:block;text-align:center;opacity:.75">${esc(new Date(s.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }))}</small>
+      </label>`;
+    }).join('')}</div>
+    <small style="opacity:.75">Seçtikten sonra Kaydet'e basın.</small>`;
+}
+function fbPickAll(on) {
+  fbPick.all = on;
+  if (!on && !fbPick.ids.size) fbPick.ids = new Set(fbPickStories.map(s => s.id));
+  renderFbStoryPicker();
+}
+function fbPickOne(id, on) {
+  if (on) fbPick.ids.add(id); else fbPick.ids.delete(id);
+  renderFbStoryPicker();
+}
 async function saveAdStorySettings() {
   const payload = {
     enabled: document.getElementById('adStoryEnabled').checked,
     days: Number(document.getElementById('adStoryDays').value),
     groupSize: Number(document.getElementById('adStoryGroupSize').value),
     fbVitrin: document.getElementById('adStoryFbVitrin').checked,
+    fbVitrinAll: fbPick.all,
+    fbVitrinIds: [...fbPick.ids],
   };
   if (!Number.isInteger(payload.days) || payload.days < 1 || payload.days > 30
     || !Number.isInteger(payload.groupSize) || payload.groupSize < 1 || payload.groupSize > 50) {

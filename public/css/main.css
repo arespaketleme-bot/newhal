@@ -2929,3 +2929,10 @@ body.profile-page-open { overflow: hidden; }
 }
 /* Bilgilerim formu: profilin diğer bölümleri bu formun dışında kalır */
 .pf-info-form { display: flex; flex-direction: column; gap: 12px; }
+
+/* İlanlarda Facebook hikaye kartı */
+.fb-story-card { cursor: pointer; position: relative; }
+.fb-story-card .ad-media { aspect-ratio: 9 / 12; object-fit: cover; width: 100%; }
+.fb-story-card-body { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; }
+.fb-story-badge { align-self: flex-start; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; color: #fff; background: linear-gradient(135deg, #1877f2, #c026d3); }
+.fb-story-card-body small { opacity: .7; }

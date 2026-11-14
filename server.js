@@ -1289,7 +1289,7 @@ const FEATURED_DEFAULT_DAYS = 7;
 const FEATURED_MAX_DAYS = 90;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const featuredDays = v => Math.min(FEATURED_MAX_DAYS, Math.max(1, Math.round(Number(v) || FEATURED_DEFAULT_DAYS)));
-const DEFAULT_AD_STORY_SETTINGS = Object.freeze({ enabled: true, days: 7, groupSize: 10, fbVitrin: false });
+const DEFAULT_AD_STORY_SETTINGS = Object.freeze({ enabled: true, days: 7, groupSize: 10, fbVitrin: false, fbVitrinAll: true, fbVitrinIds: [] });
 let adStorySettingsCache = { ...DEFAULT_AD_STORY_SETTINGS };
 let adStorySettingsCacheAt = 0;
 
@@ -1304,6 +1304,8 @@ async function getAdStorySettings() {
       days: Number.isInteger(days) && days >= 1 && days <= 30 ? days : DEFAULT_AD_STORY_SETTINGS.days,
       groupSize: Number.isInteger(groupSize) && groupSize >= 1 && groupSize <= 50 ? groupSize : DEFAULT_AD_STORY_SETTINGS.groupSize,
       fbVitrin: !!(saved && saved.fbVitrin === true),
+      fbVitrinAll: !(saved && saved.fbVitrinAll === false),
+      fbVitrinIds: Array.isArray(saved && saved.fbVitrinIds) ? saved.fbVitrinIds.map(String).slice(0, 100) : [],
     };
   } catch (err) {
     console.error('Haftalık ilan hikayesi ayarları okunamadı:', err.message);
@@ -1868,7 +1870,8 @@ app.put('/api/admin/ad-story-settings', requireAdmin, async (req, res) => {
     || !Number.isInteger(groupSize) || groupSize < 1 || groupSize > 50) {
     return res.status(400).json({ error: 'Gösterim seçimi, 1-30 gün ve grup başına 1-50 ilan girin' });
   }
-  const settings = { enabled, days, groupSize, fbVitrin: req.body.fbVitrin === true };
+  const settings = { enabled, days, groupSize, fbVitrin: req.body.fbVitrin === true, fbVitrinAll: req.body.fbVitrinAll !== false,
+    fbVitrinIds: Array.isArray(req.body.fbVitrinIds) ? req.body.fbVitrinIds.map(x => String(x).slice(0, 120)).slice(0, 100) : [] };
   if (!(await db.savePrivateJson('ad-story-settings.json', settings))) {
     return res.status(500).json({ error: 'Hikaye ayarları kaydedilemedi' });
   }

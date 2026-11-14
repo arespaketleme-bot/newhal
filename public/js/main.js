@@ -2727,6 +2727,8 @@ async function loadAds() {
         days: Math.min(30, Math.max(1, Number(settings.days) || 7)),
         groupSize: Math.min(50, Math.max(1, Number(settings.groupSize) || 10)),
         fbVitrin: settings.fbVitrin === true,
+        fbVitrinAll: settings.fbVitrinAll !== false,
+        fbVitrinIds: Array.isArray(settings.fbVitrinIds) ? settings.fbVitrinIds : [],
       };
     }
     renderAds(await res.json());
@@ -2948,6 +2950,7 @@ function renderAdsGrid() {
   adsFeedList = adsQuery ? list : [...featured, ...list];
   renderAdsTools();
   renderAdsFeedButton(adsFeedList.length);
+  if (!adsQuery) fbStories.ads.slice().reverse().forEach((s, i) => grid.appendChild(buildFbStoryCard(s, i)));
   shown.forEach(ad => grid.appendChild(buildAdCard(ad)));
   // Sponsorlu kartlar 6., 12. … sıraya (daha az ilan varsa ilki sona) girer
   insertGridSponsors(grid, shown.length);
@@ -3483,6 +3486,41 @@ function initAdsSearch() {
   });
 }
 
+// İlanlar listesinde Facebook sayfasının hikaye kartı
+function buildFbStoryCard(s) {
+  const card = document.createElement('article');
+  card.className = 'ad-card fb-story-card';
+  card.tabIndex = 0;
+  card.setAttribute('role', 'button');
+  const cover = s.images[0] || s.thumb;
+  if (cover) {
+    const img = document.createElement('img');
+    img.className = 'ad-media';
+    img.src = cover;
+    img.alt = 'Facebook hikayesi';
+    img.loading = 'lazy';
+    card.appendChild(img);
+  } else if (s.video) {
+    const v = document.createElement('video');
+    v.className = 'ad-media';
+    v.src = s.video.url; v.muted = true; v.playsInline = true; v.preload = 'metadata';
+    card.appendChild(v);
+  }
+  const body = document.createElement('div');
+  body.className = 'fb-story-card-body';
+  const badge = document.createElement('span');
+  badge.className = 'fb-story-badge';
+  badge.textContent = s.video ? '🎬 Facebook Hikayesi' : '📸 Facebook Hikayesi';
+  const t = document.createElement('small');
+  const mins = Math.max(1, Math.round((Date.now() - Date.parse(s.created_at)) / 60000));
+  t.textContent = `${(fbStories.page && fbStories.page.name) || 'NewHal'} · ${mins < 60 ? `${mins} dk` : `${Math.round(mins / 60)} saat`} önce`;
+  body.append(badge, t);
+  card.appendChild(body);
+  const open = () => openStories('fb');
+  card.addEventListener('click', open);
+  card.addEventListener('keydown', e => { if (e.key === 'Enter') open(); });
+  return card;
+}
 function buildAdCard(ad) {
   const card = document.createElement('article');
   card.className = 'ad-card';
@@ -4824,7 +4862,7 @@ async function loadFbStories() {
       })),
     };
     if (!story) renderStoryBar();
-    if (adStorySettings.fbVitrin && fbStories.ads.length && document.getElementById('adsGrid')) renderAdsGrid();
+    if (fbStories.ads.length && document.getElementById('adsGrid')) renderAdsGrid();
   } catch {}
 }
 
@@ -5233,7 +5271,8 @@ async function loadFeaturedPinsForVitrin() {
 // Yönetim açtıysa Facebook sayfasının hikayeleri vitrinde de döner
 function fbStoryVitrinSlides() {
   if (!adStorySettings.fbVitrin || !fbStories.ads.length) return [];
-  return fbStories.ads.slice().reverse().map(s => ({
+  const ids = new Set(adStorySettings.fbVitrinIds || []);
+  return fbStories.ads.filter(s => adStorySettings.fbVitrinAll !== false || ids.has(s.id)).reverse().map(s => ({
     id: `vfb-${s.id}`, fbStory: true, featured: true,
     title: (fbStories.page && fbStories.page.name) || 'Facebook hikayesi',
     body: '', images: s.images.length ? s.images : (s.thumb ? [s.thumb] : []),
