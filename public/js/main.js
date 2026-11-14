@@ -4399,6 +4399,12 @@ async function messagesRequest(url, options = {}) {
   return data;
 }
 
+// Mesajlar penceresi açık mı ya da içeriği profilin içinde mi gösteriliyor?
+function messagesVisible() {
+  return document.getElementById('messagesModal').classList.contains('open')
+    || !!(typeof pfEmbedded !== 'undefined' && pfEmbedded && pfEmbedded.key === 'messages');
+}
+
 function openMessages(partnerId = null) {
   if (!readToken('userToken')) { openAuthModal(); setAuthTab('login'); return; }
   closePublicProfile();
@@ -4408,7 +4414,7 @@ function openMessages(partnerId = null) {
   if (activeMessagePartner) loadMessageThread(activeMessagePartner);
   else loadConversations();
   messageRefreshTimer = setInterval(() => {
-    if (!document.getElementById('messagesModal').classList.contains('open')) return;
+    if (!messagesVisible()) return;
     if (activeMessagePartner) {
       if (document.activeElement?.id !== 'directMessageInput') loadMessageThread(activeMessagePartner, true);
     } else loadConversations(true);
@@ -4445,7 +4451,7 @@ async function loadConversations(silent = false) {
       badge.textContent = unread > 99 ? '99+' : String(unread || '');
       badge.hidden = !unread;
     });
-    if (activeMessagePartner || !document.getElementById('messagesModal').classList.contains('open')) return;
+    if (activeMessagePartner || !messagesVisible()) return;
     if (!conversations.length) { panel.innerHTML = '<p class="messages-state">Henüz mesajınız yok. Bir üyenin profilinden mesaj gönderebilirsiniz.</p>'; return; }
     panel.innerHTML = `<div class="conversation-list">${conversations.map(item => `
       <button type="button" class="conversation-item" onclick="loadMessageThread(${Number(item.user_id)})">
@@ -4462,7 +4468,7 @@ async function loadMessageThread(partnerId, silent = false) {
   try {
     const thread = await messagesRequest(`/api/messages/${partnerId}`);
     activeMessagePartner = Number(partnerId);
-    if (!document.getElementById('messagesModal').classList.contains('open')) return;
+    if (!messagesVisible()) return;
     const messagesHtml = thread.messages.map(message => {
       const own = Number(message.sender_id) === Number(readToken('userToken')?.payload.id);
       const at = new Date(message.created_at).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
