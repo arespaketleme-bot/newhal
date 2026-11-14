@@ -791,6 +791,18 @@
               <input type="number" id="fbBotPerSource" min="1" max="50" style="padding:10px 12px;border-radius:10px;font:inherit;max-width:140px" />
               <small style="opacity:.75">Her gönderi yaklaşık 25 kuruş (Apify).</small>
             </label>
+            <label style="display:flex;flex-direction:column;gap:6px"><b>Hangi tarihteki ilanlar alınsın?</b>
+              <select id="fbBotMaxAge" style="padding:10px 12px;border-radius:10px;font:inherit;max-width:320px">
+                <option value="6">Son 6 saat</option>
+                <option value="12">Son 12 saat</option>
+                <option value="24">Son 24 saat (bugün)</option>
+                <option value="48">Son 2 gün</option>
+                <option value="72">Son 3 gün</option>
+                <option value="168">Son 1 hafta</option>
+                <option value="0">Tarih fark etmez</option>
+              </select>
+              <small style="opacity:.75">Bundan eski gönderiler atlanır.</small>
+            </label>
             <label style="display:flex;flex-direction:column;gap:6px"><b>Eklenen ilanlar</b>
               <select id="fbBotPublish" style="padding:10px 12px;border-radius:10px;font:inherit;max-width:320px">
                 <option value="pending">Onay beklesin (İlanlar bölümünden yayınlarım)</option>

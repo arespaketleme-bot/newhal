@@ -2039,6 +2039,7 @@ const FBBOT_DEFAULT = {
     'greyfurt', 'muz', 'çilek', 'karpuz', 'kavun', 'üzüm', 'elma', 'armut', 'nar', 'patates', 'soğan', 'lahana', 'marul',
     'maydanoz', 'roka', 'enginar', 'brokoli', 'karnabahar', 'havuç', 'ıspanak', 'kiraz', 'kayısı', 'şeftali', 'erik', 'avokado', 'hurma', 'ton', 'kasa'],
   perSource: 15,
+  maxAgeHours: 24,      // yalnız son X saatte paylaşılanlar (0 = sınır yok)
   publish: 'pending',   // 'pending' = onay bekler, 'live' = hemen yayınlanır
   photoPosts: true,     // yazısız ama resimli ve telefonlu gönderiler de alınır
 };
@@ -2069,6 +2070,7 @@ app.put('/api/admin/fb-bot', requireAdmin, async (req, res) => {
     perSource: Math.min(50, Math.max(1, Math.round(Number(b.perSource) || FBBOT_DEFAULT.perSource))),
     publish: b.publish === 'live' ? 'live' : 'pending',
     photoPosts: b.photoPosts !== false,
+    maxAgeHours: Math.min(720, Math.max(0, Math.round(Number(b.maxAgeHours) || 0))),
   };
   if (!(await saveFbBot())) return res.status(500).json({ error: 'Kaydedilemedi' });
   res.json({ settings: s.settings });
@@ -2093,6 +2095,8 @@ function fbBotCleanText(text) {
 async function runFbBot() {
   const s = await getFbBot();
   const { sources, keywords, perSource, publish, photoPosts } = s.settings;
+  const maxAgeHours = s.settings.maxAgeHours ?? FBBOT_DEFAULT.maxAgeHours;
+  const minTime = maxAgeHours > 0 ? Date.now() - maxAgeHours * 3600000 : 0;
   const token = await getApifyToken();
   const log = [];
   const run = { at: new Date().toISOString(), status: 'running', read: 0, matched: 0, added: 0, skipped: 0, log };
@@ -2108,7 +2112,8 @@ async function runFbBot() {
     try {
       const r = await fetch(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=280`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ startUrls: [{ url: source }], resultsLimit: perSource, viewOption: 'CHRONOLOGICAL' }),
+        body: JSON.stringify({ startUrls: [{ url: source }], resultsLimit: perSource, viewOption: 'CHRONOLOGICAL',
+          ...(minTime ? { onlyPostsNewerThan: new Date(minTime - 86400000).toISOString().slice(0, 10) } : {}) }),
         signal: AbortSignal.timeout(300000),
       });
       items = await r.json().catch(() => []);
@@ -2125,6 +2130,8 @@ async function runFbBot() {
       const key = item.postId || url;
       let text = fbBotCleanText(item.text || item.message || '');
       if (!key || seen.has(key) || known.has(url)) { run.skipped++; continue; }
+      const postTime = Date.parse(item.time || item.timestamp || item.date || '') || (Number(item.timestamp) > 1e9 ? Number(item.timestamp) * 1000 : 0);
+      if (minTime && postTime && postTime < minTime) { run.skipped++; run.old = (run.old || 0) + 1; continue; }
       seen.add(key);
       const low = trLower(text);
       const photos = fbPostImages(item);
