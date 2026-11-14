@@ -51,7 +51,9 @@ function updateAuthUI(name) {
 
 // ── State ──────────────────────────────────────────────────────
 let map, allPins = [], tempMarker = null, pendingLat = null, pendingLng = null;
-let activeFilter = 'all';
+// Sayfa açılınca sadece komisyoncular gösterilir; ziyaretçi başka kategori seçince o geçerli olur
+let activeFilter = 'Komisyoncu';
+let filterIsDefault = true;
 
 // Layer and option toggles
 let currentLayer = null;
@@ -581,7 +583,8 @@ function renderSearchResults() {
   box.innerHTML = '';
   if (!searchQuery) { box.hidden = true; return; }
 
-  const matches = searchPins(activeFilter === 'all' ? allPins : allPins.filter(p => p.category === activeFilter), searchQuery);
+  // Varsayılan seçimdeyken arama tüm işletmelerde yapılır
+  const matches = searchPins(activeFilter === 'all' || filterIsDefault ? allPins : allPins.filter(p => p.category === activeFilter), searchQuery);
   // Adı aramayla başlayanlar önce
   const q = normalizeSearch(searchQuery);
   const starts = p => normalizeSearch(p.title).startsWith(q) ? 1 : 0;
@@ -617,6 +620,13 @@ function renderSearchResults() {
 // Haritada işletmeye git ve penceresini aç
 function focusPin(id) {
   trackSearch('map', searchQuery, true);
+  // Açılmak istenen işletme seçili kategoride değilse tüm işletmeler gösterilir
+  const target = allPins.find(p => p.id === id);
+  if (target && activeFilter !== 'all' && target.category !== activeFilter) {
+    activeFilter = 'all';
+    document.querySelectorAll('.filter-btn, .map-cat-chip').forEach(b => b.classList.toggle('active', b.dataset.cat === 'all'));
+    renderPins(allPins);
+  }
   const marker = pinMarkers[id];
   document.getElementById('mapSearchResults').hidden = true;
   document.getElementById('mapSearch').blur();
@@ -660,6 +670,7 @@ function initSearch() {
 
 function filterPins(cat, btn) {
   activeFilter = cat;
+  filterIsDefault = false;
   // Haritadaki ve listedeki kategori tuşları birlikte güncellenir
   document.querySelectorAll('.filter-btn, .map-cat-chip').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
   if (btn) btn.classList.add('active');
