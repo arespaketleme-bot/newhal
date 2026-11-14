@@ -697,22 +697,18 @@
           <div class="pf-points"><span>💰 Para Puan</span><strong id="profilePointsBalance">0</strong></div>
         </header>
 
-        <!-- Hızlı işlemler -->
-        <nav class="pf-quick" aria-label="Hızlı işlemler">
+        <!-- Tek ızgara: profil bölümleri ve hızlı işlemler aynı yerde -->
+        <nav class="pf-quick" aria-label="Profil menüsü" role="tablist">
+          <button type="button" class="pf-tile pf-tab active" data-tab="ads" role="tab" onclick="setProfileTab('ads')"><span>📢</span>İlanlarım</button>
+          <button type="button" class="pf-tile pf-tab" data-tab="rewards" role="tab" onclick="setProfileTab('rewards')"><span>🎁</span>Puan & Davet</button>
+          <button type="button" class="pf-tile pf-tab" data-tab="info" role="tab" onclick="setProfileTab('info')"><span>⚙️</span>Bilgilerim</button>
+          <button type="button" class="pf-tile pf-tab" data-tab="activity" role="tab" onclick="setProfileTab('activity')"><span>🕘</span>Aktiviteler</button>
           <button type="button" class="pf-tile" onclick="openMessages()"><span>✉️</span>Mesajlar<em class="message-unread-badge" id="profileMessageUnreadBadge" hidden></em></button>
           <button type="button" class="pf-tile" onclick="closeProfileModal(); openFavorites()"><span>❤️</span>Favoriler</button>
           <button type="button" class="pf-tile" onclick="closeProfileModal(); openAdAlerts()"><span>🔔</span>İlan Takibi</button>
           <button type="button" class="pf-tile" onclick="openMemberSearch()"><span>👥</span>Üye Ara</button>
           <button type="button" class="pf-tile" onclick="openPublicProfile(myProfile && myProfile.id)"><span>👁️</span>Profilimi Gör</button>
         </nav>
-
-        <!-- Sekmeler -->
-        <div class="pf-tabs" role="tablist">
-          <button type="button" class="pf-tab active" data-tab="ads" role="tab" onclick="setProfileTab('ads')">📢 İlanlarım</button>
-          <button type="button" class="pf-tab" data-tab="rewards" role="tab" onclick="setProfileTab('rewards')">🎁 Puan & Davet</button>
-          <button type="button" class="pf-tab" data-tab="info" role="tab" onclick="setProfileTab('info')">⚙️ Bilgilerim</button>
-          <button type="button" class="pf-tab" data-tab="activity" role="tab" onclick="setProfileTab('activity')">🕘 Aktiviteler</button>
-        </div>
 
         <section class="pf-panel active" data-panel="ads">
           <div class="profile-section" id="profileShopsBox" hidden>

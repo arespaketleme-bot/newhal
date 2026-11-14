@@ -2878,3 +2878,16 @@ body.profile-page-open { overflow: hidden; }
 #profileModal .pf-panel, #profileModal .profile-section, #profileModal .profile-links { min-width: 0; max-width: 100%; }
 #profileModal .profile-link { display: block; width: 100%; max-width: 100%; box-sizing: border-box; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+
+/* Profil menüsü tek ızgara: 4 bölüm + 5 hızlı işlem aynı kutularda */
+#profileModal .pf-quick { grid-template-columns: repeat(5, 1fr); padding: 14px 16px 4px; }
+#profileModal .pf-tile.pf-tab { flex: initial; }
+#profileModal .pf-tile.pf-tab.active {
+  background: linear-gradient(135deg, #10b981, #059669); border-color: #10b981; color: #fff;
+  box-shadow: 0 6px 18px rgba(16,185,129,0.35);
+}
+#profileModal .pf-panel { padding-top: 10px; }
+@media (max-width: 520px) {
+  #profileModal .pf-quick { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  #profileModal .pf-tile { font-size: 12px; padding: 10px 4px; }
+}
