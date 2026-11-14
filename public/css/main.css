@@ -2713,3 +2713,69 @@ a.logo:hover img.logo-icon { transform: scale(1.06); }
 }
 @keyframes landingUp { from { opacity: 0; transform: translate(-50%, 16px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @media (prefers-reduced-motion: reduce) { .landing-card { animation: none; } }
+
+/* ════ Şık görünüm: sakin renkler, düzenli kartlar ve menü ════ */
+:root {
+  --text-2: #c3cfdf;            /* neon camgöbeği yerine yumuşak açık gri-mavi: okunaklı, göz yormaz */
+  --bg-card: #0f1828;
+  --border: rgba(255, 255, 255, 0.07);
+}
+body {
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(16,185,129,0.10), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(56,189,248,0.07), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+/* Üst menü: buzlu cam, ince ışık çizgisi, hap şeklinde bağlantılar */
+.header {
+  background: rgba(8, 12, 22, 0.72);
+  border-bottom: 1px solid transparent;
+  border-image: linear-gradient(90deg, transparent, rgba(16,185,129,0.45), rgba(56,189,248,0.35), transparent) 1;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+}
+.header.scrolled { background: rgba(8, 12, 22, 0.92); }
+.logo-main { letter-spacing: 0.01em; background: linear-gradient(90deg, #ffffff, #a7f3d0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.nav { gap: 6px; }
+.nav .btn-ghost {
+  position: relative; padding: 8px 14px; border-radius: 999px; font-weight: 600; color: #e2e8f0; border: 1px solid transparent;
+}
+.nav .btn-ghost:hover { background: rgba(16,185,129,0.10); border-color: rgba(16,185,129,0.30); color: #fff; }
+.nav .btn-ghost::after {
+  content: ''; position: absolute; left: 50%; bottom: 3px; width: 0; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, #34d399, #38bdf8); transform: translateX(-50%); transition: width 0.25s ease;
+}
+.nav .btn-ghost:hover::after { width: 40%; }
+.btn-primary { box-shadow: 0 6px 18px rgba(16,185,129,0.30); }
+
+/* İlan kartları: yumuşak geçişli zemin, düzenli yazı, zarif hover */
+.ad-card {
+  background: linear-gradient(180deg, #111c2e 0%, #0d1524 100%);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.ad-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(52,211,153,0.35);
+  box-shadow: 0 18px 44px rgba(0,0,0,0.38), 0 0 0 1px rgba(52,211,153,0.12), 0 0 40px rgba(16,185,129,0.10);
+}
+.ad-card .ad-media { transition: transform 0.5s ease, filter 0.3s ease; }
+.ad-card:hover img.ad-media { transform: scale(1.03); filter: saturate(1.08); }
+.ad-card > .ad-media, .ad-card > video.ad-media { border-bottom: 1px solid rgba(255,255,255,0.05); }
+.ad-body { padding: 14px 16px 16px; gap: 9px; }
+.ad-body h3 { font-family: var(--font-head); font-size: 16.5px; font-weight: 700; letter-spacing: 0.005em; color: #f8fafc; }
+.ad-body p { font-size: 14px; color: #b6c2d3; line-height: 1.6; }
+.ad-card .ad-body p { -webkit-line-clamp: 4; }
+.ad-meta { padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.08); color: #8a99ae; }
+.ad-card.text-only { border-left: 3px solid rgba(52,211,153,0.7); }
+.ad-card.is-featured { border-color: rgba(251,191,36,0.45); background: linear-gradient(180deg, #17200f 0%, #0f1626 55%); }
+
+/* Bölüm başlıkları biraz daha belirgin */
+.ads-section h2, .section-title { letter-spacing: 0.01em; }
+@media (prefers-reduced-motion: reduce) {
+  .ad-card, .ad-card .ad-media, .nav .btn-ghost::after { transition: none; }
+  .ad-card:hover, .ad-card:hover img.ad-media { transform: none; }
+}
