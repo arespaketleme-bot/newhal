@@ -624,9 +624,16 @@
       <div class="modal-header" style="flex-direction: column; align-items: stretch; border-bottom: 0; padding-bottom: 0;">
         <button class="modal-close" onclick="closeAuthModal()" style="position: absolute; right: 16px; top: 16px;">✕</button>
         <div style="text-align: center; margin-bottom: 24px;">
-          <h3 style="margin: 0 0 8px 0; color: var(--text-1);">Giriş Yap</h3>
-          <p style="margin: 0; color: var(--text-2); font-size: 14px;">Telefon numaranızla giriş yapın veya yeni hesap açın</p>
+          <h3 style="margin: 0 0 8px 0; color: var(--text-1);" id="authTitle">Ücretsiz Üye Olun</h3>
+          <p style="margin: 0; color: var(--text-2); font-size: 14px;">30 saniyede hesap açın, halin tüm imkanlarından yararlanın</p>
         </div>
+        <ul class="auth-perks" aria-label="Üyelerin avantajları">
+          <li><span>📢</span><b>Ücretsiz ilan verin</b><small>Malınızı tüm hal esnafı görsün</small></li>
+          <li><span>🔔</span><b>Aradığınız ürün gelince haber alın</b><small>İlan takibiyle fırsatı kaçırmayın</small></li>
+          <li><span>💬</span><b>Esnafla doğrudan mesajlaşın</b><small>Aracı yok, komisyon yok</small></li>
+          <li><span>🏪</span><b>Dükkanınızı sahiplenin</b><small>Bilgilerinizi ve ürünlerinizi kendiniz güncelleyin</small></li>
+          <li><span>💰</span><b>Para Puan kazanın</b><small>Her gün girişte, ilan verince ve arkadaş davet edince</small></li>
+        </ul>
   
         <div class="auth-body">
           <a href="/auth/google" class="btn-outline" id="googleAuthLink" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;font-weight:600;">

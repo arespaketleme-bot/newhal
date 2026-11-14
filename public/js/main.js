@@ -4,6 +4,8 @@
 
 // ── AUTH YARDIMCISI ──────────────────────────────
 function openAuthModal() {
+  // Hiç giriş yapmamış biri için "Hesap Aç" sekmesi öne çıkar
+  try { if (!localStorage.getItem('hasLoggedInBefore') && typeof setAuthTab === 'function') setAuthTab('register'); } catch {}
   const googleLink = document.getElementById('googleAuthLink');
   const referralCode = localStorage.getItem('newhalReferralCode');
   if (googleLink) googleLink.href = referralCode
@@ -26,6 +28,8 @@ function closeAuthModal() {
 
 
 function updateAuthUI(name) {
+  if (name) { try { localStorage.setItem('hasLoggedInBefore', '1'); } catch {} }
+  document.getElementById('joinNudge')?.remove();
   const btn1 = document.getElementById('authBtn');
   const btn2 = document.getElementById('mobileAuthBtn');
   const setupBtn = (btn) => {
@@ -3014,7 +3018,27 @@ function renderAdAlertWords(max = 10) {
   });
 }
 
+// Üye olmayanlara ilanların üstünde küçük bir davet kartı (kapatılırsa 3 gün çıkmaz)
+function renderJoinNudge() {
+  if (readToken('userToken') || document.getElementById('joinNudge')) return;
+  try { if (Date.now() - (Number(localStorage.getItem('joinNudgeClosedAt')) || 0) < 3 * 864e5) return; } catch {}
+  const card = document.createElement('div');
+  card.id = 'joinNudge';
+  card.className = 'join-nudge';
+  card.innerHTML = `<div class="join-nudge-text"><b>🎁 Ücretsiz üye olun</b><span>İlan verin, aradığınız ürün gelince haber alın, esnafla mesajlaşın, Para Puan kazanın.</span></div>
+    <button type="button" class="join-nudge-btn">Hemen Üye Ol</button>
+    <button type="button" class="join-nudge-close" aria-label="Kapat">✕</button>`;
+  card.querySelector('.join-nudge-btn').onclick = () => { openAuthModal(); setAuthTab('register'); };
+  card.querySelector('.join-nudge-close').onclick = () => {
+    card.remove();
+    try { localStorage.setItem('joinNudgeClosedAt', String(Date.now())); } catch {}
+  };
+  const grid = document.getElementById('adsGrid');
+  (document.getElementById('adsTools') || grid).insertAdjacentElement('beforebegin', card);
+}
+
 function renderAdsTools() {
+  renderJoinNudge();
   if (document.getElementById('adsTools')) { updateFavCount(); return; }
   const bar = document.createElement('div');
   bar.id = 'adsTools';

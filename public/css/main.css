@@ -1716,6 +1716,22 @@ body.has-trends .map-panel.map-fullscreen { top: calc(var(--trend-h) + env(safe-
 }
 @media (prefers-reduced-motion: reduce) { .app-promo { animation: none; } .app-promo-btn:hover { transform: none; } }
 
+/* Üyelik avantajları ve davet kartı */
+.auth-perks { list-style: none; margin: 0 0 18px; padding: 12px; display: grid; gap: 8px; border-radius: 14px;
+  background: linear-gradient(160deg, rgba(16,185,129,0.12), rgba(251,191,36,0.06)); border: 1px solid rgba(16,185,129,0.3); }
+.auth-perks li { display: grid; grid-template-columns: 28px 1fr; column-gap: 8px; align-items: center; text-align: left; }
+.auth-perks li span { grid-row: 1 / span 2; font-size: 20px; text-align: center; }
+.auth-perks li b { font-size: 14px; color: var(--text-1); }
+.auth-perks li small { font-size: 12px; color: var(--text-2); }
+.join-nudge { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; padding: 12px 14px; border-radius: 14px;
+  background: linear-gradient(135deg, rgba(16,185,129,0.16), rgba(251,191,36,0.10)); border: 1px solid rgba(16,185,129,0.4); }
+.join-nudge-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--text-2); }
+.join-nudge-text b { font-size: 15px; color: var(--text-1); }
+.join-nudge-btn { flex-shrink: 0; padding: 10px 16px; border: 0; border-radius: 999px; font: inherit; font-weight: 800; cursor: pointer;
+  color: #04130b; background: linear-gradient(135deg, #34d399, #10b981); box-shadow: 0 6px 18px rgba(16,185,129,0.35); }
+.join-nudge-close { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(255,255,255,0.08); color: inherit; cursor: pointer; }
+@media (max-width: 520px) { .join-nudge { flex-wrap: wrap; } .join-nudge-text { flex-basis: calc(100% - 42px); } .join-nudge-btn { width: 100%; } }
+
 /* Favori ve ilan takibi */
 .ad-card { position: relative; }
 .fav-btn { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 50%;
