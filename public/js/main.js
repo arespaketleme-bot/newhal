@@ -4082,14 +4082,78 @@ function renderInviteNudge() {
 }
 
 // Profil sekmeleri: son açılan sekme hatırlanır
-function setProfileTab(name) {
+// Mesajlar, Favoriler, İlan Takibi, Üye Ara, Profilimi Gör: kendi pencereleri açılmaz,
+// içerikleri profilde kutuların altına taşınır. Profil kapanınca yerlerine geri döner.
+const PF_EMBED = {
+  messages: { overlay: 'messagesModal', open: () => openMessages(), close: () => closeMessages() },
+  favorites: { overlay: 'favoritesModal', open: () => openFavorites() },
+  alerts: { overlay: 'adAlertsModal', open: () => openAdAlerts() },
+  members: { overlay: 'memberSearchModal', open: () => openMemberSearch() },
+  public: { overlay: 'publicProfileModal', open: () => openPublicProfile(myProfile && myProfile.id) },
+};
+let pfEmbedded = null;   // { key, node, overlay }
+let pfEmbedBusy = false;
+function pfRestoreEmbed() {
+  if (!pfEmbedded) return;
+  const { key, node, overlay } = pfEmbedded;
+  pfEmbedded = null;
+  overlay.appendChild(node);
+  overlay.classList.remove('open');
+  const cfg = PF_EMBED[key];
+  if (cfg && cfg.close) { pfEmbedBusy = true; try { cfg.close(); } finally { pfEmbedBusy = false; } }
+}
+function pfEmbed(key, alreadyOpen) {
+  const cfg = PF_EMBED[key];
+  pfEmbedBusy = true;
+  // Açma işlevleri profili kapatmaya çalışır; o sırada profil açık kalır
+  const realClose = window.closeProfileModal;
+  window.closeProfileModal = () => {};
+  try { if (!alreadyOpen) cfg.open(); } finally { window.closeProfileModal = realClose; }
+  const overlay = document.getElementById(cfg.overlay);
+  const node = overlay && overlay.querySelector(':scope > .modal');
+  const host = document.querySelector(`#profileModal .pf-panel[data-panel="${key}"] .pf-embed`);
+  if (overlay) overlay.classList.remove('open');
+  if (node && host) { host.appendChild(node); pfEmbedded = { key, node, overlay }; }
+  pfEmbedBusy = false;
+  // Profildeki diğer açık pencereler (ör. herkese açık profil) kapanır
+  ['messagesModal', 'memberSearchModal', 'publicProfileModal', 'favoritesModal', 'adAlertsModal'].forEach(id => {
+    if (id !== cfg.overlay) document.getElementById(id)?.classList.remove('open');
+  });
+}
+// Profilin içinden başka bir bölüm açılırsa (ör. üyeye mesaj yaz) o bölüm profilde gösterilir
+document.addEventListener('DOMContentLoaded', () => {
+  Object.entries(PF_EMBED).forEach(([key, cfg]) => {
+    const watch = () => {
+      const overlay = document.getElementById(cfg.overlay);
+      if (!overlay || overlay.dataset.pfWatched) return;
+      overlay.dataset.pfWatched = '1';
+      new MutationObserver(() => {
+        if (pfEmbedBusy || !overlay.classList.contains('open')) return;
+        if (!document.getElementById('profileModal').classList.contains('open')) return;
+        if (pfEmbedded && pfEmbedded.key === key) { overlay.classList.remove('open'); return; }
+        setProfileTab(key, true);
+      }).observe(overlay, { attributes: true, attributeFilter: ['class'] });
+    };
+    watch();
+    setInterval(watch, 3000);   // sonradan oluşan pencereler (Favoriler, İlan Takibi) için
+  });
+});
+
+function setProfileTab(name, alreadyOpen) {
+  if (pfEmbedded && pfEmbedded.key !== name) pfRestoreEmbed();
   document.querySelectorAll('#profileModal .pf-tab').forEach(t => {
     const on = t.dataset.tab === name;
     t.classList.toggle('active', on);
     t.setAttribute('aria-selected', on ? 'true' : 'false');
   });
   document.querySelectorAll('#profileModal .pf-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === name));
-  try { sessionStorage.setItem('profileTab', name); } catch {}
+  if (PF_EMBED[name]) {
+    if (pfEmbedded && pfEmbedded.key === name && !alreadyOpen) pfRestoreEmbed();
+    if (!pfEmbedded) pfEmbed(name, alreadyOpen);
+    document.querySelector(`#profileModal .pf-panel[data-panel="${name}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } else {
+    try { sessionStorage.setItem('profileTab', name); } catch {}
+  }
 }
 
 async function copyReferralLink() {
@@ -4105,6 +4169,7 @@ async function copyReferralLink() {
 }
 
 function closeProfileModal(fromHistory) {
+  pfRestoreEmbed();
   const wasOpen = document.getElementById('profileModal').classList.contains('open');
   document.getElementById('profileModal').classList.remove('open');
   document.body.classList.remove('profile-page-open');
@@ -4213,7 +4278,6 @@ async function deleteMyAccount() {
 async function openPublicProfile(id) {
   if (!id) return;
   if (adViewer) closeAdViewer();
-  closeProfileModal();
   const body = document.getElementById('publicProfileBody');
   body.innerHTML = '<p class="public-profile-loading">Yükleniyor...</p>';
   document.getElementById('publicProfileModal').classList.add('open');
@@ -4337,7 +4401,6 @@ async function messagesRequest(url, options = {}) {
 
 function openMessages(partnerId = null) {
   if (!readToken('userToken')) { openAuthModal(); setAuthTab('login'); return; }
-  closeProfileModal();
   closePublicProfile();
   document.getElementById('messagesModal').classList.add('open');
   activeMessagePartner = partnerId ? Number(partnerId) : null;
@@ -4572,7 +4635,6 @@ async function openNotification(notificationId, type, actorId) {
 // ── Üye arama ─────────────────────────────────────────────────
 function openMemberSearch() {
   if (!readToken('userToken')) { openAuthModal(); setAuthTab('login'); return; }
-  closeProfileModal();
   closePublicProfile();
   document.getElementById('memberSearchModal').classList.add('open');
   document.getElementById('memberSearchInput').focus();

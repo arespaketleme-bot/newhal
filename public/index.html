@@ -703,11 +703,11 @@
           <button type="button" class="pf-tile pf-tab" data-tab="rewards" role="tab" onclick="setProfileTab('rewards')"><span>🎁</span>Puan & Davet</button>
           <button type="button" class="pf-tile pf-tab" data-tab="info" role="tab" onclick="setProfileTab('info')"><span>⚙️</span>Bilgilerim</button>
           <button type="button" class="pf-tile pf-tab" data-tab="activity" role="tab" onclick="setProfileTab('activity')"><span>🕘</span>Aktiviteler</button>
-          <button type="button" class="pf-tile" onclick="openMessages()"><span>✉️</span>Mesajlar<em class="message-unread-badge" id="profileMessageUnreadBadge" hidden></em></button>
-          <button type="button" class="pf-tile" onclick="closeProfileModal(); openFavorites()"><span>❤️</span>Favoriler</button>
-          <button type="button" class="pf-tile" onclick="closeProfileModal(); openAdAlerts()"><span>🔔</span>İlan Takibi</button>
-          <button type="button" class="pf-tile" onclick="openMemberSearch()"><span>👥</span>Üye Ara</button>
-          <button type="button" class="pf-tile" onclick="openPublicProfile(myProfile && myProfile.id)"><span>👁️</span>Profilimi Gör</button>
+          <button type="button" class="pf-tile pf-tab" data-tab="messages" role="tab" onclick="setProfileTab('messages')"><span>✉️</span>Mesajlar<em class="message-unread-badge" id="profileMessageUnreadBadge" hidden></em></button>
+          <button type="button" class="pf-tile pf-tab" data-tab="favorites" role="tab" onclick="setProfileTab('favorites')"><span>❤️</span>Favoriler</button>
+          <button type="button" class="pf-tile pf-tab" data-tab="alerts" role="tab" onclick="setProfileTab('alerts')"><span>🔔</span>İlan Takibi</button>
+          <button type="button" class="pf-tile pf-tab" data-tab="members" role="tab" onclick="setProfileTab('members')"><span>👥</span>Üye Ara</button>
+          <button type="button" class="pf-tile pf-tab" data-tab="public" role="tab" onclick="setProfileTab('public')"><span>👁️</span>Profilimi Gör</button>
         </nav>
 
         <section class="pf-panel active" data-panel="ads">
@@ -768,6 +768,13 @@
         <section class="pf-panel" data-panel="activity">
           <div class="profile-activities" id="profileActivities"></div>
         </section>
+
+        <!-- Bu bölümler kendi pencerelerinin içeriğini profilin içinde gösterir -->
+        <section class="pf-panel" data-panel="messages"><div class="pf-embed"></div></section>
+        <section class="pf-panel" data-panel="favorites"><div class="pf-embed"></div></section>
+        <section class="pf-panel" data-panel="alerts"><div class="pf-embed"></div></section>
+        <section class="pf-panel" data-panel="members"><div class="pf-embed"></div></section>
+        <section class="pf-panel" data-panel="public"><div class="pf-embed"></div></section>
       </form>
     </div>
   </div>
