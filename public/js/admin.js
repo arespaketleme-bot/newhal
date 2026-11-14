@@ -1972,6 +1972,7 @@ async function loadAds() {
     document.getElementById('adStoryEnabled').checked = settings.enabled !== false;
     document.getElementById('adStoryDays').value = Number(settings.days) || 7;
     document.getElementById('adStoryGroupSize').value = Number(settings.groupSize) || 10;
+    document.getElementById('adStoryFbVitrin').checked = settings.fbVitrin === true;
   }
   // Onay bekleyenler en üstte
   ads.sort((a, b) => (b.pending ? 1 : 0) - (a.pending ? 1 : 0));
@@ -1995,6 +1996,7 @@ async function saveAdStorySettings() {
     enabled: document.getElementById('adStoryEnabled').checked,
     days: Number(document.getElementById('adStoryDays').value),
     groupSize: Number(document.getElementById('adStoryGroupSize').value),
+    fbVitrin: document.getElementById('adStoryFbVitrin').checked,
   };
   if (!Number.isInteger(payload.days) || payload.days < 1 || payload.days > 30
     || !Number.isInteger(payload.groupSize) || payload.groupSize < 1 || payload.groupSize > 50) {

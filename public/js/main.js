@@ -2726,6 +2726,7 @@ async function loadAds() {
         enabled: settings.enabled !== false,
         days: Math.min(30, Math.max(1, Number(settings.days) || 7)),
         groupSize: Math.min(50, Math.max(1, Number(settings.groupSize) || 10)),
+        fbVitrin: settings.fbVitrin === true,
       };
     }
     renderAds(await res.json());
@@ -2937,7 +2938,7 @@ function renderAdsGrid() {
   // Arama yokken vitrin ilanları üstteki vitrinde, altta tekrar edilmez
   const regularAds = allAds.filter(ad => !ad.weather);
   const featured = allAds.filter(ad => ad.featured);
-  renderVitrin(adsQuery ? [] : [...featured, ...featuredPinSlides()]);
+  renderVitrin(adsQuery ? [] : [...featured, ...featuredPinSlides(), ...fbStoryVitrinSlides()]);
   const list = adsQuery
     ? regularAds.filter(ad => adMatchesSearch(ad, adsQuery)).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
     : regularAds.filter(ad => !ad.featured);
@@ -4823,6 +4824,7 @@ async function loadFbStories() {
       })),
     };
     if (!story) renderStoryBar();
+    if (adStorySettings.fbVitrin && fbStories.ads.length && document.getElementById('adsGrid')) renderAdsGrid();
   } catch {}
 }
 
@@ -5228,6 +5230,17 @@ async function loadFeaturedPinsForVitrin() {
   } catch { featuredPinList = []; }
   if (featuredPinList.length && document.getElementById('adsGrid')) renderAdsGrid();
 }
+// Yönetim açtıysa Facebook sayfasının hikayeleri vitrinde de döner
+function fbStoryVitrinSlides() {
+  if (!adStorySettings.fbVitrin || !fbStories.ads.length) return [];
+  return fbStories.ads.slice().reverse().map(s => ({
+    id: `vfb-${s.id}`, fbStory: true, featured: true,
+    title: (fbStories.page && fbStories.page.name) || 'Facebook hikayesi',
+    body: '', images: s.images.length ? s.images : (s.thumb ? [s.thumb] : []),
+    video: s.images.length || s.thumb ? null : s.video,
+    created_at: s.created_at,
+  }));
+}
 function featuredPinSlides() {
   return featuredPinList.map(fp => {
     const pin = allPins.find(p => Number(p.id) === Number(fp.id));
@@ -5307,7 +5320,7 @@ function renderVitrin(ads) {
     badges.className = 'vitrin-badges';
     const badge = document.createElement('span');
     badge.className = 'vitrin-badge';
-    badge.textContent = ad.pinRef ? '🏪 Vitrin İşletmesi' : '⭐ Vitrin';
+    badge.textContent = ad.fbStory ? '📸 Facebook Hikayesi' : ad.pinRef ? '🏪 Vitrin İşletmesi' : '⭐ Vitrin';
     badges.appendChild(badge);
     if (ad.no) {
       const no = document.createElement('span');
@@ -5335,14 +5348,14 @@ function renderVitrin(ads) {
     }
     const more = document.createElement('span');
     more.className = 'vitrin-more';
-    more.textContent = ad.pinRef ? 'İşletmeyi gör →' : 'İlanı incele →';
+    more.textContent = ad.fbStory ? 'Hikayeyi izle →' : ad.pinRef ? 'İşletmeyi gör →' : 'İlanı incele →';
     overlay.appendChild(more);
     slide.appendChild(overlay);
     }
 
     // Vitrindeki işletme kartı işletme detayını açar
-    const openSlide = () => (ad.pinRef ? openFeaturedPin(ad.pinRef) : openAdViewer(ad, 0));
-    if (!ad.pinRef) observeAdView(slide, ad);
+    const openSlide = () => (ad.fbStory ? openStories('fb') : ad.pinRef ? openFeaturedPin(ad.pinRef) : openAdViewer(ad, 0));
+    if (!ad.pinRef && !ad.fbStory) observeAdView(slide, ad);
     slide.addEventListener('click', openSlide);
     slide.addEventListener('keydown', (e) => { if (e.key === 'Enter') openSlide(); });
     track.appendChild(slide);
