@@ -124,6 +124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initAdsSearch();
   loadAds();
   loadSponsor();
+  loadFeaturedPinsForVitrin();
   loadFbStories();
   setInterval(loadFbStories, 5 * 60 * 1000);
   initScrollEffect();
@@ -384,6 +385,8 @@ async function loadPins() {
     allPins = await res.json();
     renderPins(allPins);
     renderStoryBar();
+    // İşletmeler geç gelirse vitrindeki işletme kartları şimdi eklenir
+    if (featuredPinList.length && document.getElementById('adsGrid')?.children.length) renderAdsGrid();
     openPinFromLink();
     updateStats();
     await updateHeroStats();
@@ -2733,7 +2736,7 @@ function renderAdsGrid() {
   // Arama yokken vitrin ilanları üstteki vitrinde, altta tekrar edilmez
   const regularAds = allAds.filter(ad => !ad.weather);
   const featured = allAds.filter(ad => ad.featured);
-  renderVitrin(adsQuery ? [] : featured);
+  renderVitrin(adsQuery ? [] : [...featured, ...featuredPinSlides()]);
   const list = adsQuery
     ? regularAds.filter(ad => adMatchesSearch(ad, adsQuery)).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
     : regularAds.filter(ad => !ad.featured);
@@ -4804,6 +4807,30 @@ const VITRIN_AUTOPLAY_MS = 5000;
 let vitrinIndex = 0;
 let vitrinTimer = null;
 
+// ── Vitrindeki işletmeler (yönetimden seçilir) ────────────────
+let featuredPinList = [];
+async function loadFeaturedPinsForVitrin() {
+  try {
+    const r = await fetch('/api/featured-pins');
+    featuredPinList = r.ok ? ((await r.json()).pins || []) : [];
+  } catch { featuredPinList = []; }
+  if (featuredPinList.length && document.getElementById('adsGrid')) renderAdsGrid();
+}
+function featuredPinSlides() {
+  return featuredPinList.map(fp => {
+    const pin = allPins.find(p => Number(p.id) === Number(fp.id));
+    if (!pin) return null;
+    const lines = [pin.category, (pin.sells || []).length ? `🛒 ${pin.sells.join(', ')}` : '', pin.address, pin.phone].filter(Boolean);
+    return { id: `pin-${pin.id}`, pinRef: pin.id, title: pin.title, body: lines.join('\n'), images: pin.images || [], featured: true, featured_until: fp.until };
+  }).filter(Boolean);
+}
+function openFeaturedPin(id) {
+  const pin = allPins.find(p => Number(p.id) === Number(id));
+  if (!pin) return;
+  if (typeof map !== 'undefined' && map && pin.lat && pin.lng) { try { map.setView([pin.lat, pin.lng], 18); } catch {} }
+  showPinDetail(pin.id);
+}
+
 function renderVitrin(ads) {
   const box = document.getElementById('vitrin');
   const track = document.getElementById('vitrinTrack');
@@ -4868,7 +4895,7 @@ function renderVitrin(ads) {
     badges.className = 'vitrin-badges';
     const badge = document.createElement('span');
     badge.className = 'vitrin-badge';
-    badge.textContent = '⭐ Vitrin';
+    badge.textContent = ad.pinRef ? '🏪 Vitrin İşletmesi' : '⭐ Vitrin';
     badges.appendChild(badge);
     if (ad.no) {
       const no = document.createElement('span');
@@ -4896,14 +4923,16 @@ function renderVitrin(ads) {
     }
     const more = document.createElement('span');
     more.className = 'vitrin-more';
-    more.textContent = 'İlanı incele →';
+    more.textContent = ad.pinRef ? 'İşletmeyi gör →' : 'İlanı incele →';
     overlay.appendChild(more);
     slide.appendChild(overlay);
     }
 
-    observeAdView(slide, ad);
-    slide.addEventListener('click', () => openAdViewer(ad, 0));
-    slide.addEventListener('keydown', (e) => { if (e.key === 'Enter') openAdViewer(ad, 0); });
+    // Vitrindeki işletme kartı işletme detayını açar
+    const openSlide = () => (ad.pinRef ? openFeaturedPin(ad.pinRef) : openAdViewer(ad, 0));
+    if (!ad.pinRef) observeAdView(slide, ad);
+    slide.addEventListener('click', openSlide);
+    slide.addEventListener('keydown', (e) => { if (e.key === 'Enter') openSlide(); });
     track.appendChild(slide);
 
     const dot = document.createElement('button');

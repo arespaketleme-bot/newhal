@@ -981,6 +981,43 @@ app.put('/api/admin/business-level-rules', requireAdmin, async (req, res) => {
   res.json(rules);
 });
 
+// ── Vitrin işletmeleri: seçilen işletmeler belirli gün vitrinde görünür ──
+const FEATURED_PINS_FILE = 'featured-pins.json';
+let featuredPinsCache = null;
+async function getFeaturedPins() {
+  if (!featuredPinsCache) {
+    const saved = await db.getPrivateJson(FEATURED_PINS_FILE);
+    featuredPinsCache = (saved && saved.pins && typeof saved.pins === 'object') ? saved.pins : {};
+  }
+  const now = Date.now();
+  return Object.entries(featuredPinsCache)
+    .filter(([, until]) => Date.parse(until) > now)
+    .map(([id, until]) => ({ id: Number(id), until }));
+}
+app.get('/api/featured-pins', async (req, res) => {
+  res.set('Cache-Control', 'public, max-age=60');
+  try { res.json({ pins: await getFeaturedPins() }); } catch { res.json({ pins: [] }); }
+});
+app.put('/api/admin/pins/:id/featured', requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ error: 'Geçersiz işletme' });
+  await getFeaturedPins();
+  const days = Number(req.body && req.body.days) || 0;
+  const next = { ...featuredPinsCache };
+  if (days > 0) {
+    // Zaten vitrindeyse süre kalan sürenin üstüne eklenir
+    const from = next[id] && Date.parse(next[id]) > Date.now() ? Date.parse(next[id]) : Date.now();
+    next[id] = new Date(from + Math.min(365, days) * DAY_MS).toISOString();
+  } else {
+    delete next[id];
+  }
+  // Süresi geçenler temizlenir
+  for (const [k, until] of Object.entries(next)) if (Date.parse(until) <= Date.now()) delete next[k];
+  if (!(await db.savePrivateJson(FEATURED_PINS_FILE, { pins: next }))) return res.status(500).json({ error: 'Kaydedilemedi' });
+  featuredPinsCache = next;
+  res.json({ id, until: next[id] || null });
+});
+
 app.patch('/api/admin/pins/:id/level', requireAdmin, async (req, res) => {
   const pin = await db.getPin(req.params.id);
   if (!pin || pin.status !== 'approved') return res.status(404).json({ error: 'İşletme bulunamadı' });

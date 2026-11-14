@@ -243,6 +243,7 @@ async function loadPending() {
 }
 
 async function loadApproved() {
+  await loadFeaturedPins();
   loadWaInviteTemplate();
   const res = await api('/api/admin/pins?status=approved');
   if (!res) return;
@@ -387,6 +388,9 @@ function renderApprovedTable(pins) {
           <strong style="color:#fbbf24">⭐ ${Math.max(1, Number(p.level) || 1)}</strong>
           <button class="btn-level-up" onclick="increaseBusinessLevel(${Number(p.id)})" title="İşletme seviyesini 1 artır">＋1</button>
         </div>
+        ${featuredPinUntil[p.id]
+          ? `<div class="pin-vitrin on">⭐ Vitrinde · ${esc(vitrinLeft(featuredPinUntil[p.id]))}<button type="button" onclick="setPinFeatured(${Number(p.id)}, 0)">Kaldır</button></div>`
+          : `<div class="pin-vitrin"><select id="pinVitrinDays${Number(p.id)}"><option value="1">1 gün</option><option value="3">3 gün</option><option value="7" selected>7 gün</option><option value="15">15 gün</option><option value="30">30 gün</option></select><button type="button" onclick="setPinFeatured(${Number(p.id)})">⭐ Vitrine Al</button></div>`}
       </td>
       <td>
         <div class="actions">
@@ -402,6 +406,30 @@ function renderApprovedTable(pins) {
     }
     tbody.appendChild(tr);
   });
+}
+
+// ── Vitrin işletmeleri ─────────────────────────────────────────
+let featuredPinUntil = {};
+async function loadFeaturedPins() {
+  try {
+    const res = await fetch('/api/featured-pins', { cache: 'no-store' });
+    const d = res.ok ? await res.json() : { pins: [] };
+    featuredPinUntil = Object.fromEntries((d.pins || []).map(p => [p.id, p.until]));
+  } catch { featuredPinUntil = {}; }
+}
+function vitrinLeft(until) {
+  const ms = Date.parse(until) - Date.now();
+  const days = Math.floor(ms / 86400000), hours = Math.floor((ms % 86400000) / 3600000);
+  return days > 0 ? `${days} gün ${hours} saat kaldı` : `${Math.max(0, hours)} saat kaldı`;
+}
+async function setPinFeatured(id, days) {
+  if (days === undefined) days = Number(document.getElementById(`pinVitrinDays${id}`)?.value) || 7;
+  const res = await api(`/api/admin/pins/${id}/featured`, { method: 'PUT', body: JSON.stringify({ days }) });
+  if (!res) return;
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) { showToast(d.error || 'Kaydedilemedi', 'error'); return; }
+  showToast(days ? `İşletme ${days} gün vitrine alındı` : 'İşletme vitrinden kaldırıldı', 'success');
+  await loadApproved();
 }
 
 async function increaseBusinessLevel(id) {
