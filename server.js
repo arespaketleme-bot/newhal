@@ -2645,6 +2645,79 @@ async function getTrendSetting() {
   trendSettingCache = { enabled: !(saved && saved.enabled === false) };
   return trendSettingCache;
 }
+// ── Memnuniyet anketi: 1-5 yıldız, üyelik gerekmez, yönetimden ayarlanır ──
+const SURVEY_FILE = 'survey.json';
+const SURVEY_DEFAULT = { enabled: true, question: 'Sitemizden memnun musunuz?', delayMin: 2, version: 1 };
+let surveyCache = null;
+async function getSurvey() {
+  if (surveyCache) return surveyCache;
+  const saved = await db.getPrivateJson(SURVEY_FILE);
+  surveyCache = {
+    settings: { ...SURVEY_DEFAULT, ...((saved && saved.settings) || {}) },
+    results: (saved && saved.results) || { total: 0, dist: [0, 0, 0, 0, 0], comments: [] },
+  };
+  return surveyCache;
+}
+let surveyDirty = false;
+setInterval(async () => {
+  if (!surveyDirty || !surveyCache) return;
+  surveyDirty = false;
+  if (!(await db.savePrivateJson(SURVEY_FILE, surveyCache))) surveyDirty = true;
+}, 15000).unref();
+const surveyHits = new Map();   // IP başına dakikada en fazla 5 oy
+app.get('/api/survey', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    const { settings } = await getSurvey();
+    res.json(settings.enabled ? { enabled: true, question: settings.question, delayMin: settings.delayMin, version: settings.version } : { enabled: false });
+  } catch { res.json({ enabled: false }); }
+});
+app.post('/api/survey', async (req, res) => {
+  const ip = String(getIp(req)).split(',')[0].trim();
+  const now = Date.now();
+  const hit = surveyHits.get(ip) || { at: now, n: 0 };
+  if (now - hit.at > 60000) { hit.at = now; hit.n = 0; }
+  hit.n++;
+  surveyHits.set(ip, hit);
+  if (hit.n > 5) return res.status(429).json({ error: 'Çok fazla deneme' });
+  if (/bot|crawl|spider|headless/i.test(req.headers['user-agent'] || '')) return res.json({ ok: true });
+  const stars = Number(req.body && req.body.stars);
+  if (!Number.isInteger(stars) || stars < 1 || stars > 5) return res.status(400).json({ error: 'Lütfen 1 ile 5 arasında yıldız seçin' });
+  const s = await getSurvey();
+  if (Number(req.body.version) !== Number(s.settings.version)) return res.json({ ok: true });   // eski anket
+  s.results.total++;
+  s.results.dist[stars - 1]++;
+  const comment = String(req.body.comment || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+  if (comment) {
+    s.results.comments.unshift({ stars, comment, at: new Date().toISOString() });
+    s.results.comments = s.results.comments.slice(0, 200);
+  }
+  surveyDirty = true;
+  if (comment || stars <= 2) {
+    sendTelegram(`⭐ <b>Anket</b>: ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}${comment ? `\n💬 ${tgEsc(comment)}` : ''}`).catch(() => {});
+  }
+  res.json({ ok: true });
+});
+app.get('/api/admin/survey', requireAdmin, async (req, res) => {
+  const s = await getSurvey();
+  const sum = s.results.dist.reduce((a, n, i) => a + n * (i + 1), 0);
+  res.json({ settings: s.settings, results: { ...s.results, average: s.results.total ? sum / s.results.total : 0 } });
+});
+app.put('/api/admin/survey', requireAdmin, async (req, res) => {
+  const s = await getSurvey();
+  const b = req.body || {};
+  const question = String(b.question || '').replace(/\s+/g, ' ').trim().slice(0, 120) || SURVEY_DEFAULT.question;
+  const delayMin = Math.min(60, Math.max(0, Number(b.delayMin) || 0));
+  const next = { enabled: b.enabled === true, question, delayMin, version: s.settings.version };
+  // Soru değişirse ya da "herkese tekrar sor" seçilirse daha önce cevap verenler de yeniden görür
+  if (question !== s.settings.question || b.askAgain === true) next.version++;
+  s.settings = next;
+  if (b.resetResults === true) s.results = { total: 0, dist: [0, 0, 0, 0, 0], comments: [] };
+  if (!(await db.savePrivateJson(SURVEY_FILE, s))) return res.status(500).json({ error: 'Kaydedilemedi' });
+  surveyDirty = false;
+  res.json({ ok: true, settings: next });
+});
+
 app.get('/api/trends', async (req, res) => {
   res.set('Cache-Control', 'public, max-age=60');
   const setting = await getTrendSetting().catch(() => ({ enabled: true }));

@@ -2348,6 +2348,78 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// ── Memnuniyet anketi ─────────────────────────────────────────
+let surveyInfo = null, surveyStars = 0;
+async function setupSurvey() {
+  try {
+    if (window.self !== window.top) return;
+    if (localStorage.getItem('newhal_admin_token')) return;   // yönetici kendi sitesini oylamaz
+    const r = await fetch('/api/survey');
+    surveyInfo = r.ok ? await r.json() : null;
+    if (!surveyInfo || !surveyInfo.enabled) return;
+    if (Number(localStorage.getItem('surveyDoneVersion')) === Number(surveyInfo.version)) return;
+    if (sessionStorage.getItem('surveyClosed') === String(surveyInfo.version)) return;
+    // Sayfada geçirilen süre bu oturumda birikir; başka sayfaya geçince sıfırlanmaz
+    const spent = Number(sessionStorage.getItem('surveySpentMs')) || 0;
+    const wait = Math.max(0, surveyInfo.delayMin * 60000 - spent);
+    const started = Date.now();
+    window.addEventListener('pagehide', () => {
+      try { sessionStorage.setItem('surveySpentMs', String(spent + Date.now() - started)); } catch {}
+    });
+    setTimeout(showSurvey, wait);
+  } catch {}
+}
+function showSurvey() {
+  const card = document.getElementById('surveyCard');
+  if (!card || !surveyInfo) return;
+  // Başka bir pencere açıksa biraz sonra tekrar dene
+  if (document.querySelector('.modal-overlay.open, #adFeed, .ad-viewer:not([hidden])')) { setTimeout(showSurvey, 20000); return; }
+  document.getElementById('surveyQuestion').textContent = surveyInfo.question;
+  const box = document.getElementById('surveyStars');
+  box.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'survey-star';
+    b.setAttribute('role', 'radio');
+    b.setAttribute('aria-label', `${i} yıldız`);
+    b.textContent = '★';
+    b.onmouseenter = () => paintSurveyStars(i);
+    b.onmouseleave = () => paintSurveyStars(surveyStars);
+    b.onclick = () => { surveyStars = i; paintSurveyStars(i); document.getElementById('surveyExtra').hidden = false; };
+    box.appendChild(b);
+  }
+  card.hidden = false;
+}
+function paintSurveyStars(n) {
+  document.querySelectorAll('.survey-star').forEach((b, i) => { b.classList.toggle('on', i < n); b.setAttribute('aria-checked', i + 1 === surveyStars ? 'true' : 'false'); });
+}
+function closeSurvey(dismissed) {
+  document.getElementById('surveyCard').hidden = true;
+  if (dismissed && surveyInfo) { try { sessionStorage.setItem('surveyClosed', String(surveyInfo.version)); } catch {} }
+}
+async function sendSurvey() {
+  if (!surveyStars) return;
+  const btn = document.getElementById('surveySend');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/survey', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stars: surveyStars, comment: document.getElementById('surveyComment').value, version: surveyInfo.version }) });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Gönderilemedi');
+    try { localStorage.setItem('surveyDoneVersion', String(surveyInfo.version)); } catch {}
+    document.getElementById('surveyStars').hidden = true;
+    document.getElementById('surveyExtra').hidden = true;
+    document.getElementById('surveyQuestion').hidden = true;
+    document.getElementById('surveyThanks').hidden = false;
+    setTimeout(() => closeSurvey(false), 3500);
+  } catch (err) {
+    showToast(err.message, 'error');
+    btn.disabled = false;
+  }
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupSurvey);
+else setupSurvey();
+
 // ── En üstte kayan Google trendleri ───────────────────────────
 async function loadTrendBar() {
   const bar = document.getElementById('trendBar');

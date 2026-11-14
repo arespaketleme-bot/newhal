@@ -536,6 +536,7 @@ const sectionTitles = {
   sponsor:   'Sponsorlu Reklam',
   appPromo:  'Uygulama İndirme',
   trends:    'Gündem Şeridi',
+  survey:    'Memnuniyet Anketi',
   promo:    'WhatsApp Reklam',
   engage:    'Kalma Süresi',
   audit:     'Raporlar',
@@ -573,6 +574,8 @@ function showSection(name) {
     loadAppPromo();
   } else if (name === 'trends') {
     loadTrendSetting();
+  } else if (name === 'survey') {
+    loadSurvey();
   } else if (name === 'promo') {
     loadPromo();
   } else if (name === 'engage') {
@@ -831,6 +834,52 @@ async function loadSponsor() {
   } catch {
     showToast('Sponsor ayarı okunamadı', 'error');
   }
+}
+
+// ── Memnuniyet anketi ─────────────────────────────────────────
+async function loadSurvey() {
+  const res = await api('/api/admin/survey');
+  if (!res || !res.ok) return;
+  const d = await res.json();
+  const s = d.settings, r = d.results;
+  document.getElementById('svEnabled').checked = s.enabled !== false;
+  document.getElementById('svQuestion').value = s.question || '';
+  document.getElementById('svDelay').value = s.delayMin;
+  document.getElementById('svAskAgain').checked = false;
+  document.getElementById('svReset').checked = false;
+  const max = Math.max(1, ...r.dist);
+  const bars = [5, 4, 3, 2, 1].map(n => `<div style="display:flex;align-items:center;gap:8px;margin:4px 0">
+      <span style="width:52px;color:#fbbf24">${'★'.repeat(n)}</span>
+      <div style="flex:1;height:12px;border-radius:6px;background:rgba(148,163,184,.15);overflow:hidden"><div style="height:100%;width:${(r.dist[n - 1] / max) * 100}%;background:#fbbf24"></div></div>
+      <span style="width:34px;text-align:right">${r.dist[n - 1]}</span></div>`).join('');
+  const comments = (r.comments || []).slice(0, 30).map(c => `<div style="padding:8px 10px;border-radius:10px;background:rgba(148,163,184,.08);margin-top:6px">
+      <span style="color:#fbbf24">${'★'.repeat(c.stars)}</span> <small style="opacity:.6">${esc(formatDate(c.at))}</small><br>${esc(c.comment)}</div>`).join('');
+  document.getElementById('svResults').innerHTML = `
+    <div style="display:flex;gap:16px;align-items:baseline;margin-bottom:10px">
+      <div style="font-size:40px;font-weight:800;color:#fbbf24">${r.total ? r.average.toFixed(1) : '–'}</div>
+      <div>ortalama<br><b>${r.total}</b> oy</div>
+    </div>
+    ${bars}
+    <h3 style="margin:18px 0 4px;font-size:15px">Son notlar</h3>
+    ${comments || '<p style="opacity:.7">Henüz not yazılmadı.</p>'}`;
+}
+async function saveSurvey(event) {
+  event.preventDefault();
+  const reset = document.getElementById('svReset').checked;
+  if (reset && !confirm('Şimdiye kadarki tüm oylar ve notlar silinsin mi? Bu geri alınamaz.')) return;
+  const body = {
+    enabled: document.getElementById('svEnabled').checked,
+    question: document.getElementById('svQuestion').value.trim(),
+    delayMin: Number(document.getElementById('svDelay').value),
+    askAgain: document.getElementById('svAskAgain').checked,
+    resetResults: reset,
+  };
+  const res = await api('/api/admin/survey', { method: 'PUT', body: JSON.stringify(body) });
+  if (!res) return;
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) { showToast(d.error || 'Kaydedilemedi', 'error'); return; }
+  showToast('Anket ayarı kaydedildi', 'success');
+  loadSurvey();
 }
 
 // ── Gündem şeridi ayarı ───────────────────────────────────────

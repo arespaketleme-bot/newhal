@@ -124,6 +124,10 @@
           Toplu Bildirim
         </button>
         <div class="nav-group-title">Site Ayarları</div>
+        <button class="nav-item" id="navSurvey" onclick="showSection('survey')">
+          <span aria-hidden="true">⭐</span>
+          Memnuniyet Anketi
+        </button>
         <button class="nav-item" id="navTrends" onclick="showSection('trends')">
           <span aria-hidden="true">📈</span>
           Gündem Şeridi
@@ -761,6 +765,31 @@
         .pin-vitrin.on { color:#fbbf24; font-weight:700; }
         .pin-vitrin.on button { background:rgba(148,163,184,.2); color:inherit; }
       </style>
+      <section class="section" id="sectionSurvey">
+        <div class="section-head">
+          <div>
+            <h1>Memnuniyet Anketi</h1>
+            <p>Ziyaretçilere 1-5 yıldızlı memnuniyet sorusu. Üye olmadan katılınabilir, her cihaz bir kez oy verir.</p>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+          <form onsubmit="saveSurvey(event)" style="display:flex;flex-direction:column;gap:14px;flex:1 1 320px;max-width:520px">
+            <label class="app-ctl"><input type="checkbox" id="svEnabled" /> <span><b>Anket açık</b><br><small>Kapalıyken sitede hiç görünmez.</small></span></label>
+            <label style="display:flex;flex-direction:column;gap:6px"><b>Soru</b>
+              <input type="text" id="svQuestion" maxlength="120" style="padding:10px 12px;border-radius:10px;font:inherit" />
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px"><b>Sayfa açıldıktan kaç dakika sonra çıksın?</b>
+              <input type="number" id="svDelay" min="0" max="60" step="0.5" style="padding:10px 12px;border-radius:10px;font:inherit;max-width:140px" />
+              <small style="opacity:.75">0 yazarsanız sayfa açılır açılmaz çıkar. En fazla 60 dakika.</small>
+            </label>
+            <label class="app-ctl"><input type="checkbox" id="svAskAgain" /> <span><b>Daha önce cevap verenlere de tekrar sor</b><br><small>Soruyu değiştirirseniz bu kendiliğinden olur.</small></span></label>
+            <label class="app-ctl"><input type="checkbox" id="svReset" /> <span><b>Sonuçları sıfırla</b><br><small>Şimdiye kadarki oylar ve notlar silinir.</small></span></label>
+            <div><button type="submit" class="btn-sm btn-approve">Kaydet</button></div>
+          </form>
+          <div style="flex:1 1 320px;min-width:0" id="svResults"></div>
+        </div>
+      </section>
+
       <section class="section" id="sectionTrends">
         <div class="section-head">
           <div>

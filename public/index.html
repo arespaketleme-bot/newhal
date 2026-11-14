@@ -69,6 +69,18 @@
     </div>
   </div>
 
+  <!-- Memnuniyet anketi: yönetimden ayarlanan süre sonra çıkar -->
+  <div class="survey-card" id="surveyCard" hidden role="dialog" aria-labelledby="surveyQuestion">
+    <button type="button" class="survey-close" onclick="closeSurvey(true)" aria-label="Anketi kapat">✕</button>
+    <div class="survey-q" id="surveyQuestion">Sitemizden memnun musunuz?</div>
+    <div class="survey-stars" id="surveyStars" role="radiogroup" aria-label="1 ile 5 arasında yıldız verin"></div>
+    <div class="survey-extra" id="surveyExtra" hidden>
+      <textarea id="surveyComment" maxlength="300" rows="2" placeholder="İsterseniz kısa bir not yazın (zorunlu değil)"></textarea>
+      <button type="button" class="survey-send" id="surveySend" onclick="sendSurvey()">Gönder</button>
+    </div>
+    <div class="survey-thanks" id="surveyThanks" hidden>🙏 Teşekkürler! Görüşünüz bizim için çok değerli.</div>
+  </div>
+
   <!-- Google Türkiye günlük trendleri: en üstte kayan etiketler -->
   <div class="trend-bar" id="trendBar" hidden aria-label="Google Türkiye günlük trendleri">
     <span class="trend-bar-label">🔥 Türkiye'de Gündem</span>
