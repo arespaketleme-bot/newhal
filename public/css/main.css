@@ -2870,3 +2870,5 @@ body.profile-page-open { overflow: hidden; }
   #profileModal .pf { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
   #profileModal .pf-id { padding-right: 52px; }
 }
+/* Profilde içerik uzayınca kimlik kartı, hızlı işlemler ve sekmeler ezilmesin */
+.pf > * { flex-shrink: 0; }
