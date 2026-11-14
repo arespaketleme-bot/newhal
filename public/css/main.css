@@ -2901,3 +2901,5 @@ body.profile-page-open { overflow: hidden; }
   #profileModal .pf-quick { grid-template-columns: repeat(3, 1fr); gap: 8px; }
   #profileModal .pf-tile { font-size: 12px; padding: 10px 4px; }
 }
+/* Bilgilerim formu: profilin diğer bölümleri bu formun dışında kalır */
+.pf-info-form { display: flex; flex-direction: column; gap: 12px; }

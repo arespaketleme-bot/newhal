@@ -676,7 +676,7 @@
   <!-- ── MODAL: PROFİLİM ─────────────────────────────────────────────── -->
   <div class="modal-overlay" id="profileModal" onclick="if (event.target === this) closeProfileModal()">
     <div class="modal modal-sm pf-modal">
-      <form class="pf" id="profileForm" onsubmit="saveProfile(event)">
+      <div class="pf" id="profileShell">
         <button type="button" class="modal-close pf-close" onclick="closeProfileModal()" aria-label="Profili kapat">✕</button>
 
         <!-- Kimlik kartı -->
@@ -739,6 +739,7 @@
         </section>
 
         <section class="pf-panel" data-panel="info">
+          <form id="profileForm" class="pf-info-form" onsubmit="saveProfile(event)">
           <div class="form-group full">
             <label for="profileName">Ad Soyad</label>
             <input type="text" id="profileName" maxlength="60" required />
@@ -763,6 +764,7 @@
             <button type="button" class="btn-ghost profile-logout" onclick="logoutUser()">↩ Çıkış Yap</button>
             <button type="button" class="btn-ghost profile-delete" onclick="deleteMyAccount()">Hesabımı sil</button>
           </div>
+          </form>
         </section>
 
         <section class="pf-panel" data-panel="activity">
@@ -775,7 +777,7 @@
         <section class="pf-panel" data-panel="alerts"><div class="pf-embed"></div></section>
         <section class="pf-panel" data-panel="members"><div class="pf-embed"></div></section>
         <section class="pf-panel" data-panel="public"><div class="pf-embed"></div></section>
-      </form>
+      </div>
     </div>
   </div>
 
