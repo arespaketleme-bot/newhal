@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-theme="light">
 <head>
 <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-NQ84M4R9"></script>
 <script>
@@ -27,7 +27,7 @@
 
   <!-- Telefona eklenen uygulama (PWA) -->
   <link rel="manifest" href="/manifest.webmanifest" />
-  <meta name="theme-color" content="#080c16" />
+  <meta name="theme-color" content="#f4f7f5" />
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -64,10 +64,10 @@
     (function () {
       var t = null;
       try { t = localStorage.getItem('newhalTheme'); } catch (e) {}
-      if (t !== 'light' && t !== 'dark') t = 'dark';
+      if (t !== 'light' && t !== 'dark') t = 'light'; // varsayılan: açık tema
       document.documentElement.setAttribute('data-theme', t);
       var m = document.querySelector('meta[name="theme-color"]');
-      if (m && t === 'light') m.setAttribute('content', '#f4f7f5');
+      if (m) m.setAttribute('content', t === 'light' ? '#f4f7f5' : '#080c16');
     })();
   </script>
 </head>
