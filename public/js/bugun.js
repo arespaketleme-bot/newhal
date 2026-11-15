@@ -58,6 +58,17 @@ function todaySearchProduct(name) {
   if (typeof trackSearch === 'function') trackSearch('map', name);
 }
 
+// Mevsim ürünleri sayfadaki ilanlarda aranır
+function todaySearchAds(name) {
+  try { if (typeof isMapFullscreen === 'function' && isMapFullscreen()) toggleMapFullscreen(false); } catch {}
+  const input = document.getElementById('adsSearch');
+  if (!input) return;
+  input.value = name;
+  // İlan aramasının kendi dinleyicisi listeyi süzer ve aramayı istatistiğe kaydeder
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  (document.querySelector('.ads-head') || input).scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function todayOpenPin(id) {
   if (typeof focusPin === 'function') focusPin(id);
   else if (typeof showPinDetail === 'function') showPinDetail(id);
@@ -146,24 +157,22 @@ function renderTodayBox() {
   }
   document.getElementById('todayNewCol').hidden = !newest.length;
 
-  // Mevsim ürünleri: o ürünü satan işletme sayısıyla birlikte
+  // Mevsim ürünleri: o ürünün geçtiği ilan sayısıyla birlikte; dokununca ilanlarda aranır
   const chips = document.getElementById('todayProducts');
   chips.replaceChildren();
-  const lower = s => String(s || '').toLocaleLowerCase('tr-TR');
   for (const name of todayProducts()) {
-    const key = lower(name);
-    const sellers = pins.filter(p => (p.sells || []).some(s => lower(s).includes(key))).length;
+    const matching = typeof adMatchesSearch === 'function' ? ads.filter(ad => adMatchesSearch(ad, name)).length : 0;
     const c = document.createElement('button');
     c.type = 'button';
     c.className = 'today-chip';
     c.textContent = name;
-    if (sellers) {
+    if (matching) {
       const n = document.createElement('small');
-      n.textContent = sellers;
-      n.title = `${sellers} işletme satıyor`;
+      n.textContent = matching;
+      n.title = `${matching} ilan`;
       c.appendChild(n);
     }
-    c.onclick = () => todaySearchProduct(name);
+    c.onclick = () => todaySearchAds(name);
     chips.appendChild(c);
   }
 
