@@ -3008,3 +3008,15 @@ body.profile-page-open { overflow: hidden; }
   /* Son satırda boşluk kalmasın: tek kalan son kart iki sütunu kaplar */
   .today-stat:last-child:nth-child(3n+2) { grid-column: span 2; }
 }
+/* Sıralı listeler (en çok görüntülenen ilanlar) */
+.today-rank { counter-reset: todayRank; }
+.today-rank .today-pin { position: relative; padding-left: 40px; }
+.today-rank li { counter-increment: todayRank; }
+.today-rank .today-pin::before {
+  content: counter(todayRank); position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 11px; font-weight: 800; color: #04120b; background: var(--accent);
+}
+.today-chip { text-transform: none; }
+#todayProducts .today-chip { text-transform: capitalize; }
+@media (min-width: 760px) { .today-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 22px; } }

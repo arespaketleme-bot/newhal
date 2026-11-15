@@ -2508,6 +2508,40 @@ app.get('/api/admin/stats/overview', requireAdmin, async (req, res) => {
   res.json({ totals, topAds: rows.sort((a, b) => b.views - a.views).slice(0, 15), searches });
 });
 
+// Herkese açık özet ("Bugün Halde" kutusu): en çok aranan kelimeler ve en çok görüntülenen ilanlar.
+// Kişisel bilgi sızmasın diye yalnızca birden çok kez aranmış, rakam içermeyen kelimeler gösterilir.
+const PUBLIC_SEARCH_MIN_COUNT = 3;
+let publicStatsCache = null;
+let publicStatsCacheAt = 0;
+app.get('/api/bugun-halde/stats', async (req, res) => {
+  res.set('Cache-Control', 'public, max-age=300');
+  try {
+    if (!publicStatsCache || Date.now() - publicStatsCacheAt > 5 * 60 * 1000) {
+      const s = await loadStats();
+      const ads = (await getAdsWithFeaturedExpiry()).filter(a => a.active !== false && !a.pending);
+      const topAds = ads
+        .map(ad => ({ id: ad.id, no: ad.no || null, title: ad.title || String(ad.body || '').split('\n')[0].slice(0, 80) || 'İlan',
+          image: (ad.images || [])[0] || null, views: (s.ads[ad.id] || {}).views || 0 }))
+        .filter(a => a.views > 0)
+        .sort((a, b) => b.views - a.views)
+        .slice(0, 5);
+      const ranked = Object.entries(s.searches)
+        .filter(([term, v]) => v.count >= PUBLIC_SEARCH_MIN_COUNT && term.length >= 3 && !/\d|@|https?:/.test(term))
+        .sort((a, b) => b[1].count - a[1].count)
+        .map(([term, v]) => ({ term, count: v.count }));
+      // Yazarken kaydedilen yarım kelimeler ("lim" → "limon") listede tekrar etmesin
+      const searches = ranked.filter(t => !ranked.some(o => o !== t && o.term.startsWith(t.term) && o.count >= t.count / 2)).slice(0, 8);
+      const totalViews = Object.values(s.ads).reduce((t, a) => t + (a.views || 0), 0);
+      publicStatsCache = { searches, topAds, totalViews };
+      publicStatsCacheAt = Date.now();
+    }
+    res.json(publicStatsCache);
+  } catch (err) {
+    console.error('Bugün Halde istatistikleri okunamadı:', err.message);
+    res.json({ searches: [], topAds: [], totalViews: 0 });
+  }
+});
+
 // ── WhatsApp mesaj şablonu (yönetici panelinden düzenlenir) ───
 const WA_TEMPLATE_FILE = 'whatsapp.json';
 const WA_TEMPLATE_MAX = 1500;

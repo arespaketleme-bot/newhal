@@ -23,6 +23,7 @@ const TODAY_NEW_PIN_LIMIT = 5;
 const TODAY_DAY_MS = 24 * 60 * 60 * 1000;
 
 let todaySettings = null;
+let todayStats = null;
 
 function todayRelative(iso) {
   const t = Date.parse(iso);
@@ -117,6 +118,7 @@ function renderTodayBox() {
   const toMap = () => document.getElementById('heroStats')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   if (typeof presence.online === 'number') addStat(presence.online, 'şu an online', toMap, true);
   if (typeof presence.visits === 'number') addStat(presence.visits, 'toplam ziyaretçi', toMap);
+  if (todayStats && todayStats.totalViews) addStat(todayStats.totalViews, 'ilan görüntülenme', () => document.getElementById('todayTopAdsCol')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
   stats.hidden = !stats.children.length;
 
   // Yeni katılan işletmeler
@@ -164,6 +166,61 @@ function renderTodayBox() {
     c.onclick = () => todaySearchProduct(name);
     chips.appendChild(c);
   }
+
+  renderTodayTopAds(ads);
+  renderTodaySearches();
+}
+
+// En çok görüntülenen ilanlar: dokununca ilan büyük pencerede açılır
+function renderTodayTopAds(ads) {
+  const col = document.getElementById('todayTopAdsCol');
+  const list = document.getElementById('todayTopAds');
+  // Yayından kalkmış ilanlar listede gösterilmez (ilanlar yüklendiyse)
+  const live = ads.length ? new Map(ads.map(a => [a.id, a])) : null;
+  const top = ((todayStats && todayStats.topAds) || []).filter(a => !live || live.has(a.id));
+  list.replaceChildren();
+  for (const item of top) {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'today-pin';
+    b.onclick = () => {
+      const ad = live && live.get(item.id);
+      if (ad && typeof openAdViewer === 'function') openAdViewer(ad, 0);
+      else document.getElementById('adsGrid')?.scrollIntoView({ behavior: 'smooth' });
+    };
+    const name = document.createElement('span');
+    name.className = 'today-pin-name';
+    name.textContent = `${item.no ? `#${item.no} ` : ''}${item.title}`;
+    const meta = document.createElement('span');
+    meta.className = 'today-pin-meta';
+    meta.textContent = `👁 ${Number(item.views).toLocaleString('tr-TR')} görüntülenme`;
+    b.append(name, meta);
+    li.appendChild(b);
+    list.appendChild(li);
+  }
+  col.hidden = !top.length;
+}
+
+// En çok aranan kelimeler: dokununca haritada aranır
+function renderTodaySearches() {
+  const col = document.getElementById('todaySearchCol');
+  const box = document.getElementById('todaySearches');
+  const terms = (todayStats && todayStats.searches) || [];
+  box.replaceChildren();
+  terms.forEach((t, i) => {
+    const c = document.createElement('button');
+    c.type = 'button';
+    c.className = 'today-chip';
+    c.textContent = `${i + 1}. ${t.term}`;
+    const n = document.createElement('small');
+    n.textContent = Number(t.count).toLocaleString('tr-TR');
+    n.title = `${t.count} kez arandı`;
+    c.appendChild(n);
+    c.onclick = () => todaySearchProduct(t.term);
+    box.appendChild(c);
+  });
+  col.hidden = !terms.length;
 }
 window.renderTodayBox = renderTodayBox;
 
@@ -173,9 +230,18 @@ async function loadTodaySettings() {
     if (res.ok) todaySettings = await res.json();
   } catch {}
   renderTodayBox();
+  loadTodayStats();
+}
+
+async function loadTodayStats() {
+  try {
+    const res = await fetch('/api/bugun-halde/stats');
+    if (res.ok) todayStats = await res.json();
+  } catch {}
+  renderTodayBox();
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadTodaySettings);
 else loadTodaySettings();
 // Gece yarısını geçen açık sekmelerde tarih ve "bugün" sayıları yenilenir
-setInterval(renderTodayBox, 10 * 60 * 1000);
+setInterval(loadTodayStats, 10 * 60 * 1000);
