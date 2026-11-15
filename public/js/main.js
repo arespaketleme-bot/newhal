@@ -124,10 +124,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   initMap();
   initSearch();
-  // Site haritayla, tam ekran açılır; "Küçült" ya da alt menü ile sayfanın geri kalanına geçilir
-  toggleMapFullscreen(true);
-  // İlk açılışta harita 20 sn sonra kendiliğinden küçülür; sayaç karşılama ekranı kapanınca başlar
-  mapAutoClosePending = true;
+  // Tam ekran harita yalnızca bu tarayıcıdaki ilk açılışta gösterilir; sonraki
+  // ziyaretlerde site doğrudan ana sayfayla (Bugün Halde, ilanlar) açılır.
+  // Paylaşılan işletme/ilan bağlantıları kendi yerine gider.
+  let firstVisit = true;
+  try {
+    firstVisit = !localStorage.getItem('mapFirstOpenDone') && !localStorage.getItem('mapAutoCloseShown');
+    localStorage.setItem('mapFirstOpenDone', '1');
+  } catch {}
+  if (firstVisit) {
+    toggleMapFullscreen(true);
+    // İlk açılışta harita 20 sn sonra kendiliğinden küçülür; sayaç karşılama ekranı kapanınca başlar
+    mapAutoClosePending = true;
+  } else {
+    toggleMapFullscreen(false);
+  }
   await loadCategories();
   loadPins();
   initAdsSearch();
