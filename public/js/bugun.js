@@ -92,13 +92,19 @@ function renderTodayBox() {
 
   const stats = document.getElementById('todayStats');
   stats.replaceChildren();
-  const addStat = (num, label, onClick) => {
+  const addStat = (num, label, onClick, live) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'today-stat';
     b.onclick = onClick;
     const n = document.createElement('b');
-    n.textContent = num;
+    if (live) {
+      const dot = document.createElement('i');
+      dot.className = 'today-live-dot';
+      dot.setAttribute('aria-hidden', 'true');
+      n.appendChild(dot);
+    }
+    n.append(typeof num === 'number' ? num.toLocaleString('tr-TR') : num);
     const l = document.createElement('span');
     l.textContent = label;
     b.append(n, l);
@@ -107,6 +113,10 @@ function renderTodayBox() {
   if (pins.length) addStat(pins.length, 'işletme rehberde', () => typeof showPinList === 'function' ? showPinList() : null);
   if (pinsWeek) addStat(`+${pinsWeek}`, 'bu hafta katıldı', () => document.getElementById('todayNewCol')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
   if (ads.length) addStat(adsToday || ads.length, adsToday ? 'bugünkü ilan' : 'güncel ilan', () => document.getElementById('adsGrid')?.scrollIntoView({ behavior: 'smooth' }));
+  const presence = window.todayPresence || {};
+  const toMap = () => document.getElementById('heroStats')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (typeof presence.online === 'number') addStat(presence.online, 'şu an online', toMap, true);
+  if (typeof presence.visits === 'number') addStat(presence.visits, 'toplam ziyaretçi', toMap);
   stats.hidden = !stats.children.length;
 
   // Yeni katılan işletmeler

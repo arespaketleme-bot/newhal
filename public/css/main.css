@@ -2995,3 +2995,16 @@ body.profile-page-open { overflow: hidden; }
   .today-box { padding: 14px 12px 16px; border-radius: 18px; }
   .today-stat b { font-size: 19px; }
 }
+.today-stat b { display: inline-flex; align-items: center; gap: 6px; }
+.today-live-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--primary);
+  box-shadow: 0 0 0 0 rgba(0,255,135,0.6); animation: todayPulse 2s infinite;
+}
+@keyframes todayPulse { 70% { box-shadow: 0 0 0 7px rgba(0,255,135,0); } 100% { box-shadow: 0 0 0 0 rgba(0,255,135,0); } }
+@media (prefers-reduced-motion: reduce) { .today-live-dot { animation: none; } }
+@media (max-width: 640px) {
+  .today-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .today-stat { padding: 9px 10px; }
+  /* Son satırda boşluk kalmasın: tek kalan son kart iki sütunu kaplar */
+  .today-stat:last-child:nth-child(3n+2) { grid-column: span 2; }
+}

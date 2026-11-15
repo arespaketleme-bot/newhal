@@ -740,6 +740,8 @@ function getPresenceId() {
 }
 
 function renderPresence({ online, visits }) {
+  window.todayPresence = { ...(window.todayPresence || {}), ...(typeof online === 'number' ? { online } : {}), ...(typeof visits === 'number' ? { visits } : {}) };
+  try { window.renderTodayBox?.(); } catch {}
   if (typeof online === 'number') document.getElementById('statOnline').textContent = online.toLocaleString('tr-TR');
   if (typeof visits === 'number') document.getElementById('statVisits').textContent = visits.toLocaleString('tr-TR');
 }
