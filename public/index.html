@@ -58,6 +58,18 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/tema.css" />
+  <script>
+    // Tema, sayfa çizilmeden önce uygulanır (koyu → açık yanıp sönmesin)
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('newhalTheme'); } catch (e) {}
+      if (t !== 'light' && t !== 'dark') t = 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+      var m = document.querySelector('meta[name="theme-color"]');
+      if (m && t === 'light') m.setAttribute('content', '#f4f7f5');
+    })();
+  </script>
 </head>
 <body>
 
@@ -117,6 +129,9 @@
         </button>
       </nav>
       <a class="apk-dl nav-apk-mobile" href="/indir/NewHal.apk" download="NewHal.apk" onclick="appPromoLog('Menüdeki İndir düğmesiyle APK indirdi')" hidden aria-label="NewHal Android uygulamasını indir">⬇️ İndir</a>
+      <button type="button" class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Açık temaya geç" title="Tema değiştir">
+        <span class="theme-icon-dark" aria-hidden="true">🌙</span><span class="theme-icon-light" aria-hidden="true">☀️</span>
+      </button>
       <button class="hamburger" id="hamburger" onclick="toggleMobileMenu()">
         <span></span><span></span><span></span>
       </button>
@@ -133,6 +148,11 @@
       <button class="btn-primary" onclick="openAddPinModal(); toggleMobileMenu()">İğne Ekle</button>
     </div>
   </header>
+
+  <!-- Telefonda üst menü gizli: tema düğmesi sağ üstte ayrıca durur -->
+  <button type="button" class="theme-toggle theme-toggle-fab" onclick="toggleTheme()" aria-label="Temayı değiştir" title="Tema değiştir">
+    <span class="theme-icon-dark" aria-hidden="true">🌙</span><span class="theme-icon-light" aria-hidden="true">☀️</span>
+  </button>
 
   <!-- ── İLANLAR ────────────────────────────────────────────────────────── -->
   <section class="ads-section ads-top" id="adsSection">
@@ -973,6 +993,7 @@
 
   <script src="js/main.js"></script>
   <script src="/js/bugun.js" defer></script>
+  <script src="/js/tema.js" defer></script>
   <script src="/js/cerez.js" defer></script>
   <script src="/js/olcum.js" defer></script>
 </body>

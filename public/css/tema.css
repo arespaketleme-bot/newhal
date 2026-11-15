@@ -1,0 +1,250 @@
+/* ═══════════════════════════════════════════════════════════════
+   NewHal — Tema düğmesi ve açık tema
+   Koyu tema main.css'teki varsayılan görünümdür. Açık tema,
+   <html data-theme="light"> iken buradaki renklerle uygulanır.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Tema düğmesi ───────────────────────────────────────────────── */
+.theme-toggle {
+  display: inline-grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0;
+  border-radius: 50%; cursor: pointer; font-size: 18px; line-height: 1;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border); transition: var(--trans);
+}
+.theme-toggle:hover { border-color: var(--border-g); transform: rotate(-12deg); }
+.theme-toggle .theme-icon-light { display: none; }
+:root[data-theme="light"] .theme-toggle .theme-icon-dark { display: none; }
+:root[data-theme="light"] .theme-toggle .theme-icon-light { display: inline; }
+.header-inner .theme-toggle { margin-left: 8px; }
+
+/* Telefonda üst menü gizli: sayfanın en üstünde, sağda küçük yuvarlak düğme (sayfayla birlikte kayar) */
+.theme-toggle-fab { display: none; }
+@media (max-width: 768px) {
+  .header-inner .theme-toggle { display: none; }
+  .theme-toggle-fab {
+    display: inline-grid; position: absolute; z-index: 150; right: 12px; width: 38px; height: 38px; font-size: 17px;
+    top: calc(env(safe-area-inset-top) + 10px);
+    background: rgba(8,12,22,0.72); backdrop-filter: blur(10px); box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+  }
+  .ads-top .ads-ticker { margin-right: 46px; }
+  body.has-trends .theme-toggle-fab { top: calc(var(--trend-h) + env(safe-area-inset-top) + 10px); }
+  /* Tam ekran haritada ve açık pencerelerde gizlenir */
+  body.map-fs-open .theme-toggle-fab, body.modal-open .theme-toggle-fab { display: none; }
+}
+
+/* ── Açık tema: temel renkler ──────────────────────────────────── */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --primary:   #059669;
+  --secondary: #0891b2;
+  --accent:    #d97706;
+  --green-400: #059669;
+  --bg:        #f4f7f5;
+  --bg-card:   #ffffff;
+  --bg-glass:  rgba(255,255,255,0.85);
+  --border:    rgba(15,23,42,0.12);
+  --border-g:  rgba(5,150,105,0.35);
+  --text-1:    #0f172a;
+  --text-2:    #047857;
+  --text-3:    #526072;
+  --shadow-g:  0 0 40px rgba(5,150,105,0.08);
+}
+:root[data-theme="light"] body { background: var(--bg); color: var(--text-1); }
+:root[data-theme="light"] ::-webkit-scrollbar-thumb { background: #a7c4b5; }
+:root[data-theme="light"] .gradient-text {
+  background: linear-gradient(135deg, #047857 0%, #059669 50%, #0d9488 100%);
+  -webkit-background-clip: text; background-clip: text;
+}
+
+/* Düğmeler ve beyaz saydam zeminler açık zeminde görünür olsun */
+:root[data-theme="light"] .theme-toggle,
+:root[data-theme="light"] .theme-toggle-fab { background: rgba(255,255,255,0.9); box-shadow: 0 4px 14px rgba(15,23,42,0.12); }
+:root[data-theme="light"] .btn-ghost:hover,
+:root[data-theme="light"] .mobile-menu button:hover,
+:root[data-theme="light"] .mobile-menu a:hover { background: rgba(15,23,42,0.05); }
+:root[data-theme="light"] .filter-btn { background: #fff; }
+
+/* ── Üst menü, alt menü ────────────────────────────────────────── */
+:root[data-theme="light"] .header,
+:root[data-theme="light"] .header.scrolled { background: rgba(255,255,255,0.9); box-shadow: 0 6px 24px rgba(15,23,42,0.08); }
+:root[data-theme="light"] .mobile-menu { background: rgba(255,255,255,0.98); }
+:root[data-theme="light"] .bottom-nav { background: rgba(255,255,255,0.97); box-shadow: 0 -6px 24px rgba(15,23,42,0.08); }
+:root[data-theme="light"] .trend-bar { background: linear-gradient(90deg, #ecfdf5, #f0f9ff); border-bottom-color: rgba(5,150,105,0.25); }
+
+/* ── Kartlar, paneller ─────────────────────────────────────────── */
+:root[data-theme="light"] .ad-card {
+  background: #fff; border-color: var(--border);
+  box-shadow: 0 8px 24px rgba(15,23,42,0.08), inset 0 1px 0 rgba(255,255,255,0.6);
+}
+:root[data-theme="light"] .ad-card.is-featured { background: linear-gradient(180deg, #fffbeb 0%, #fff 55%); border-color: rgba(217,119,6,0.45); }
+:root[data-theme="light"] .pin-card { box-shadow: 0 6px 18px rgba(15,23,42,0.06); }
+:root[data-theme="light"] .vitrin { background: linear-gradient(135deg, #fffbeb, #ecfdf5); box-shadow: 0 16px 40px rgba(15,23,42,0.08); }
+:root[data-theme="light"] .ads-ticker { background: #fffbeb; }
+:root[data-theme="light"] .ads-more-btn { background: #ecfdf5; border-color: rgba(5,150,105,0.4); }
+:root[data-theme="light"] .rail-ad { background: #fff; color: var(--text-1); }
+:root[data-theme="light"] .app-promo {
+  background: radial-gradient(120% 140% at 100% 0%, rgba(16,185,129,0.18), transparent 55%), linear-gradient(135deg, #ecfdf5, #f0f9ff);
+  box-shadow: 0 16px 40px rgba(15,23,42,0.08);
+}
+
+/* Bugün Halde kutusu */
+:root[data-theme="light"] .today-box {
+  background: linear-gradient(135deg, #ffffff, #f0fdf4);
+  box-shadow: 0 12px 32px rgba(15,23,42,0.07);
+}
+:root[data-theme="light"] .today-note { background: #fffbeb; border-color: rgba(217,119,6,0.35); }
+:root[data-theme="light"] .today-stat,
+:root[data-theme="light"] .today-pin { background: #fff; }
+:root[data-theme="light"] .today-pin:hover { background: #f0fdf4; }
+:root[data-theme="light"] .today-chip { background: #ecfdf5; }
+:root[data-theme="light"] .today-chip:hover { background: #d1fae5; }
+:root[data-theme="light"] .today-chip small { color: #fff; }
+:root[data-theme="light"] .today-rank .today-pin::before { color: #fff; }
+
+/* Ana sayfa üst görseli: koyu perde yerine açık perde */
+:root[data-theme="light"] .hero-bg {
+  background-image: linear-gradient(180deg, rgba(244,247,245,0.82) 0%, rgba(244,247,245,0.97) 100%), url("../img/banner.png");
+}
+:root[data-theme="light"] .footer { background: linear-gradient(180deg, var(--bg) 0%, #e6efe9 100%); }
+
+/* ── Pencereler, bildirimler ───────────────────────────────────── */
+:root[data-theme="light"] .modal { background: #fff; box-shadow: -10px 0 40px rgba(15,23,42,0.18); }
+:root[data-theme="light"] .modal-overlay { background: rgba(15,23,42,0.35); }
+:root[data-theme="light"] .toast { background: #fff; box-shadow: 0 8px 28px rgba(15,23,42,0.15); }
+:root[data-theme="light"] .welcome-popup-box,
+:root[data-theme="light"] .emoji-picker-popup { background: rgba(255,255,255,0.98); box-shadow: 0 30px 60px rgba(15,23,42,0.25); }
+:root[data-theme="light"] .install-banner { background: rgba(255,255,255,0.97); box-shadow: 0 12px 32px rgba(15,23,42,0.15); }
+:root[data-theme="light"] .pf-hero {
+  background: radial-gradient(120% 140% at 0% 0%, rgba(16,185,129,0.18), transparent 60%),
+              radial-gradient(120% 140% at 100% 0%, rgba(56,189,248,0.14), transparent 55%), #f8fafc;
+  border-bottom-color: var(--border);
+}
+:root[data-theme="light"] .pf-tabs { background: rgba(241,245,249,0.95); border-color: var(--border); }
+
+/* Form alanları */
+:root[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+:root[data-theme="light"] select,
+:root[data-theme="light"] textarea { background-color: #fff; color: var(--text-1); }
+:root[data-theme="light"] .catalog-editor select option { background: #fff; color: var(--text-1); }
+
+/* ── Harita ────────────────────────────────────────────────────── */
+:root[data-theme="light"] .leaflet-popup-content-wrapper,
+:root[data-theme="light"] .leaflet-popup-tip { background: #fff !important; box-shadow: 0 8px 28px rgba(15,23,42,0.18) !important; }
+:root[data-theme="light"] .leaflet-control-zoom a { background: #fff !important; }
+:root[data-theme="light"] .map-cat-chip { background: rgba(255,255,255,0.92); box-shadow: 0 4px 14px rgba(15,23,42,0.12); }
+
+/* ── Açık zemine düşen, rengi elle yazılmış yazılar ────────────── */
+:root[data-theme="light"] .nav .btn-ghost { color: #334155; }
+:root[data-theme="light"] .nav .btn-ghost:hover { color: var(--text-1); background: rgba(5,150,105,0.08); }
+:root[data-theme="light"] .ad-body h3 { color: var(--text-1); }
+:root[data-theme="light"] .ad-body p { color: #475569; }
+:root[data-theme="light"] .ad-share-btn.x { color: #334155; }
+:root[data-theme="light"] .ad-share-btn:hover,
+:root[data-theme="light"] .ad-share-toggle:hover,
+:root[data-theme="light"] .ad-comment-btn:hover { color: var(--text-2); }
+:root[data-theme="light"] .logo-main { background: linear-gradient(90deg, #0f172a, #047857); -webkit-background-clip: text; background-clip: text; color: transparent; }
+:root[data-theme="light"] .wa-group-menu,
+:root[data-theme="light"] .wa-group-footer { color: #047857 !important; }
+
+/* Uygulama duyurusu */
+:root[data-theme="light"] .app-promo-title { color: var(--text-1); }
+:root[data-theme="light"] .app-promo-text { color: #334155; }
+:root[data-theme="light"] .app-promo-note { color: var(--text-3); }
+:root[data-theme="light"] .app-promo-soon { color: #334155; background: rgba(15,23,42,0.05); }
+
+/* Gündem şeridi */
+:root[data-theme="light"] .trend-tag { color: #334155; }
+:root[data-theme="light"] .trend-tag:hover { color: var(--text-1); }
+:root[data-theme="light"] .trend-tag small { color: var(--text-3); }
+
+/* Sarı vurgular açık zeminde koyu amber */
+:root[data-theme="light"] #detailSeeksRow .chip,
+:root[data-theme="light"] .pin-card-products.seeks,
+:root[data-theme="light"] .owner-note.wait,
+:root[data-theme="light"] .rail-ad-more,
+:root[data-theme="light"] .ads-ticker-item:hover,
+:root[data-theme="light"] .vitrin-title { color: #b45309; -webkit-text-fill-color: #b45309; }
+:root[data-theme="light"] .vitrin-arrow { color: #b45309; background: rgba(255,255,255,0.85); }
+
+/* Dükkan düzenleme alanları */
+:root[data-theme="light"] .catalog-editor input[type="text"],
+:root[data-theme="light"] .catalog-editor select { color: var(--text-1); background: #fff; }
+
+/* Harita arama kutusu ve zemin */
+:root[data-theme="light"] .leaflet-container { background: #e6ece8; }
+:root[data-theme="light"] .map-search input { color: var(--text-1); background: rgba(255,255,255,0.96); }
+:root[data-theme="light"] .map-search-clear:hover { color: var(--text-1); background: rgba(15,23,42,0.08); }
+
+/* Profil penceresi */
+:root[data-theme="light"] .pf-id h3 { color: var(--text-1); }
+:root[data-theme="light"] .pf-id p,
+:root[data-theme="light"] .pf-note,
+:root[data-theme="light"] .pf-tab { color: var(--text-3); }
+:root[data-theme="light"] .pf-level-top,
+:root[data-theme="light"] .pf-invite-hero span { color: #334155; }
+:root[data-theme="light"] .pf-points span { color: #b45309; }
+:root[data-theme="light"] .pf-tile,
+:root[data-theme="light"] #profileModal .pf-tile.pf-tab { color: #334155; background: #f8fafc; }
+:root[data-theme="light"] .pf-tab.active,
+:root[data-theme="light"] #profileModal .pf-tile.pf-tab.active { color: #fff; }
+
+/* WhatsApp grubu kartı */
+:root[data-theme="light"] .wa-group-text strong { color: var(--text-1); }
+:root[data-theme="light"] .wa-group-text span { color: #047857; }
+
+/* Harita bilgi balonu: yazı renkleri JS içinde sabit yazılmış, açık zeminde koyulaştırılır */
+:root[data-theme="light"] .leaflet-popup-content strong { color: var(--text-1) !important; }
+:root[data-theme="light"] .leaflet-popup-content div[style*="#fbbf24"] { color: #b45309 !important; }
+:root[data-theme="light"] .leaflet-popup-content div[style*="#86efac"],
+:root[data-theme="light"] .leaflet-popup-content a[style*="#4ade80"] { color: #047857 !important; }
+
+/* ── Otomatik: açık zeminde okunmayan sabit yazı renkleri koyulaştırılır ── */
+:root[data-theme="light"] .ad-like-btn.is-liked,
+:root[data-theme="light"] .ad-like-btn:hover,
+:root[data-theme="light"] .my-ad-delete,
+:root[data-theme="light"] .pin-like-button[aria-pressed="true"],
+:root[data-theme="light"] .profile-delete,
+:root[data-theme="light"] .profile-logout,
+:root[data-theme="light"] .required { color: #b91c1c; }
+:root[data-theme="light"] .chip,
+:root[data-theme="light"] .pin-card-products { color: #065f46; }
+:root[data-theme="light"] #detailSeeksRow .chip,
+:root[data-theme="light"] .ads-ticker-item b,
+:root[data-theme="light"] .ads-ticker-item::before,
+:root[data-theme="light"] .ads-ticker-item:hover,
+:root[data-theme="light"] .my-ad-status.pending,
+:root[data-theme="light"] .my-ad-vitrin,
+:root[data-theme="light"] .owner-note.wait,
+:root[data-theme="light"] .pin-card-level,
+:root[data-theme="light"] .pin-card-products.seeks,
+:root[data-theme="light"] .pin-engagement-bar,
+:root[data-theme="light"] .rail-ad-label,
+:root[data-theme="light"] .rail-ad-more { color: #b45309; }
+:root[data-theme="light"] .ad-comment-btn:hover,
+:root[data-theme="light"] .ad-share-btn:hover,
+:root[data-theme="light"] .ad-share-toggle:hover,
+:root[data-theme="light"] .catalog-editor input[type="text"],
+:root[data-theme="light"] .catalog-editor select,
+:root[data-theme="light"] .claim-btn:hover,
+:root[data-theme="light"] .nav .btn-ghost:hover,
+:root[data-theme="light"] .trend-tag:hover { color: var(--text-1); }
+:root[data-theme="light"] .invite-stats b,
+:root[data-theme="light"] .mobile-apk,
+:root[data-theme="light"] .popup-chip,
+:root[data-theme="light"] .trend-tag { color: #047857; }
+:root[data-theme="light"] .trend-tag small { color: #526072; }
+:root[data-theme="light"] .ad-link,
+:root[data-theme="light"] .ad-link:hover,
+:root[data-theme="light"] .claim-btn,
+:root[data-theme="light"] .owner-note.ok { color: #0369a1; }
+:root[data-theme="light"] .ad-share-btn.x,
+:root[data-theme="light"] .nav .btn-ghost { color: #334155; }
+
+
+/* Sayfada satır içi yazılmış koyu alanlar (yorum kutusu vb.) */
+:root[data-theme="light"] input[style*="color: #fff"],
+:root[data-theme="light"] textarea[style*="color: #fff"] { color: var(--text-1) !important; background: #fff !important; }
+:root[data-theme="light"] .map-cat-chip.active { background: var(--green-600); border-color: var(--green-600); color: #fff; }
+:root[data-theme="light"] .pin-engagement-bar { background: #fffbeb; }
+:root[data-theme="light"] .chip { background: #ecfdf5; }
+:root[data-theme="light"] #detailSeeksRow .chip { background: #fffbeb; }
+:root[data-theme="light"] .claim-btn { background: #e0f2fe; }
