@@ -159,10 +159,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   initPresence();
   initBottomNav();
 
-  // Telefonda sohbet kapalı başlar, ekranı kaplamasın
-  if (window.matchMedia('(max-width: 768px)').matches) {
-    document.getElementById('chatWidget')?.classList.add('collapsed');
-  }
+  // Sohbet her ekranda kapalı başlar (index.html'de "collapsed" sınıfıyla gelir)
+  document.getElementById('chatWidget')?.classList.add('collapsed');
 
   // Chat initialization & polling
   loadChatMessages();
