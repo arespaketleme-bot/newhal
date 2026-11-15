@@ -136,6 +136,10 @@
           <span aria-hidden="true">📈</span>
           Gündem Şeridi
         </button>
+        <button class="nav-item" id="navToday" onclick="showSection('today')">
+          <span aria-hidden="true">📅</span>
+          Bugün Halde
+        </button>
         <button class="nav-item" id="navWelcome" onclick="showSection('welcome')">
           <span aria-hidden="true">🖼️</span>
           Açılış Ekranı
@@ -724,6 +728,33 @@
         <div id="heatmapStage" style="position:relative;margin:0 auto;border-radius:12px;overflow:hidden;background:var(--bg-card);border:1px solid rgba(255,255,255,.08)">
           <div id="heatmapFrameBox" style="position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none"></div>
           <canvas id="heatmapCanvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
+        </div>
+      </section>
+
+      <section class="section" id="sectionToday">
+        <div class="section-head">
+          <div>
+            <h1>Bugün Halde</h1>
+            <p>Ana sayfadaki günlük kutu: duyuru, yeni işletmeler, günün ilanları ve mevsim ürünleri</p>
+          </div>
+        </div>
+        <div class="broadcast-card">
+          <form id="todayForm" onsubmit="saveToday(event)">
+            <div class="form-group">
+              <label><input id="todayEnabled" type="checkbox" style="width:auto;margin-right:8px" />Kutu ana sayfada gösterilsin</label>
+            </div>
+            <div class="form-group">
+              <label for="todayNoteInput">Günün duyurusu (boş bırakılırsa gösterilmez)</label>
+              <textarea id="todayNoteInput" maxlength="400" rows="3" placeholder="Örn: Hal bugün 04:00'te açılıyor. Narenciye girişi yoğun, limon fiyatları düştü."></textarea>
+              <small id="todayNoteMeta" style="color:var(--text-3,#94a3b8)"></small>
+            </div>
+            <div class="form-group">
+              <label for="todayProductsInput">Mevsim ürünleri (virgülle ayırın; boş bırakılırsa aya göre otomatik)</label>
+              <input id="todayProductsInput" type="text" maxlength="400" placeholder="Örn: limon, mandalina, portakal, nar, ıspanak" />
+            </div>
+            <p style="font-size:13px;opacity:.75;margin:0 0 12px">Yeni katılan işletmeler ve günün ilan sayısı otomatik hesaplanır.</p>
+            <button type="submit" class="btn-sm btn-approve" id="todaySaveBtn">Kaydet</button>
+          </form>
         </div>
       </section>
 

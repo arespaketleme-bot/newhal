@@ -534,6 +534,7 @@ const sectionTitles = {
   broadcast: 'Toplu Bildirim',
   stats:     'İstatistikler',
   logs:      'Aktivite Logları',
+  today:     'Bugün Halde',
   welcome:   'Açılış Ekranı',
   sponsor:   'Sponsorlu Reklam',
   appPromo:  'Uygulama İndirme',
@@ -569,6 +570,8 @@ function showSection(name) {
     loadClaims();
   } else if (name === 'heatmap') {
     loadHeatmap();
+  } else if (name === 'today') {
+    loadToday();
   } else if (name === 'welcome') {
     loadWelcome();
   } else if (name === 'sponsor') {
@@ -588,6 +591,44 @@ function showSection(name) {
   } else if (name === 'audit') {
     loadAuditReport();
   }
+}
+
+// ── Bugün Halde kutusu ────────────────────────────────────────
+function showTodayMeta(t) {
+  const el = document.getElementById('todayNoteMeta');
+  el.textContent = t.note && t.noteUpdatedAt
+    ? 'Son güncelleme: ' + new Date(t.noteUpdatedAt).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+    : '';
+}
+
+async function loadToday() {
+  try {
+    const res = await fetch('/api/bugun-halde', { cache: 'no-store' });
+    const t = await res.json();
+    document.getElementById('todayEnabled').checked = t.enabled !== false;
+    document.getElementById('todayNoteInput').value = t.note || '';
+    document.getElementById('todayProductsInput').value = t.products || '';
+    showTodayMeta(t);
+  } catch {
+    showToast('Bugün Halde ayarı okunamadı', 'error');
+  }
+}
+
+async function saveToday(event) {
+  event.preventDefault();
+  const res = await api('/api/admin/bugun-halde', {
+    method: 'PUT',
+    body: JSON.stringify({
+      enabled: document.getElementById('todayEnabled').checked,
+      note: document.getElementById('todayNoteInput').value,
+      products: document.getElementById('todayProductsInput').value,
+    }),
+  });
+  if (!res) return;
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { showToast(data.error || 'Kaydedilemedi', 'error'); return; }
+  showTodayMeta(data);
+  showToast('Bugün Halde kaydedildi', 'success');
 }
 
 // ── Açılış ekranı ayarı ──────────────────────────────────────

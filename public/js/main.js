@@ -392,6 +392,7 @@ async function loadPins() {
       headers: userToken ? { Authorization: 'Bearer ' + userToken } : {},
     });
     allPins = await res.json();
+    try { window.renderTodayBox?.(); } catch {}
     renderPins(allPins);
     renderStoryBar();
     // İşletmeler geç gelirse vitrindeki işletme kartları şimdi eklenir
@@ -2889,6 +2890,7 @@ function renderAds(ads) {
   document.getElementById('adsEmpty').hidden = ads.some(ad => !ad.weather);
   renderAdsGrid();
   renderAdsTicker();
+  try { window.renderTodayBox?.(); } catch {}
 }
 
 // ── Kayan ilan şeridi (vitrinin üstünde, sağdan sola) ─────────

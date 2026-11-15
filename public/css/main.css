@@ -2936,3 +2936,62 @@ body.profile-page-open { overflow: hidden; }
 .fb-story-card-body { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; }
 .fb-story-badge { align-self: flex-start; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; color: #fff; background: linear-gradient(135deg, #1877f2, #c026d3); }
 .fb-story-card-body small { opacity: .7; }
+
+/* ── Bugün Halde kutusu ───────────────────────────────────────── */
+.today-box {
+  margin: 0 0 26px; padding: 16px 18px 18px; border-radius: 22px;
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(0,242,254,0.10), transparent 55%),
+    radial-gradient(120% 140% at 0% 100%, rgba(0,255,135,0.10), transparent 55%),
+    rgba(255,255,255,0.02);
+  border: 1px solid var(--border-g);
+  box-shadow: 0 18px 48px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.today-box[hidden], .today-box [hidden] { display: none; }
+.today-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.today-title { font-size: 18px; letter-spacing: 0.02em; }
+.today-date { font-size: 13px; color: var(--text-3); text-transform: capitalize; }
+.today-note {
+  display: flex; gap: 10px; align-items: flex-start; margin-bottom: 14px; padding: 12px 14px;
+  border-radius: var(--radius); background: rgba(251,191,36,0.10); border: 1px solid rgba(251,191,36,0.32);
+}
+.today-note-icon { font-size: 20px; line-height: 1.3; }
+.today-note p { font-size: 14.5px; font-weight: 600; white-space: pre-line; overflow-wrap: anywhere; }
+.today-note small { font-size: 11.5px; color: var(--text-3); }
+.today-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.today-stats[hidden] { display: none; }
+.today-stat {
+  min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 10px 12px; border-radius: var(--radius); cursor: pointer; text-align: left; font: inherit;
+  color: var(--text-1); background: rgba(255,255,255,0.04); border: 1px solid var(--border); transition: var(--trans);
+}
+.today-stat:hover { border-color: var(--border-g); }
+.today-stat b { font-family: var(--font-head); font-size: 22px; line-height: 1.1; color: var(--primary); }
+.today-stat span { font-size: 12px; color: var(--text-3); }
+.today-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.today-col h3 { font-size: 14px; margin-bottom: 8px; }
+.today-hint { font-size: 12px; color: var(--text-3); margin: -4px 0 8px; }
+.today-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.today-pin {
+  width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 44px;
+  padding: 8px 12px; border-radius: 10px; cursor: pointer; text-align: left; font: inherit;
+  color: var(--text-1); background: rgba(255,255,255,0.03); border: 1px solid var(--border); transition: var(--trans);
+}
+.today-pin:hover { border-color: var(--border-g); background: rgba(0,255,135,0.05); }
+.today-pin-name { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+.today-pin-meta { font-size: 12px; color: var(--text-3); }
+.today-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.today-chip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 6px 14px;
+  border-radius: 999px; cursor: pointer; font: inherit; font-size: 14px; text-transform: capitalize;
+  color: var(--text-1); background: rgba(0,255,135,0.07); border: 1px solid var(--border-g); transition: var(--trans);
+}
+.today-chip:hover { background: rgba(0,255,135,0.16); }
+.today-chip small {
+  font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+  color: #04120b; background: var(--primary);
+}
+@media (max-width: 640px) {
+  .today-box { padding: 14px 12px 16px; border-radius: 18px; }
+  .today-stat b { font-size: 19px; }
+}

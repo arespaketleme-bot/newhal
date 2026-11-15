@@ -2965,6 +2965,45 @@ app.put('/api/admin/welcome', requireAdmin, async (req, res) => {
   }
 });
 
+// ── "Bugün Halde" kutusu: yönetici duyurusu ve mevsim ürünleri ──
+// Yeni işletme/ilan bilgisi tarayıcıda zaten yüklü verilerden hesaplanır;
+// burada yalnızca yöneticinin elle yazdığı kısımlar saklanır.
+const TODAY_FILE = 'bugun-halde.json';
+const DEFAULT_TODAY = { enabled: true, note: '', noteUpdatedAt: '', products: '' };
+let todayCache = null;
+async function getTodaySettings() {
+  if (todayCache) return todayCache;
+  const saved = await db.getPrivateJson(TODAY_FILE);
+  todayCache = { ...DEFAULT_TODAY, ...(saved || {}) };
+  return todayCache;
+}
+app.get('/api/bugun-halde', async (req, res) => {
+  res.set('Cache-Control', 'public, max-age=60');
+  try { res.json(await getTodaySettings()); }
+  catch (err) { console.error('Bugün Halde ayarı okunamadı:', err.message); res.json(DEFAULT_TODAY); }
+});
+app.put('/api/admin/bugun-halde', requireAdmin, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const current = await getTodaySettings();
+    const note = welcomeText(body.note, 400);
+    const products = welcomeText(body.products, 400);
+    const next = {
+      enabled: body.enabled !== false,
+      note,
+      // Duyuru değiştiyse tarihi yenilenir; ziyaretçi duyurunun ne zamandan kaldığını görür
+      noteUpdatedAt: note && note !== current.note ? new Date().toISOString() : (note ? current.noteUpdatedAt : ''),
+      products,
+    };
+    if (!(await db.savePrivateJson(TODAY_FILE, next))) return res.status(500).json({ error: 'Kaydedilemedi' });
+    todayCache = next;
+    res.json(next);
+  } catch (err) {
+    console.error('Bugün Halde ayarı kaydedilemedi:', err.message);
+    res.status(500).json({ error: 'Kaydedilemedi' });
+  }
+});
+
 // ── Sponsorlu reklamlar (birden fazla sponsor; her biri yönetimden açılır/kapanır) ──
 const SPONSOR_FILE = 'sponsor.json';
 const SPONSOR_PLACES = ['grid', 'strip', 'detail', 'side'];   // ilan listesi, vitrin altı bant, işletme detayı, masaüstü sağ/sol
