@@ -505,6 +505,45 @@ app.post('/api/visit', async (req, res) => {
   notifyNewVisitor(req, visits).catch(err => console.error('Telegram bildirimi gönderilemedi:', err.message));
 });
 
+// ── Sesli tanıtım sonuna kadar dinlendi → Telegram bildirimi ───
+// Tanıtım her tarayıcıda bir kez çalar; yine de kötüye kullanıma karşı
+// aynı IP'ye 6 saatte bir ve saatte en fazla 20 bildirim gönderilir.
+const VOICE_TG_MAX_PER_HOUR = 20;
+const voiceTgLastByIp = new Map();
+let voiceTgHour = { at: 0, sent: 0 };
+app.post('/api/voice-intro', async (req, res) => {
+  res.status(204).end();
+  try {
+    const info = (req.body && typeof req.body === 'object') ? req.body : {};
+    if (info.event !== 'completed') return;
+    const ua = req.headers['user-agent'] || '';
+    if (/bot|crawl|spider|headless/i.test(ua)) return;
+    const ip = String(getIp(req)).split(',')[0].trim();
+    const now = Date.now();
+    if (now - (voiceTgLastByIp.get(ip) || 0) < TG_SAME_VISITOR_MS) return;
+    if (now - voiceTgHour.at > 60 * 60 * 1000) voiceTgHour = { at: now, sent: 0 };
+    if (voiceTgHour.sent >= VOICE_TG_MAX_PER_HOUR) return;
+    voiceTgLastByIp.set(ip, now);
+    voiceTgHour.sent++;
+    if (voiceTgLastByIp.size > 5000) voiceTgLastByIp.clear();
+    const seconds = Math.max(0, Math.min(600, Math.round(Number(info.seconds) || 0)));
+    const location = await getIpLocation(ip).catch(() => null);
+    const time = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    const lines = [
+      '🔊 <b>Sesli tanıtım sonuna kadar dinlendi</b>',
+      '',
+      `🕒 ${tgEsc(time)}${seconds ? ` · ⏱ ${seconds} sn` : ''}`,
+      `🗣 Ses: ${tgEsc(String(info.voice || 'bilinmiyor').slice(0, 60))}`,
+      location ? `📍 Konum: ${tgEsc(location)}` : null,
+      `${tgEsc(describeDevice(ua))}`,
+      `🌐 IP: <code>${tgEsc(ip)}</code>`,
+    ].filter(line => line !== null);
+    await sendTelegram(lines.join('\n'));
+  } catch (err) {
+    console.error('Sesli tanıtım Telegram bildirimi gönderilemedi:', err.message);
+  }
+});
+
 // ── Yeni ziyaretçi → Telegram bildirimi ────────────────────────
 // Bot bilgisi gizli depoda (telegram.json: { bot_token, chat_id }); koda ve GitHub'a yazılmaz.
 const TG_CONFIG_FILE = 'telegram.json';

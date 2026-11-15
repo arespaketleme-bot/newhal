@@ -39,7 +39,10 @@ function turkishVoice() {
 
 let voiceIntroCard = null;
 
+let voiceIntroStopped = false;
+
 function closeVoiceIntro() {
+  voiceIntroStopped = true;   // bazı tarayıcılar durdurulunca da "bitti" der; bildirim gitmesin
   try { speechSynthesis.cancel(); } catch {}
   voiceIntroCard?.remove();
   voiceIntroCard = null;
@@ -72,7 +75,18 @@ function playVoiceIntro() {
   u.lang = voice.lang || 'tr-TR';
   u.rate = 1;
   u.pitch = 1;
+  const startedAt = Date.now();
   u.onend = () => {
+    // Sonuna kadar dinlendiyse yöneticiye Telegram bildirimi gider
+    const seconds = (Date.now() - startedAt) / 1000;
+    if (!voiceIntroStopped && seconds >= 10) {
+      fetch('/api/voice-intro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event: 'completed', seconds: Math.round(seconds), voice: voice.name || voice.lang || '' }),
+        keepalive: true,
+      }).catch(() => {});
+    }
     if (!voiceIntroCard) return;
     voiceIntroCard.classList.add('done');
     voiceIntroCard.querySelector('.voice-intro-text span').textContent = 'Ücretsiz üye olun, hemen başlayın';
