@@ -48,17 +48,7 @@ function todayProducts() {
   return custom.length ? custom.slice(0, 16) : TODAY_SEASON[new Date().getMonth()];
 }
 
-function todaySearchProduct(name) {
-  try { focusMapSearch(); }
-  catch { document.getElementById('mapSection')?.scrollIntoView({ behavior: 'smooth' }); }
-  const input = document.getElementById('mapSearch');
-  if (!input) return;
-  input.value = name;
-  if (typeof onSearchInput === 'function') onSearchInput(name);
-  if (typeof trackSearch === 'function') trackSearch('map', name);
-}
-
-// Mevsim ürünleri sayfadaki ilanlarda aranır
+// Mevsim ürünleri ve en çok aranan kelimeler sayfadaki ilanlarda aranır
 function todaySearchAds(name) {
   try { if (typeof isMapFullscreen === 'function' && isMapFullscreen()) toggleMapFullscreen(false); } catch {}
   const input = document.getElementById('adsSearch');
@@ -211,7 +201,7 @@ function renderTodayTopAds(ads) {
   col.hidden = !top.length;
 }
 
-// En çok aranan kelimeler: dokununca haritada aranır
+// En çok aranan kelimeler: dokununca ilanlarda aranır
 function renderTodaySearches() {
   const col = document.getElementById('todaySearchCol');
   const box = document.getElementById('todaySearches');
@@ -226,7 +216,7 @@ function renderTodaySearches() {
     n.textContent = Number(t.count).toLocaleString('tr-TR');
     n.title = `${t.count} kez arandı`;
     c.appendChild(n);
-    c.onclick = () => todaySearchProduct(t.term);
+    c.onclick = () => todaySearchAds(t.term);
     box.appendChild(c);
   });
   col.hidden = !terms.length;
