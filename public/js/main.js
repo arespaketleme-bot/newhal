@@ -1739,6 +1739,7 @@ function bottomNavGo(tab) {
   } else {
     if (isMapFullscreen()) toggleMapFullscreen(false);
     if (tab === 'home') window.scrollTo({ top: 0, behavior: 'smooth' });
+    else if (tab === 'ads' && openAdsFeedOnMobile()) { /* telefonda kaydırmalı ilanlar açıldı */ }
     else document.getElementById(BOTTOM_NAV_SECTIONS[tab]).scrollIntoView({ behavior: 'smooth' });
   }
   bottomNavSection = tab;
@@ -2766,8 +2767,20 @@ function openAdFromLink() {
   else showToast('Bu ilan artık yayında değil', 'error');
 }
 
+// Telefonda "İlanlar"a basınca doğrudan kaydırmalı ilan akışı açılır.
+// Sayfa arkada ilanlar bölümüne getirilir; akış kapanınca kullanıcı ilan listesini görür.
+function openAdsFeedOnMobile() {
+  if (!isAdsMobile() || document.getElementById('adFeed')) return false;
+  const list = adsFeedList.length ? adsFeedList : allAds.filter(ad => !ad.weather);
+  if (!list.length) return false;
+  document.getElementById('adsSection').scrollIntoView({ behavior: 'auto' });
+  openAdFeed(list[0]);
+  return true;
+}
+
 function showAds() {
   if (isMapFullscreen()) toggleMapFullscreen(false);
+  if (openAdsFeedOnMobile()) return;
   document.getElementById('adsSection').scrollIntoView({ behavior: 'smooth' });
 }
 
