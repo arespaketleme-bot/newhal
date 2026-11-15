@@ -2,6 +2,12 @@
    NewHal — main.js
    ═══════════════════════════════════════════════════════════════ */
 
+// ── Sayfa her açılışta en üstten başlar ───────────────────────
+// Tarayıcı yenilemede eski kaydırma yerine dönmesin; paylaşılan
+// işletme/ilan bağlantıları kendi yerlerine yine kendileri kaydırır.
+try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch {}
+if (!location.hash) window.scrollTo(0, 0);
+
 // ── AUTH YARDIMCISI ──────────────────────────────
 function openAuthModal() {
   // Hiç giriş yapmamış biri için "Hesap Aç" sekmesi öne çıkar
@@ -2024,7 +2030,9 @@ function renderMapCategoryBar(categories) {
     .forEach(cat => chip(cat.name, `${cat.icon || '📦'} ${cat.name}`));
   // Listedeki eski kategori düğmeleri de aynı seçimi gösterir
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === activeFilter));
-  bar.querySelector('.map-cat-chip.active')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  // Seçili kategori yalnızca şeridin içinde ortalanır; sayfa aşağı kaymaz
+  const activeChip = bar.querySelector('.map-cat-chip.active');
+  if (activeChip) bar.scrollLeft = activeChip.offsetLeft - (bar.clientWidth - activeChip.offsetWidth) / 2;
   if (!(allPins || []).length && !renderMapCategoryBar.waiting) {
     // İşletmeler henüz gelmediyse geldikten sonra sıralama yenilenir
     renderMapCategoryBar.waiting = true;
