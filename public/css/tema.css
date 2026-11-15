@@ -248,3 +248,35 @@
 :root[data-theme="light"] .chip { background: #ecfdf5; }
 :root[data-theme="light"] #detailSeeksRow .chip { background: #fffbeb; }
 :root[data-theme="light"] .claim-btn { background: #e0f2fe; }
+
+/* ── Sesli tanıtım kartı ───────────────────────────────────────── */
+.voice-intro {
+  position: fixed; z-index: 4500; left: 50%; transform: translateX(-50%);
+  /* Üstte durur: altta çerez onay kutusu ve alt menü var */
+  top: calc(env(safe-area-inset-top) + 12px); width: min(420px, calc(100vw - 24px)); box-sizing: border-box;
+  display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 14px; border-radius: 18px;
+  background: var(--bg-card); color: var(--text-1); border: 1px solid var(--border-g);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.25); animation: voiceIn 0.3s ease;
+}
+body.has-trends .voice-intro { top: calc(var(--trend-h) + env(safe-area-inset-top) + 12px); }
+@media (min-width: 769px) { .voice-intro { top: calc(env(safe-area-inset-top) + 84px); } body.has-trends .voice-intro { top: calc(var(--trend-h) + env(safe-area-inset-top) + 84px); } }
+@keyframes voiceIn { from { opacity: 0; transform: translate(-50%, -12px); } }
+.voice-intro-wave { display: flex; align-items: center; gap: 3px; height: 24px; flex-shrink: 0; }
+.voice-intro-wave i { width: 4px; border-radius: 2px; background: var(--green-500); animation: voiceBar 0.9s ease-in-out infinite; }
+.voice-intro-wave i:nth-child(2) { animation-delay: 0.15s; }
+.voice-intro-wave i:nth-child(3) { animation-delay: 0.3s; }
+.voice-intro-wave i:nth-child(4) { animation-delay: 0.45s; }
+@keyframes voiceBar { 0%, 100% { height: 6px; } 50% { height: 22px; } }
+.voice-intro.done .voice-intro-wave i { animation: none; height: 6px; }
+@media (prefers-reduced-motion: reduce) { .voice-intro, .voice-intro-wave i { animation: none; } .voice-intro-wave i { height: 12px; } }
+.voice-intro-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.voice-intro-text b { font-size: 14px; }
+.voice-intro-text span { font-size: 12px; color: var(--text-3); }
+.voice-intro-join {
+  flex-shrink: 0; padding: 9px 14px; border-radius: 999px; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer;
+  color: #fff; background: linear-gradient(135deg, var(--green-500), var(--green-600));
+}
+.voice-intro-stop {
+  flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 14px;
+  color: var(--text-3); background: rgba(127,127,127,0.12);
+}
