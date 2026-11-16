@@ -4,6 +4,9 @@
    /isletmeler       tüm işletmeler, kategoriye göre
    /ilan/:no-baslik  her ilanın sunucuda hazırlanan sayfası
    /ilanlar          güncel ilanların listesi
+   /kategori/:ad     bir kategorideki tüm işletmeler
+   /urun/:ad         bir ürün ya da hizmet: satan işletmeler ve ilgili ilanlar
+   /urunler          tüm ürün ve hizmet sayfaları
    /sitemap.xml      Google'a verilen sayfa listesi
    /robots.txt       hangi sayfaların taranacağı
    ═══════════════════════════════════════════════════════════════ */
@@ -34,10 +37,71 @@ const adPath = a => `/ilan/${a.no}-${adSlug(a)}`;
 // Arama sonucu açıklaması telefon numarasıyla başlamasın
 const stripPhones = t => String(t || '').replace(/\+?\d[\d\s().-]{8,}\d/g, ' ')
   .replace(/[\u200b\s]+/g, ' ').replace(/^[\s—–\-·:,]+/, '').trim();
+const catPath = name => `/kategori/${slugify(name)}`;
+const productPath = name => `/urun/${slugify(name)}`;
+const MIN_CATEGORY_PINS = 3;
+const MIN_PRODUCT_HITS = 3;
+// Ilanlarda sik gecen hal urunleri. Grup: hangi isletme turu satar
+const PRODUCE = {
+  sebze: ['domates', 'biber', 'patlıcan', 'salatalık', 'kabak', 'fasulye', 'patates', 'soğan', 'sarımsak', 'marul', 'lahana',
+    'karnabahar', 'brokoli', 'havuç', 'ıspanak', 'mantar', 'enginar', 'bezelye', 'bamya', 'pırasa', 'maydanoz'],
+  meyve: ['limon', 'portakal', 'mandalina', 'greyfurt', 'narenciye', 'muz', 'elma', 'armut', 'üzüm', 'karpuz', 'kavun', 'çilek',
+    'nar', 'ayva', 'kiraz', 'şeftali', 'kayısı', 'erik', 'avokado', 'kivi', 'incir', 'zeytin', 'ceviz'],
+};
+const TR_LETTER = 'a-zçğıöşü0-9';
+const lowerTr = t => String(t || '').toLocaleLowerCase('tr-TR');
+const titleTr = t => t.split(' ').map(w => w.charAt(0).toLocaleUpperCase('tr-TR') + w.slice(1)).join(' ');
+// Kelimenin basinda eslesir ("domatesi", "limonlar" de sayilir); kisa kelimeler yalniz ek alirsa ("nar" ama "narin" degil)
+const termRegex = term => {
+  const w = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return term.length <= 3
+    ? new RegExp(`(^|[^${TR_LETTER}])${w}(lar|ler|ı|i|u|ü|ın|in)?(?![${TR_LETTER}])`)
+    : new RegExp(`(^|[^${TR_LETTER}])${w}`);
+};
 const trDate = iso => {
   try { return new Date(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' }); }
   catch { return ''; }
 };
+
+// Tum urun/hizmet sayfalarini hesaplar: hal urunleri + isletmelerin en az 3'unun sattigi kalemler.
+// Ayni liste ard arda istenince 5 dakika yeniden hesaplanmaz.
+let productsCache = { pins: null, ads: null, at: 0, list: [] };
+function buildProducts(pins, ads) {
+  if (productsCache.pins === pins && productsCache.ads === ads && Date.now() - productsCache.at < 5 * 60 * 1000) return productsCache.list;
+  const list = computeProducts(pins, ads);
+  productsCache = { pins, ads, at: Date.now(), list };
+  return list;
+}
+function computeProducts(pins, ads) {
+  const liveAds = ads.filter(isPublicAd);
+  const adTexts = liveAds.map(a => lowerTr(`${a.title || ''} ${a.body || ''}`));
+  const sellsOf = p => (p.sells || []).map(x => lowerTr(x).trim());
+  const terms = new Map();
+  Object.entries(PRODUCE).forEach(([group, list]) => list.forEach(t => terms.set(t, group)));
+  const sellCount = {};
+  pins.forEach(p => new Set(sellsOf(p)).forEach(t => { sellCount[t] = (sellCount[t] || 0) + 1; }));
+  // Kategori adiyla ayni kalem (ör. "market") ayri sayfa olmaz; kategori sayfasi zaten var
+  const categoryNames = new Set(pins.map(p => lowerTr(p.category)));
+  Object.entries(sellCount).forEach(([t, n]) => {
+    if (n < MIN_PRODUCT_HITS || terms.has(t) || t.length <= 2 || categoryNames.has(t)) return;
+    terms.set(t, PRODUCE[t] ? t : null);   // "sebze" ve "meyve" kendi grubunun sayfasidir
+  });
+
+  const out = [];
+  terms.forEach((group, term) => {
+    const re = termRegex(term);
+    const matchedAds = liveAds.filter((a, i) => re.test(adTexts[i]));
+    const sellers = pins.filter(p => sellsOf(p).includes(term) || re.test(lowerTr(p.title)));
+    // Hal urunu: sebze/meyve satan komisyoncu ve tuccarlar da listelenir
+    const groupSellers = group && group !== term
+      ? pins.filter(p => !sellers.includes(p) && ['Komisyoncu', 'Tüccar', 'Müstahsil', 'Manav'].includes(p.category) && sellsOf(p).includes(group))
+      : [];
+    if (matchedAds.length + sellers.length < MIN_PRODUCT_HITS) return;
+    if (out.some(o => slugify(o.term) === slugify(term))) return;
+    out.push({ term, name: titleTr(term), group, ads: matchedAds, sellers, groupSellers });
+  });
+  return out.sort((a, b) => (b.ads.length + b.sellers.length) - (a.ads.length + a.sellers.length));
+}
 
 // Sayfanın ortak iskeleti: başlık, açıklama, kalıcı adres, paylaşım önizlemesi, yapılandırılmış veri
 function layout({ site, title, description, path, image, jsonLd, body }) {
@@ -97,7 +161,7 @@ ${(jsonLd || []).map(d => `<script type="application/ld+json">${JSON.stringify(d
 <main>
 <a class="top" href="/"><img src="/icons/icon-192.png" alt="" width="36" height="36" />NewHal · Mersin Hal Kompleksi Rehberi</a>
 ${body}
-<footer><a href="/">Ana sayfa</a> · <a href="/isletmeler">Tüm işletmeler</a> · <a href="/ilanlar">İlanlar</a> · <a href="/hakkimizda">Hakkımızda</a> · <a href="/iletisim">İletişim</a> · <a href="/kullanim-sartlari">Kullanım Şartları</a> · <a href="/gizlilik">Gizlilik</a></footer>
+<footer><a href="/">Ana sayfa</a> · <a href="/isletmeler">Tüm işletmeler</a> · <a href="/ilanlar">İlanlar</a> · <a href="/urunler">Ürünler</a> · <a href="/hakkimizda">Hakkımızda</a> · <a href="/iletisim">İletişim</a> · <a href="/kullanim-sartlari">Kullanım Şartları</a> · <a href="/gizlilik">Gizlilik</a></footer>
 </main>
 </body>
 </html>`;
@@ -161,7 +225,7 @@ module.exports = function registerSeo(app, { db, getClaims, siteUrl }) {
     const body = `
 <nav class="crumbs"><a href="/">NewHal</a> › <a href="/isletmeler">İşletmeler</a> › ${esc(pin.title)}</nav>
 <h1>${esc(icon)} ${esc(pin.title)}${verified ? '<span class="badge" title="Sahibi onaylı">✓</span>' : ''}</h1>
-<span class="cat">${esc(pin.category)}</span>
+<a class="cat" href="${catPath(pin.category)}">${esc(pin.category)}</a>
 <dl>
   ${pin.address ? `<dt>Adres</dt><dd>${esc(pin.address)}</dd>` : ''}
   ${pin.phone ? `<dt>Telefon</dt><dd><a href="tel:${esc(pin.phone.replace(/[^\d+]/g, ''))}">${esc(pin.phone)}</a></dd>` : ''}
@@ -208,7 +272,7 @@ ${others.length ? `<p>Mersin Hal Kompleksi'nde ${others.length > 11 ? '12\'den f
 <h1>Mersin Hal Kompleksi İşletmeleri</h1>
 <p>Haldeki ${pins.length} işletmenin tamamı. Bir işletmeye tıklayarak adres, telefon ve ürünlerini görebilir, haritada yerini bulabilirsiniz.</p>
 <div class="btns"><a class="btn" href="/">🗺️ Haritada keşfet</a></div>
-${names.map(n => `<h2>${esc(icons[n] || '📦')} ${esc(n)} (${groups[n].length})</h2>
+${names.map(n => `<h2>${esc(icons[n] || '📦')} ${groups[n].length >= MIN_CATEGORY_PINS ? `<a href="${catPath(n)}">${esc(n)}</a>` : esc(n)} (${groups[n].length})</h2>
 <ul class="list">${groups[n].map(p => `<li><a href="${pinPath(p)}">${esc(p.title)}</a></li>`).join('')}</ul>`).join('\n')}`;
 
     res.set('Cache-Control', 'public, max-age=300').type('html')
@@ -247,6 +311,7 @@ ${names.map(n => `<h2>${esc(icons[n] || '📦')} ${esc(n)} (${groups[n].length})
     const videoFile = ad.video && ad.video.type === 'file' ? ad.video.url : '';
     const image = images[0] || (youtube ? `https://i.ytimg.com/vi/${youtube}/hqdefault.jpg` : site + '/img/ilan-logo.jpg');
     const tel = shop && shop.phone ? shop.phone.replace(/[^\d+]/g, '') : '';
+    const adProducts = buildProducts(await db.getApprovedPins(), ads).filter(pr => pr.ads.includes(ad)).slice(0, 8);
 
     const body = `
 <nav class="crumbs"><a href="/">NewHal</a> › <a href="/ilanlar">İlanlar</a> › #${ad.no}</nav>
@@ -262,6 +327,7 @@ ${youtube ? `<p><a href="https://www.youtube.com/watch?v=${esc(youtube)}" target
   ${shop ? `<a class="btn alt" href="${pinPath(shop)}">🏪 İşletmeyi gör</a>` : ''}
 </div>
 ${comments.length ? `<h2>💬 Yorumlar (${comments.length})</h2>${comments.slice(0, 30).map(c => `<div class="comment"><b>${esc(c.name || 'Üye')}</b><br>${esc(c.message)}</div>`).join('')}` : ''}
+${adProducts.length ? `<h2>İlgili ürünler</h2><ul class="chips">${adProducts.map(pr => `<li><a href="${productPath(pr.term)}">${esc(pr.name)}</a></li>`).join('')}</ul>` : ''}
 ${related.length ? `<h2>Diğer güncel ilanlar</h2><ul class="list">${related.map(a => `<li><a href="${adPath(a)}">#${a.no} ${esc(adText(a).slice(0, 60))}</a></li>`).join('')}</ul>` : ''}
 <p><a href="/ilanlar">Tüm ilanlar</a> · İlan vermek ücretsizdir.</p>`;
 
@@ -289,6 +355,114 @@ ${related.length ? `<h2>Diğer güncel ilanlar</h2><ul class="list">${related.ma
       .send(layout({ site, title, description, path: '/ilanlar', jsonLd: [list], body }));
   });
 
+  // ── Kategori sayfası ──
+  app.get('/kategori/:slug', async (req, res, next) => {
+    const [pins, ads, icons] = await Promise.all([db.getApprovedPins(), db.getAds(), categoryIcons()]);
+    const name = [...new Set(pins.map(p => p.category))].find(c => slugify(c) === req.params.slug);
+    if (!name) return next();
+    const list = pins.filter(p => p.category === name).sort((a, b) => a.title.localeCompare(b.title, 'tr'));
+    if (list.length < MIN_CATEGORY_PINS) return next();
+    const lower = name.toLocaleLowerCase('tr-TR');
+    const products = buildProducts(pins, ads).filter(pr => pr.sellers.some(p => p.category === name)).slice(0, 20);
+    const sellsTop = {};
+    list.forEach(p => (p.sells || []).forEach(x => { const k = lowerTr(x).trim(); sellsTop[k] = (sellsTop[k] || 0) + 1; }));
+    const topSells = Object.entries(sellsTop).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k]) => k);
+    const phoneCount = list.filter(p => p.phone).length;
+    const title = `Mersin Hal ${name} İşletmeleri (${list.length}) | NewHal`;
+    const description = `Mersin Hal Kompleksi'ndeki ${list.length} ${lower} işletmesi: adres, telefon ve ürünler. Haritada yerini bulun, doğrudan arayın.`;
+    const itemList = {
+      '@context': 'https://schema.org', '@type': 'ItemList', name: `Mersin Hal ${name} İşletmeleri`,
+      itemListElement: list.slice(0, 200).map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: site + pinPath(p), name: p.title })),
+    };
+    const crumbs = {
+      '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'NewHal', item: site + '/' },
+        { '@type': 'ListItem', position: 2, name: 'İşletmeler', item: site + '/isletmeler' },
+        { '@type': 'ListItem', position: 3, name, item: site + catPath(name) },
+      ],
+    };
+    const body = `
+<nav class="crumbs"><a href="/">NewHal</a> › <a href="/isletmeler">İşletmeler</a> › ${esc(name)}</nav>
+<h1>${esc(icons[name] || '📦')} Mersin Hal ${esc(name)} İşletmeleri</h1>
+<p>Mersin Hal Kompleksi ve çevresinde ${list.length} ${esc(lower)} işletmesi NewHal rehberinde kayıtlı.
+${phoneCount ? `Bunların ${phoneCount} tanesinin telefon numarası sayfasında yazıyor, doğrudan arayabilirsiniz.` : ''}
+${topSells.length ? `Bu işletmelerin en çok sattığı ürün ve hizmetler: ${esc(topSells.join(', '))}.` : ''}
+Bir işletmeye tıklayarak adresini, ürünlerini ve haritadaki yerini görebilirsiniz.</p>
+<div class="btns"><a class="btn" href="/">🗺️ Haritada gör</a><a class="btn alt" href="/ilanlar">📢 Güncel ilanlar</a></div>
+${products.length ? `<h2>Ürün ve hizmetler</h2><ul class="chips">${products.map(pr => `<li><a href="${productPath(pr.term)}">${esc(pr.name)}</a></li>`).join('')}</ul>` : ''}
+<h2>Tüm ${esc(name)} işletmeleri (${list.length})</h2>
+<ul class="list">${list.map(p => `<li><a href="${pinPath(p)}">${esc(p.title)}</a>${(p.sells || []).length ? ` <span class="meta">${esc(p.sells.slice(0, 3).join(', '))}</span>` : ''}</li>`).join('')}</ul>
+<p>İşletmeniz listede yok mu? Haritaya ücretsiz ekleyebilirsiniz. <a href="/">NewHal'ı açın</a>.</p>`;
+    res.set('Cache-Control', 'public, max-age=300').type('html')
+      .send(layout({ site, title, description, path: catPath(name), jsonLd: [itemList, crumbs], body }));
+  });
+
+  // ── Ürün / hizmet sayfası ──
+  app.get('/urun/:slug', async (req, res, next) => {
+    const [pins, ads] = await Promise.all([db.getApprovedPins(), db.getAds()]);
+    const pr = buildProducts(pins, ads).find(x => slugify(x.term) === req.params.slug);
+    if (!pr) return next();
+    const recent = [...pr.ads].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+    const isProduce = !!pr.group;
+    const isGroup = pr.group === pr.term;
+    const h1 = isGroup ? `Mersin Hal ${pr.name} Toptancıları ve Komisyoncuları`
+      : isProduce ? `Mersin Hal ${pr.name} Toptan Alım Satım` : `Mersin Hal ${pr.name}`;
+    const title = isGroup
+      ? `Mersin Hal ${pr.name} Toptancıları (${pr.sellers.length}) | NewHal`
+      : isProduce
+      ? `Mersin Hal ${pr.name} Toptan: İlanlar ve Satıcılar | NewHal`
+      : `Mersin Hal ${pr.name}: ${pr.sellers.length} İşletme | NewHal`;
+    const parts = [];
+    if (pr.sellers.length) parts.push(`${pr.sellers.length} işletme`);
+    if (recent.length) parts.push(`${recent.length} ilan`);
+    const description = `Mersin Hal Kompleksi'nde ${lowerTr(pr.name)} ${isProduce ? 'alım satımı' : 'hizmeti'}: ${parts.join(' ve ')}. Telefon, adres ve güncel ilanlar NewHal'da.`;
+    const allSellers = [...pr.sellers, ...pr.groupSellers];
+    const crumbs = {
+      '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'NewHal', item: site + '/' },
+        { '@type': 'ListItem', position: 2, name: 'Ürünler', item: site + '/urunler' },
+        { '@type': 'ListItem', position: 3, name: pr.name, item: site + productPath(pr.term) },
+      ],
+    };
+    const others = buildProducts(pins, ads).filter(x => x.term !== pr.term && x.group === pr.group).slice(0, 16);
+    const body = `
+<nav class="crumbs"><a href="/">NewHal</a> › <a href="/urunler">Ürünler</a> › ${esc(pr.name)}</nav>
+<h1>${esc(h1)}</h1>
+<p>${isProduce
+    ? `Mersin Hal Kompleksi'nde ${esc(lowerTr(pr.name))} alıp satmak isteyenler için güncel ilanlar ve ${esc(pr.group)} satan işletmeler bu sayfada.
+${recent.length ? `NewHal'da ${esc(lowerTr(pr.name))} geçen ${recent.length} ilan var${recent[0] ? `, en yenisi ${esc(trDate(recent[0].created_at))} tarihli` : ''}.` : ''}
+Fiyat ve stok bilgisi gün içinde değiştiği için ilan sahibini ya da işletmeyi doğrudan aramanızı öneririz.`
+    : `Mersin Hal Kompleksi ve çevresinde ${esc(lowerTr(pr.name))} hizmeti veren ${pr.sellers.length} işletme NewHal rehberinde kayıtlı.
+Adres, telefon ve haritadaki yerlerini aşağıda bulabilirsiniz.`}</p>
+<div class="btns"><a class="btn" href="/">📢 Ücretsiz ilan ver</a><a class="btn alt" href="/">🗺️ Haritada keşfet</a></div>
+${recent.length ? `<h2>📢 ${esc(pr.name)} ilanları (${recent.length})</h2><ul class="list">${recent.slice(0, 40).map(a => `<li><a href="${adPath(a)}">#${a.no} ${esc(adText(a).slice(0, 70))}</a> <span class="meta">${esc(trDate(a.created_at))}</span></li>`).join('')}</ul>` : ''}
+${pr.sellers.length ? `<h2>🏪 ${esc(pr.name)} satan işletmeler (${pr.sellers.length})</h2><ul class="list">${pr.sellers.map(p => `<li><a href="${pinPath(p)}">${esc(p.title)}</a> <span class="meta"><a href="${catPath(p.category)}">${esc(p.category)}</a></span></li>`).join('')}</ul>` : ''}
+${pr.groupSellers.length ? `<h2>🥬 ${esc(titleTr(pr.group))} satan komisyoncu ve tüccarlar (${pr.groupSellers.length})</h2><ul class="list">${pr.groupSellers.slice(0, 40).map(p => `<li><a href="${pinPath(p)}">${esc(p.title)}</a></li>`).join('')}</ul>` : ''}
+${others.length ? `<h2>Diğer ${isProduce ? esc(pr.group) : 'hizmet'} sayfaları</h2><ul class="chips">${others.map(x => `<li><a href="${productPath(x.term)}">${esc(x.name)}</a></li>`).join('')}</ul>` : ''}
+<p><a href="/urunler">Tüm ürün ve hizmetler</a></p>`;
+    void allSellers;
+    res.set('Cache-Control', 'public, max-age=300').type('html')
+      .send(layout({ site, title, description, path: productPath(pr.term), jsonLd: [crumbs], body }));
+  });
+
+  // ── Tüm ürün ve hizmetler ──
+  app.get('/urunler', async (req, res) => {
+    const [pins, ads] = await Promise.all([db.getApprovedPins(), db.getAds()]);
+    const all = buildProducts(pins, ads);
+    const groups = [['🍅 Sebze', all.filter(x => x.group === 'sebze')], ['🍊 Meyve', all.filter(x => x.group === 'meyve')], ['🛠️ Hizmet ve diğer ürünler', all.filter(x => !x.group)]];
+    const title = 'Mersin Hal Ürünleri ve Hizmetleri | NewHal';
+    const description = `Mersin Hal Kompleksi'nde ${all.length} ürün ve hizmet: sebze, meyve, nakliye, ambalaj, oto servis. Satıcılar ve güncel ilanlar NewHal'da.`;
+    const body = `
+<nav class="crumbs"><a href="/">NewHal</a> › Ürünler</nav>
+<h1>Mersin Hal Ürünleri ve Hizmetleri</h1>
+<p>Mersin Hal Kompleksi'nde alınıp satılan ürünler ve verilen hizmetler. Bir ürüne tıklayarak o ürünü satan işletmeleri ve güncel ilanları görebilirsiniz.</p>
+${groups.filter(g => g[1].length).map(([h, list]) => `<h2>${h}</h2><ul class="chips">${list.map(x => `<li><a href="${productPath(x.term)}">${esc(x.name)}</a> <span class="meta">${x.ads.length + x.sellers.length}</span></li>`).join('')}</ul>`).join('\n')}`;
+    res.set('Cache-Control', 'public, max-age=300').type('html')
+      .send(layout({ site, title, description, path: '/urunler', jsonLd: [{ '@context': 'https://schema.org', ...organization }], body }));
+  });
+
   // ── Site haritası ──
   let sitemapCache = { at: 0, xml: '' };
   app.get('/sitemap.xml', async (req, res) => {
@@ -299,6 +473,10 @@ ${related.length ? `<h2>Diğer güncel ilanlar</h2><ul class="list">${related.ma
         { loc: '/', freq: 'daily', pri: '1.0' },
         { loc: '/isletmeler', freq: 'daily', pri: '0.9' },
         { loc: '/ilanlar', freq: 'daily', pri: '0.8' },
+        { loc: '/urunler', freq: 'daily', pri: '0.8' },
+        ...Object.entries(pins.reduce((m, p) => ({ ...m, [p.category]: (m[p.category] || 0) + 1 }), {}))
+          .filter(([, n]) => n >= MIN_CATEGORY_PINS).map(([c]) => ({ loc: catPath(c), freq: 'daily', pri: '0.8' })),
+        ...buildProducts(pins, ads).map(pr => ({ loc: productPath(pr.term), freq: 'daily', pri: '0.7' })),
         ...pins.map(p => ({ loc: pinPath(p), freq: 'weekly', pri: '0.8', mod: day(p.reviewed_at || p.created_at) })),
         ...ads.filter(isPublicAd)
           .map(a => ({ loc: adPath(a), freq: 'weekly', pri: '0.6', mod: day(a.updated_at || a.created_at) })),
@@ -328,6 +506,7 @@ ${related.length ? `<h2>Diğer güncel ilanlar</h2><ul class="list">${related.ma
 - [Harita ve ana sayfa](${site}/): İşletmeleri haritada bulma, ilan verme, takip ve mesaj
 - [Tüm işletmeler](${site}/isletmeler): Kategoriye göre ${pins.length} işletme; her birinin adres, telefon ve ürün sayfası
 - [İlanlar](${site}/ilanlar): ${live} güncel alım satım ilanı
+- [Ürünler ve hizmetler](${site}/urunler): Ürün başına satıcılar ve ilanlar
 - [Hakkımızda](${site}/hakkimizda)
 - [İletişim](${site}/iletisim)
 `);
