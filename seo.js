@@ -95,7 +95,7 @@ ${(jsonLd || []).map(d => `<script type="application/ld+json">${JSON.stringify(d
 </head>
 <body>
 <main>
-<a class="top" href="/"><img src="/icons/icon-192.png" alt="" />NewHal · Mersin Hal Kompleksi Rehberi</a>
+<a class="top" href="/"><img src="/icons/icon-192.png" alt="" width="36" height="36" />NewHal · Mersin Hal Kompleksi Rehberi</a>
 ${body}
 <footer><a href="/">Ana sayfa</a> · <a href="/isletmeler">Tüm işletmeler</a> · <a href="/ilanlar">İlanlar</a> · <a href="/hakkimizda">Hakkımızda</a> · <a href="/iletisim">İletişim</a> · <a href="/kullanim-sartlari">Kullanım Şartları</a> · <a href="/gizlilik">Gizlilik</a></footer>
 </main>
@@ -134,7 +134,8 @@ module.exports = function registerSeo(app, { db, getClaims, siteUrl }) {
       pin.address ? `Adres: ${pin.address}.` : '',
       sells.length ? `Satılan ürünler: ${sells.slice(0, 8).join(', ')}.` : '',
       pin.phone ? 'Telefon ve konum bilgisi NewHal haritasında.' : 'Konum bilgisi NewHal haritasında.',
-    ].filter(Boolean).join(' ').slice(0, 300);
+    ].filter(Boolean).join(' ');
+    const shortDesc = description.length > 160 ? description.slice(0, 157).replace(/\s+\S*$/, '') + '…' : description;
 
     const business = {
       '@context': 'https://schema.org', '@type': 'LocalBusiness',
@@ -175,10 +176,17 @@ ${images.length ? `<div class="photos">${images.map(u => `<img src="${esc(u)}" a
 ${sells.length ? `<h2>🛒 Sattığı ürünler</h2><ul class="chips">${sells.map(p => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}
 ${seeks.length ? `<h2>🔎 Aradığı ürünler</h2><ul class="chips">${seeks.map(p => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}
 ${others.length ? `<h2>Diğer ${esc(pin.category)} işletmeleri</h2><ul class="list">${others.map(p => `<li><a href="${pinPath(p)}">${esc(p.title)}</a></li>`).join('')}</ul>` : ''}
+<h2>${esc(pin.title)} hakkında</h2>
+<p>${esc(pin.title)}, Mersin Hal Kompleksi çevresinde hizmet veren bir ${esc(pin.category.toLocaleLowerCase('tr-TR'))} işletmesidir${pin.address ? ` ve ${esc(pin.address)} adresinde bulunur` : ''}.
+${sells.length ? `İşletmenin sattığı ürünler arasında ${esc(sells.slice(0, 6).join(', '))}${sells.length > 6 ? ' ve daha fazlası' : ''} yer alır.` : ''}
+${seeks.length ? `Alım yaptığı ürünler: ${esc(seeks.slice(0, 6).join(', '))}.` : ''}
+${pin.phone ? 'Fiyat ve stok bilgisi için işletmeyi doğrudan telefonla arayabilirsiniz.' : 'İletişim için haritadaki işletme kartını kullanabilirsiniz.'}
+Haritada yerini görüp yol tarifi alabilir, NewHal üzerinden işletmeyi takip ederek yeni ilanlarından haberdar olabilirsiniz.</p>
+${others.length ? `<p>Mersin Hal Kompleksi'nde ${others.length > 11 ? '12\'den fazla' : others.length} başka ${esc(pin.category.toLocaleLowerCase('tr-TR'))} işletmesi daha var. Fiyat karşılaştırmak için aşağıdaki listeye göz atabilirsiniz.</p>` : ''}
 <p>Bu bilgiler NewHal kullanıcıları tarafından eklenmiştir. Dükkan sizinse haritada açıp <b>"Bu dükkan benim"</b> diyerek bilgilerinizi kendiniz güncelleyebilirsiniz.</p>`;
 
     res.set('Cache-Control', 'public, max-age=300').type('html')
-      .send(layout({ site, title, description, path: pinPath(pin), image: images[0], jsonLd: [business, crumbs], body }));
+      .send(layout({ site, title, path: pinPath(pin), image: images[0], description: shortDesc, jsonLd: [business, crumbs], body }));
   });
 
   // ── Tüm işletmeler ──
@@ -306,6 +314,23 @@ ${related.length ? `<h2>Diğer güncel ilanlar</h2><ul class="list">${related.ma
       };
     }
     res.type('application/xml').set('Cache-Control', 'public, max-age=600').send(sitemapCache.xml);
+  });
+
+  app.get('/llms.txt', async (req, res) => {
+    const [pins, ads] = await Promise.all([db.getApprovedPins(), db.getAds()]);
+    const live = ads.filter(isPublicAd).length;
+    res.type('text/markdown; charset=utf-8').set('Cache-Control', 'public, max-age=3600').send(`# NewHal
+
+> Mersin Hal Kompleksi'ndeki ${pins.length} komisyoncu, tüccar, müstahsil, manav, market ve nakliyeciyi haritada gösteren ücretsiz işletme rehberi ve alım satım ilanı sitesi. Türkçe.
+
+## Ana sayfalar
+
+- [Harita ve ana sayfa](${site}/): İşletmeleri haritada bulma, ilan verme, takip ve mesaj
+- [Tüm işletmeler](${site}/isletmeler): Kategoriye göre ${pins.length} işletme; her birinin adres, telefon ve ürün sayfası
+- [İlanlar](${site}/ilanlar): ${live} güncel alım satım ilanı
+- [Hakkımızda](${site}/hakkimizda)
+- [İletişim](${site}/iletisim)
+`);
   });
 
   app.get('/robots.txt', (req, res) => {

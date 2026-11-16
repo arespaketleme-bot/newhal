@@ -58,6 +58,15 @@ const vapidInitialization = (async () => {
 });
 
 app.use(cors());
+// Temel güvenlik başlıkları (tarayıcıya yalnız güvenli bağlantı kullanmasını, dosya türünü tahmin etmemesini söyler)
+app.use((req, res, next) => {
+  res.set({
+    'Strict-Transport-Security': 'max-age=31536000',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+  });
+  next();
+});
 // Fotoğraf yükleme kendi (daha büyük) sınırıyla ayrıca okunur
 const jsonSmall = express.json();
 app.use((req, res, next) => (req.path === '/api/uploads' ? next() : jsonSmall(req, res, next)));
