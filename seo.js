@@ -209,7 +209,8 @@ module.exports = function registerSeo(app, { db, getClaims, siteUrl }) {
     const sells = pin.sells || [], seeks = pin.seeks || [], images = pin.images || [];
     const icon = icons[pin.category] || '🏪';
 
-    const title = `${pin.title} · ${pin.category} | Mersin Hal Kompleksi | NewHal`;
+    // İşletme adını arayan kişi telefon ve yol tarifi ister: başlık bunu vaat etsin
+    const title = `${pin.title}: ${pin.phone ? 'Telefon, Adres, Yol Tarifi' : 'Adres ve Yol Tarifi'} | Mersin Hal`;
     const description = [
       `${pin.title}: NewHal Mersin Hal Kompleksi rehberinde kayıtlı ${pin.category.toLocaleLowerCase('tr-TR')}.`,
       pin.address ? `Adres: ${pin.address}.` : '',
