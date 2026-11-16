@@ -279,7 +279,7 @@ ${others.length ? `<p>Mersin Hal Kompleksi'nde ${others.length > 11 ? '12\'den f
     names.forEach(n => groups[n].sort((a, b) => a.title.localeCompare(b.title, 'tr')));
 
     const title = `Mersin Hal Kompleksi İşletmeleri (${pins.length}) | NewHal`;
-    const description = `Mersin Hal Kompleksi'ndeki ${pins.length} işletmenin listesi: ${names.slice(0, 5).join(', ')}. Adres, telefon ve ürün bilgileri NewHal haritasında.`;
+    const description = `Mersin Hal Kompleksi'ndeki ${pins.length} işletmenin listesi: ${names.slice(0, 3).join(', ')} ve diğerleri. Adres, telefon ve ürün bilgileri.`;
     const list = {
       '@context': 'https://schema.org', '@type': 'ItemList', name: 'Mersin Hal Kompleksi İşletmeleri',
       itemListElement: pins.slice(0, 200).map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: site + pinPath(p), name: p.title })),
