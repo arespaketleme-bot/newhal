@@ -63,6 +63,22 @@ const trDate = iso => {
   catch { return ''; }
 };
 
+// Yapay zeka aramalari ve Google icin soru-cevap blogu. Cevaplar yalniz sitedeki gercek veriden uretilir.
+const HAL_PLACE = 'Mersin Sebze ve Meyve Hal Kompleksi';
+const HAL_AREA = 'Akdeniz ilçesinde (Mersin, 33020)';
+function faq(qas) {
+  const list = qas.filter(([q, a]) => q && a);
+  if (!list.length) return { html: '', jsonLd: null };
+  return {
+    html: `<h2>Sık sorulan sorular</h2>\n${list.map(([q, a]) => `<h3>${esc(q)}</h3>\n<p>${esc(a)}</p>`).join('\n')}`,
+    jsonLd: {
+      '@context': 'https://schema.org', '@type': 'FAQPage',
+      mainEntity: list.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
+    },
+  };
+}
+const joinTr = arr => (arr.length <= 1 ? arr.join('') : `${arr.slice(0, -1).join(', ')} ve ${arr[arr.length - 1]}`);
+
 // Tum urun/hizmet sayfalarini hesaplar: hal urunleri + isletmelerin en az 3'unun sattigi kalemler.
 // Ayni liste ard arda istenince 5 dakika yeniden hesaplanmaz.
 let productsCache = { pins: null, ads: null, at: 0, list: [] };
@@ -140,6 +156,7 @@ ${(jsonLd || []).map(d => `<script type="application/ld+json">${JSON.stringify(d
   nav.crumbs a { color: #94a3b8; }
   h1 { color: #fff; font-size: 28px; line-height: 1.2; margin: 0 0 6px; }
   h2 { color: #fff; font-size: 19px; margin: 28px 0 10px; }
+  h3 { color: #f1f5f9; font-size: 16px; margin: 18px 0 4px; }
   .cat { display: inline-block; font-size: 13px; padding: 3px 12px; border-radius: 99px; background: rgba(0,255,135,0.1); color: #34d399; border: 1px solid rgba(0,255,135,0.3); }
   .badge { display: inline-flex; width: 20px; height: 20px; border-radius: 50%; background: #1d9bf0; color: #fff; font-size: 12px; align-items: center; justify-content: center; vertical-align: 4px; margin-left: 6px; }
   dl { display: grid; grid-template-columns: 110px 1fr; gap: 8px 12px; margin: 20px 0; }
@@ -267,16 +284,26 @@ ${others.length ? `<p>Mersin Hal Kompleksi'nde ${others.length > 11 ? '12\'den f
       '@context': 'https://schema.org', '@type': 'ItemList', name: 'Mersin Hal Kompleksi İşletmeleri',
       itemListElement: pins.slice(0, 200).map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: site + pinPath(p), name: p.title })),
     };
+    const topCats = names.slice(0, 4).map(n => `${groups[n].length} ${n.toLocaleLowerCase('tr-TR')}`);
+    const prods = buildProducts(pins, await db.getAds()).filter(x => x.group && x.group !== x.term).slice(0, 8).map(x => lowerTr(x.name));
+    const qa = faq([
+      ['Mersin Hal Kompleksi nerede?', `${HAL_PLACE}, Mersin'in ${HAL_AREA} bulunur. NewHal haritasında halin içindeki ve çevresindeki her işletmenin yeri tek tek işaretlidir; işletme sayfasından yol tarifi alabilirsiniz.`],
+      ['Mersin Hal Kompleksi’nde kaç işletme var?', `NewHal rehberinde şu an ${pins.length} işletme kayıtlı. En kalabalık gruplar: ${joinTr(topCats)} işletmesi. Liste, yeni işletmeler eklendikçe güncellenir.`],
+      prods.length ? ['Mersin Hal’de hangi ürünler alınıp satılıyor?', `Sebze ve meyve ağırlıklı toptan alım satım yapılır. NewHal ilanlarında en sık geçen ürünler ${joinTr(prods)}. Ürün sayfalarında o ürünü satan işletmeleri ve güncel ilanları görebilirsiniz.`] : null,
+      ['İşletmemi NewHal’e nasıl eklerim?', 'NewHal ana sayfasında haritada işletmenizin yerine dokunup bilgilerinizi girmeniz yeterli. Kayıt ücretsizdir; yönetici onayından sonra işletmeniz haritada ve rehberde görünür. İşletme zaten ekliyse "Bu dükkan benim" diyerek bilgilerinizi kendiniz güncelleyebilirsiniz.'],
+      ['NewHal’de ilan vermek ücretli mi?', 'Hayır. Alım ve satım ilanı vermek ücretsizdir. İlanlar NewHal ana sayfasında, ilanlar listesinde ve ilgili ürün sayfalarında yayınlanır.'],
+    ].filter(Boolean));
     const body = `
 <nav class="crumbs"><a href="/">NewHal</a> › İşletmeler</nav>
 <h1>Mersin Hal Kompleksi İşletmeleri</h1>
-<p>Haldeki ${pins.length} işletmenin tamamı. Bir işletmeye tıklayarak adres, telefon ve ürünlerini görebilir, haritada yerini bulabilirsiniz.</p>
+<p>${HAL_PLACE}, Mersin'in ${HAL_AREA} yer alan toptan sebze ve meyve pazarıdır. NewHal bu haldeki ve çevresindeki ${pins.length} işletmeyi tek bir rehberde toplar: komisyoncular, tüccarlar, manavlar, marketler, nakliyeciler ve hal esnafına hizmet veren işletmeler. Her işletmenin adresi, telefonu, sattığı ürünler ve haritadaki yeri kendi sayfasındadır.</p>
 <div class="btns"><a class="btn" href="/">🗺️ Haritada keşfet</a></div>
 ${names.map(n => `<h2>${esc(icons[n] || '📦')} ${groups[n].length >= MIN_CATEGORY_PINS ? `<a href="${catPath(n)}">${esc(n)}</a>` : esc(n)} (${groups[n].length})</h2>
-<ul class="list">${groups[n].map(p => `<li><a href="${pinPath(p)}">${esc(p.title)}</a></li>`).join('')}</ul>`).join('\n')}`;
+<ul class="list">${groups[n].map(p => `<li><a href="${pinPath(p)}">${esc(p.title)}</a></li>`).join('')}</ul>`).join('\n')}
+${qa.html}`;
 
     res.set('Cache-Control', 'public, max-age=300').type('html')
-      .send(layout({ site, title, description, path: '/isletmeler', jsonLd: [{ '@context': 'https://schema.org', ...organization }, list], body }));
+      .send(layout({ site, title, description, path: '/isletmeler', jsonLd: [{ '@context': 'https://schema.org', ...organization }, list, qa.jsonLd].filter(Boolean), body }));
   });
 
   // ── İlan sayfası ──
@@ -368,6 +395,11 @@ ${related.length ? `<h2>Diğer güncel ilanlar</h2><ul class="list">${related.ma
     list.forEach(p => (p.sells || []).forEach(x => { const k = lowerTr(x).trim(); sellsTop[k] = (sellsTop[k] || 0) + 1; }));
     const topSells = Object.entries(sellsTop).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k]) => k);
     const phoneCount = list.filter(p => p.phone).length;
+    const catQa = faq([
+      [`Mersin Hal’de kaç ${lower} var?`, `NewHal rehberinde Mersin Hal Kompleksi ve çevresinde ${list.length} ${lower} işletmesi kayıtlı${phoneCount ? `; bunların ${phoneCount} tanesinin telefon numarası sayfasında yazıyor` : ''}.`],
+      topSells.length ? [`Mersin Hal’deki ${lower} işletmeleri ne satıyor?`, `Bu kategorideki işletmelerin en sık belirttiği ürün ve hizmetler: ${joinTr(topSells)}. Her işletmenin tam ürün listesi kendi sayfasındadır.`] : null,
+      [`Bir ${lower} işletmesine nasıl ulaşırım?`, 'Listeden işletmeye tıklayın. Sayfada telefon numarası varsa tek dokunuşla arayabilir, haritada yerini görüp yol tarifi alabilirsiniz. NewHal üyeleri işletmeye mesaj da gönderebilir.'],
+    ].filter(Boolean));
     const title = `Mersin Hal ${name} İşletmeleri (${list.length}) | NewHal`;
     const description = `Mersin Hal Kompleksi'ndeki ${list.length} ${lower} işletmesi: adres, telefon ve ürünler. Haritada yerini bulun, doğrudan arayın.`;
     const itemList = {
@@ -393,9 +425,10 @@ Bir işletmeye tıklayarak adresini, ürünlerini ve haritadaki yerini görebili
 ${products.length ? `<h2>Ürün ve hizmetler</h2><ul class="chips">${products.map(pr => `<li><a href="${productPath(pr.term)}">${esc(pr.name)}</a></li>`).join('')}</ul>` : ''}
 <h2>Tüm ${esc(name)} işletmeleri (${list.length})</h2>
 <ul class="list">${list.map(p => `<li><a href="${pinPath(p)}">${esc(p.title)}</a>${(p.sells || []).length ? ` <span class="meta">${esc(p.sells.slice(0, 3).join(', '))}</span>` : ''}</li>`).join('')}</ul>
-<p>İşletmeniz listede yok mu? Haritaya ücretsiz ekleyebilirsiniz. <a href="/">NewHal'ı açın</a>.</p>`;
+<p>İşletmeniz listede yok mu? Haritaya ücretsiz ekleyebilirsiniz. <a href="/">NewHal'ı açın</a>.</p>
+${catQa.html}`;
     res.set('Cache-Control', 'public, max-age=300').type('html')
-      .send(layout({ site, title, description, path: catPath(name), jsonLd: [itemList, crumbs], body }));
+      .send(layout({ site, title, description, path: catPath(name), jsonLd: [itemList, crumbs, catQa.jsonLd].filter(Boolean), body }));
   });
 
   // ── Ürün / hizmet sayfası ──
@@ -427,6 +460,15 @@ ${products.length ? `<h2>Ürün ve hizmetler</h2><ul class="chips">${products.ma
       ],
     };
     const others = buildProducts(pins, ads).filter(x => x.term !== pr.term && x.group === pr.group).slice(0, 16);
+    const low = lowerTr(pr.name);
+    const prodQa = faq(isProduce ? [
+      [`Mersin Hal’de ${low} nereden alınır?`, `${HAL_PLACE}'ndeki komisyoncu ve tüccarlardan toptan ${low} alınabilir. NewHal'da ${allSellers.length ? `${allSellers.length} işletme ${pr.sellers.length ? low : pr.group} satıyor` : 'satıcı işletmeler listelenir'}${recent.length ? ` ve ${recent.length} ilanda ${low} geçiyor` : ''}. İlan sahibini ya da işletmeyi doğrudan arayabilirsiniz.`],
+      [`Mersin Hal ${low} fiyatı ne kadar?`, `Hal fiyatları gün içinde ve kaliteye göre değiştiği için NewHal sabit fiyat yayınlamaz. Güncel fiyat için bu sayfadaki ${recent.length ? `en yeni ilanlara${recent[0] ? ` (son ilan ${trDate(recent[0].created_at)})` : ''}` : 'işletmelere'} bakıp satıcıyı aramanız en doğru yoldur.`],
+      [`Mersin Hal’de ${low} satmak istiyorum, ne yapmalıyım?`, 'NewHal ana sayfasından ücretsiz satış ilanı verebilirsiniz. İlanınız ilanlar listesinde ve bu ürün sayfasında görünür; komisyoncu ve tüccarlar sizi doğrudan arar.'],
+    ] : [
+      [`Mersin Hal’de ${low} hizmeti veren kaç işletme var?`, `NewHal rehberinde ${pr.sellers.length} işletme ${low} hizmeti verdiğini belirtiyor. Adres ve telefonları bu sayfadaki listede.`],
+      [`${pr.name} için hangi işletmeyi aramalıyım?`, 'Listeden işletmeye tıklayıp sattığı ürünlere, adresine ve haritadaki yerine bakın. Telefonu olan işletmeleri sayfadan tek dokunuşla arayabilirsiniz.'],
+    ]);
     const body = `
 <nav class="crumbs"><a href="/">NewHal</a> › <a href="/urunler">Ürünler</a> › ${esc(pr.name)}</nav>
 <h1>${esc(h1)}</h1>
@@ -441,10 +483,10 @@ ${recent.length ? `<h2>📢 ${esc(pr.name)} ilanları (${recent.length})</h2><ul
 ${pr.sellers.length ? `<h2>🏪 ${esc(pr.name)} satan işletmeler (${pr.sellers.length})</h2><ul class="list">${pr.sellers.map(p => `<li><a href="${pinPath(p)}">${esc(p.title)}</a> <span class="meta"><a href="${catPath(p.category)}">${esc(p.category)}</a></span></li>`).join('')}</ul>` : ''}
 ${pr.groupSellers.length ? `<h2>🥬 ${esc(titleTr(pr.group))} satan komisyoncu ve tüccarlar (${pr.groupSellers.length})</h2><ul class="list">${pr.groupSellers.slice(0, 40).map(p => `<li><a href="${pinPath(p)}">${esc(p.title)}</a></li>`).join('')}</ul>` : ''}
 ${others.length ? `<h2>Diğer ${isProduce ? esc(pr.group) : 'hizmet'} sayfaları</h2><ul class="chips">${others.map(x => `<li><a href="${productPath(x.term)}">${esc(x.name)}</a></li>`).join('')}</ul>` : ''}
+${prodQa.html}
 <p><a href="/urunler">Tüm ürün ve hizmetler</a></p>`;
-    void allSellers;
     res.set('Cache-Control', 'public, max-age=300').type('html')
-      .send(layout({ site, title, description, path: productPath(pr.term), jsonLd: [crumbs], body }));
+      .send(layout({ site, title, description, path: productPath(pr.term), jsonLd: [crumbs, prodQa.jsonLd].filter(Boolean), body }));
   });
 
   // ── Tüm ürün ve hizmetler ──
@@ -497,6 +539,9 @@ ${groups.filter(g => g[1].length).map(([h, list]) => `<h2>${h}</h2><ul class="ch
   app.get('/llms.txt', async (req, res) => {
     const [pins, ads] = await Promise.all([db.getApprovedPins(), db.getAds()]);
     const live = ads.filter(isPublicAd).length;
+    const cats = Object.entries(pins.reduce((m, p) => ({ ...m, [p.category]: (m[p.category] || 0) + 1 }), {}))
+      .filter(([, n]) => n >= MIN_CATEGORY_PINS).sort((a, b) => b[1] - a[1]);
+    const prods = buildProducts(pins, ads).slice(0, 30);
     res.type('text/markdown; charset=utf-8').set('Cache-Control', 'public, max-age=3600').send(`# NewHal
 
 > Mersin Hal Kompleksi'ndeki ${pins.length} komisyoncu, tüccar, müstahsil, manav, market ve nakliyeciyi haritada gösteren ücretsiz işletme rehberi ve alım satım ilanı sitesi. Türkçe.
@@ -509,6 +554,18 @@ ${groups.filter(g => g[1].length).map(([h, list]) => `<h2>${h}</h2><ul class="ch
 - [Ürünler ve hizmetler](${site}/urunler): Ürün başına satıcılar ve ilanlar
 - [Hakkımızda](${site}/hakkimizda)
 - [İletişim](${site}/iletisim)
+
+## Kategoriler
+
+${cats.map(([c, n]) => `- [${c}](${site}${catPath(c)}): ${n} işletme`).join('\n')}
+
+## Ürünler ve hizmetler
+
+${prods.map(x => `- [${x.name}](${site}${productPath(x.term)}): ${x.sellers.length + x.groupSellers.length} işletme, ${x.ads.length} ilan`).join('\n')}
+
+## Konum
+
+- ${HAL_PLACE}, ${HAL_AREA.replace('ilçesinde', 'ilçesi')}, Türkiye
 `);
   });
 
