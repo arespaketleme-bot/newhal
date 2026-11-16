@@ -280,3 +280,10 @@ body.has-trends .voice-intro { top: calc(var(--trend-h) + env(safe-area-inset-to
   flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 14px;
   color: var(--text-3); background: rgba(127,127,127,0.12);
 }
+.voice-intro-pause {
+  flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; font-size: 15px; line-height: 1;
+  display: grid; place-items: center; color: var(--text-1); background: rgba(127,127,127,0.12); border: 1px solid var(--border);
+}
+.voice-intro-pause:hover { border-color: var(--border-g); }
+.voice-intro.paused .voice-intro-wave i { animation-play-state: paused; }
+@media (max-width: 420px) { .voice-intro { gap: 8px; padding: 10px; } .voice-intro-join { padding: 9px 11px; } }
