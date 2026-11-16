@@ -206,24 +206,19 @@
         <div><p id="todayNoteText"></p><small id="todayNoteTime"></small></div>
       </div>
       <div class="today-stats" id="todayStats"></div>
+      <div class="today-tabs" id="todayTabs" role="tablist" aria-label="Bugün Halde bölümleri"></div>
       <div class="today-grid">
-        <div class="today-col" id="todayTopAdsCol" hidden>
-          <h3>👀 En çok görüntülenen ilanlar</h3>
+        <div class="today-col" id="todayTopAdsCol" data-tab="👀 Çok bakılan" role="tabpanel" hidden>
           <ol class="today-list today-rank" id="todayTopAds"></ol>
         </div>
-        <div class="today-col" id="todaySearchCol" hidden>
-          <h3>🔍 En çok arananlar</h3>
-          <p class="today-hint">Halde en çok arananlar. Dokunun, ilgili ilanları görün.</p>
+        <div class="today-col" id="todaySearchCol" data-tab="🔍 Aranan" role="tabpanel" hidden>
           <div class="today-chips" id="todaySearches"></div>
         </div>
-        <div class="today-col" id="todayNewCol" hidden>
-          <h3>🆕 Yeni katılan işletmeler</h3>
-          <ul class="today-list" id="todayNewPins"></ul>
-        </div>
-        <div class="today-col">
-          <h3>🍊 Mevsimin ürünleri</h3>
-          <p class="today-hint">Bir ürüne dokunun, o ürünle ilgili ilanları görün.</p>
+        <div class="today-col" id="todayProductsCol" data-tab="🍊 Mevsim" role="tabpanel">
           <div class="today-chips" id="todayProducts"></div>
+        </div>
+        <div class="today-col" id="todayNewCol" data-tab="🆕 Yeni" role="tabpanel" hidden>
+          <ul class="today-list" id="todayNewPins"></ul>
         </div>
       </div>
     </section>

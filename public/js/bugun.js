@@ -19,7 +19,9 @@ const TODAY_SEASON = [
   ['mandalina', 'portakal', 'limon', 'nar', 'ayva', 'ıspanak', 'pırasa', 'karnabahar'],          // Kasım
   ['portakal', 'mandalina', 'limon', 'greyfurt', 'ıspanak', 'pırasa', 'lahana', 'brokoli'],      // Aralık
 ];
-const TODAY_NEW_PIN_LIMIT = 5;
+const TODAY_NEW_PIN_LIMIT = 3;
+const TODAY_TOP_ADS_LIMIT = 3;
+const TODAY_TAB_KEY = 'newhal-today-tab';
 const TODAY_DAY_MS = 24 * 60 * 60 * 1000;
 
 let todaySettings = null;
@@ -112,14 +114,14 @@ function renderTodayBox() {
     b.append(n, l);
     stats.appendChild(b);
   };
-  if (pins.length) addStat(pins.length, 'işletme rehberde', () => typeof showPinList === 'function' ? showPinList() : null);
-  if (pinsWeek) addStat(`+${pinsWeek}`, 'bu hafta katıldı', () => document.getElementById('todayNewCol')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
-  if (ads.length) addStat(adsToday || ads.length, adsToday ? 'bugünkü ilan' : 'güncel ilan', () => document.getElementById('adsGrid')?.scrollIntoView({ behavior: 'smooth' }));
+  if (pins.length) addStat(pins.length, 'işletme', () => typeof showPinList === 'function' ? showPinList() : null);
+  if (pinsWeek) addStat(`+${pinsWeek}`, 'yeni işletme', () => todayShowTab('todayNewCol'));
+  if (ads.length) addStat(adsToday || ads.length, adsToday ? 'ilan bugün' : 'ilan', () => document.getElementById('adsGrid')?.scrollIntoView({ behavior: 'smooth' }));
   const presence = window.todayPresence || {};
   const toMap = () => document.getElementById('heroStats')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  if (typeof presence.online === 'number') addStat(presence.online, 'şu an online', toMap, true);
-  if (typeof presence.visits === 'number') addStat(presence.visits, 'toplam ziyaretçi', toMap);
-  if (todayStats && todayStats.totalViews) addStat(todayStats.totalViews, 'ilan görüntülenme', () => document.getElementById('todayTopAdsCol')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+  if (typeof presence.online === 'number') addStat(presence.online, 'online', toMap, true);
+  if (typeof presence.visits === 'number') addStat(presence.visits, 'ziyaretçi', toMap);
+  if (todayStats && todayStats.totalViews) addStat(todayStats.totalViews, 'görüntülenme', () => todayShowTab('todayTopAdsCol'));
   stats.hidden = !stats.children.length;
 
   // Yeni katılan işletmeler
@@ -168,6 +170,41 @@ function renderTodayBox() {
 
   renderTodayTopAds(ads);
   renderTodaySearches();
+  renderTodayTabs();
+}
+
+// Bölümler sekmeli: aynı anda tek bölüm görünür, seçim bu cihazda hatırlanır
+// Kullanıcı seçim yapmadıysa ilk dolu bölüm açılır (veri geç gelse de)
+let todayChosenTab = null;
+try { todayChosenTab = localStorage.getItem(TODAY_TAB_KEY); } catch {}
+
+function todayShowTab(id) {
+  todayChosenTab = id;
+  try { localStorage.setItem(TODAY_TAB_KEY, id); } catch {}
+  renderTodayTabs();
+  document.getElementById('todayTabs')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderTodayTabs() {
+  const bar = document.getElementById('todayTabs');
+  if (!bar) return;
+  const cols = [...document.querySelectorAll('#todayBox .today-col')].filter(c => !c.hidden);
+  const todayActiveTab = cols.some(c => c.id === todayChosenTab) ? todayChosenTab : (cols[0] ? cols[0].id : null);
+  bar.replaceChildren();
+  for (const col of cols) {
+    const on = col.id === todayActiveTab;
+    col.classList.toggle('is-active', on);
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'today-tab' + (on ? ' is-active' : '');
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+    b.setAttribute('aria-controls', col.id);
+    b.textContent = col.dataset.tab || '';
+    b.onclick = () => todayShowTab(col.id);
+    bar.appendChild(b);
+  }
+  bar.hidden = cols.length < 2;
 }
 
 // En çok görüntülenen ilanlar: dokununca ilan büyük pencerede açılır
@@ -176,7 +213,7 @@ function renderTodayTopAds(ads) {
   const list = document.getElementById('todayTopAds');
   // Yayından kalkmış ilanlar listede gösterilmez (ilanlar yüklendiyse)
   const live = ads.length ? new Map(ads.map(a => [a.id, a])) : null;
-  const top = ((todayStats && todayStats.topAds) || []).filter(a => !live || live.has(a.id));
+  const top = ((todayStats && todayStats.topAds) || []).filter(a => !live || live.has(a.id)).slice(0, TODAY_TOP_ADS_LIMIT);
   list.replaceChildren();
   for (const item of top) {
     const li = document.createElement('li');
@@ -193,7 +230,7 @@ function renderTodayTopAds(ads) {
     name.textContent = `${item.no ? `#${item.no} ` : ''}${item.title}`;
     const meta = document.createElement('span');
     meta.className = 'today-pin-meta';
-    meta.textContent = `👁 ${Number(item.views).toLocaleString('tr-TR')} görüntülenme`;
+    meta.textContent = `👁 ${Number(item.views).toLocaleString('tr-TR')}`;
     b.append(name, meta);
     li.appendChild(b);
     list.appendChild(li);

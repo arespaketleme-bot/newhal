@@ -99,6 +99,8 @@
 :root[data-theme="light"] .today-chip:hover { background: #d1fae5; }
 :root[data-theme="light"] .today-chip small { color: #fff; }
 :root[data-theme="light"] .today-rank .today-pin::before { color: #fff; }
+:root[data-theme="light"] .today-tab { color: #334155; border-color: rgba(15,23,42,0.15); }
+:root[data-theme="light"] .today-tab.is-active { color: #fff; }
 
 /* Ana sayfa üst görseli: koyu perde yerine açık perde */
 :root[data-theme="light"] .hero-bg {
