@@ -2,6 +2,8 @@
    NewHal — arama motoru sayfaları
    /isletme/:id-ad   her işletmenin sunucuda hazırlanan sayfası
    /isletmeler       tüm işletmeler, kategoriye göre
+   /ilan/:no-baslik  her ilanın sunucuda hazırlanan sayfası
+   /ilanlar          güncel ilanların listesi
    /sitemap.xml      Google'a verilen sayfa listesi
    /robots.txt       hangi sayfaların taranacağı
    ═══════════════════════════════════════════════════════════════ */
@@ -22,6 +24,20 @@ function slugify(text) {
 }
 
 const pinPath = pin => `/isletme/${pin.id}-${slugify(pin.title)}`;
+
+// İlanlar: hava durumu kartı ve onay bekleyen/kapalı ilanlar yayına çıkmaz
+const isPublicAd = a => !!(a && a.no && !a.weather && a.active !== false && !a.pending);
+const adText = a => String(a.title || a.body || '').replace(/[\u200b\s]+/g, ' ').trim()
+  || (a.video ? 'Videolu ilan' : (a.images || []).length ? 'Fotoğraflı ilan' : 'İlan');
+const adSlug = a => { const s = slugify(adText(a)); return (s.length > 60 ? s.slice(0, 60).replace(/-[^-]*$/, '') : s) || 'ilan'; };
+const adPath = a => `/ilan/${a.no}-${adSlug(a)}`;
+// Arama sonucu açıklaması telefon numarasıyla başlamasın
+const stripPhones = t => String(t || '').replace(/\+?\d[\d\s().-]{8,}\d/g, ' ')
+  .replace(/[\u200b\s]+/g, ' ').replace(/^[\s—–\-·:,]+/, '').trim();
+const trDate = iso => {
+  try { return new Date(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' }); }
+  catch { return ''; }
+};
 
 // Sayfanın ortak iskeleti: başlık, açıklama, kalıcı adres, paylaşım önizlemesi, yapılandırılmış veri
 function layout({ site, title, description, path, image, jsonLd, body }) {
@@ -50,6 +66,11 @@ ${(jsonLd || []).map(d => `<script type="application/ld+json">${JSON.stringify(d
   main { max-width: 820px; margin: 0 auto; padding: 24px 16px 64px; }
   a { color: #34d399; }
   .top { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-weight: 700; text-decoration: none; color: #fff; }
+  .ad-body { white-space: pre-line; font-size: 17px; color: #f1f5f9; }
+  .meta { font-size: 14px; color: #94a3b8; }
+  .comment { padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,0.05); margin-bottom: 8px; }
+  .comment b { color: #fff; }
+  video { max-width: 100%; border-radius: 12px; }
   .top img { width: 36px; height: 36px; border-radius: 10px; }
   nav.crumbs { font-size: 13px; color: #94a3b8; margin-bottom: 10px; }
   nav.crumbs a { color: #94a3b8; }
@@ -76,7 +97,7 @@ ${(jsonLd || []).map(d => `<script type="application/ld+json">${JSON.stringify(d
 <main>
 <a class="top" href="/"><img src="/icons/icon-192.png" alt="" />NewHal · Mersin Hal Kompleksi Rehberi</a>
 ${body}
-<footer><a href="/">Ana sayfa</a> · <a href="/isletmeler">Tüm işletmeler</a> · <a href="/hakkimizda">Hakkımızda</a> · <a href="/iletisim">İletişim</a> · <a href="/kullanim-sartlari">Kullanım Şartları</a> · <a href="/gizlilik">Gizlilik</a></footer>
+<footer><a href="/">Ana sayfa</a> · <a href="/isletmeler">Tüm işletmeler</a> · <a href="/ilanlar">İlanlar</a> · <a href="/hakkimizda">Hakkımızda</a> · <a href="/iletisim">İletişim</a> · <a href="/kullanim-sartlari">Kullanım Şartları</a> · <a href="/gizlilik">Gizlilik</a></footer>
 </main>
 </body>
 </html>`;
@@ -186,6 +207,80 @@ ${names.map(n => `<h2>${esc(icons[n] || '📦')} ${esc(n)} (${groups[n].length})
       .send(layout({ site, title, description, path: '/isletmeler', jsonLd: [{ '@context': 'https://schema.org', ...organization }, list], body }));
   });
 
+  // ── İlan sayfası ──
+  app.get('/ilan/:key', async (req, res, next) => {
+    const no = parseInt(req.params.key, 10);
+    if (!no) return next();
+    const ads = await db.getAds();
+    const ad = ads.find(a => a.no === no);
+    if (!isPublicAd(ad)) return next();
+    if (req.params.key !== adPath(ad).split('/').pop()) return res.redirect(301, adPath(ad));
+
+    const text = adText(ad);
+    const pin = ad.pinId ? await db.getPin(ad.pinId).catch(() => null) : null;
+    const shop = pin && pin.status === 'approved' ? pin : null;
+    const images = ad.images || [];
+    const title = `#${ad.no} ${text.slice(0, 65)}${shop ? ` · ${shop.title}` : ''} | Mersin Hal İlanları | NewHal`;
+    const clean = stripPhones(ad.body && ad.body !== ad.title ? `${ad.title || ''} ${ad.body}` : text);
+    const description = `${clean.slice(0, 170)}${clean.length > 170 ? '…' : /[.!?]$/.test(clean) ? '' : '.'}${shop && !clean.includes(shop.title) ? ` ${shop.title}.` : ''} Mersin Hal Kompleksi ücretsiz alım satım ilanı, NewHal.`.slice(0, 300);
+    const posted = ad.updated_at || ad.created_at;
+    const comments = (ad.comments || []).filter(c => c && c.message);
+    const related = ads.filter(a => a !== ad && isPublicAd(a))
+      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 10);
+    const crumbs = {
+      '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'NewHal', item: site + '/' },
+        { '@type': 'ListItem', position: 2, name: 'İlanlar', item: site + '/ilanlar' },
+        { '@type': 'ListItem', position: 3, name: `#${ad.no} ${text.slice(0, 60)}`, item: site + adPath(ad) },
+      ],
+    };
+    const youtube = ad.video && ad.video.type === 'youtube' ? ad.video.id : '';
+    const videoFile = ad.video && ad.video.type === 'file' ? ad.video.url : '';
+    const image = images[0] || (youtube ? `https://i.ytimg.com/vi/${youtube}/hqdefault.jpg` : site + '/img/ilan-logo.jpg');
+    const tel = shop && shop.phone ? shop.phone.replace(/[^\d+]/g, '') : '';
+
+    const body = `
+<nav class="crumbs"><a href="/">NewHal</a> › <a href="/ilanlar">İlanlar</a> › #${ad.no}</nav>
+<h1>${esc(text.slice(0, 140))}</h1>
+<p class="meta">İlan #${ad.no}${posted ? ` · ${esc(trDate(posted))}` : ''}${shop ? ` · <a href="${pinPath(shop)}">${esc(shop.title)}</a>` : ''}${ad.owner_name && !shop ? ` · ${esc(ad.owner_name)}` : ''}</p>
+${ad.body && ad.body !== ad.title ? `<p class="ad-body">${esc(ad.body)}</p>` : ''}
+${images.length ? `<div class="photos">${images.map((u, i) => `<img src="${esc(u)}" alt="${esc(text.slice(0, 80))}${i ? ` ${i + 1}` : ''}" loading="lazy" />`).join('')}</div>` : ''}
+${videoFile ? `<video src="${esc(videoFile)}" controls preload="none" playsinline></video>` : ''}
+${youtube ? `<p><a href="https://www.youtube.com/watch?v=${esc(youtube)}" target="_blank" rel="noopener">▶️ Videoyu YouTube'da izle</a></p>` : ''}
+<div class="btns">
+  <a class="btn" href="/?ilan=${encodeURIComponent(ad.id)}">💬 NewHal'da aç, beğen ve yorum yaz</a>
+  ${tel ? `<a class="btn alt" href="tel:${esc(tel)}">📞 Ara</a>` : ''}
+  ${shop ? `<a class="btn alt" href="${pinPath(shop)}">🏪 İşletmeyi gör</a>` : ''}
+</div>
+${comments.length ? `<h2>💬 Yorumlar (${comments.length})</h2>${comments.slice(0, 30).map(c => `<div class="comment"><b>${esc(c.name || 'Üye')}</b><br>${esc(c.message)}</div>`).join('')}` : ''}
+${related.length ? `<h2>Diğer güncel ilanlar</h2><ul class="list">${related.map(a => `<li><a href="${adPath(a)}">#${a.no} ${esc(adText(a).slice(0, 60))}</a></li>`).join('')}</ul>` : ''}
+<p><a href="/ilanlar">Tüm ilanlar</a> · İlan vermek ücretsizdir.</p>`;
+
+    res.set('Cache-Control', 'public, max-age=300').type('html')
+      .send(layout({ site, title, description, path: adPath(ad), image, jsonLd: [crumbs], body }));
+  });
+
+  // ── Tüm ilanlar ──
+  app.get('/ilanlar', async (req, res) => {
+    const ads = (await db.getAds()).filter(isPublicAd)
+      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+    const title = `Mersin Hal İlanları (${ads.length}) · Ücretsiz Alım Satım | NewHal`;
+    const description = `Mersin Hal Kompleksi'nden ${ads.length} güncel alım satım ilanı: sebze, meyve, nakliye, soğuk hava deposu ve daha fazlası. İlan vermek ücretsiz.`;
+    const list = {
+      '@context': 'https://schema.org', '@type': 'ItemList', name: 'Mersin Hal İlanları',
+      itemListElement: ads.slice(0, 200).map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: site + adPath(a), name: adText(a).slice(0, 100) })),
+    };
+    const body = `
+<nav class="crumbs"><a href="/">NewHal</a> › İlanlar</nav>
+<h1>Mersin Hal İlanları</h1>
+<p>Mersin Hal Kompleksi'nden en yeni ${ads.length} alım satım ilanı. İlana tıklayarak ayrıntısını, fotoğraflarını ve yorumlarını görebilirsiniz.</p>
+<div class="btns"><a class="btn" href="/">📢 Ücretsiz ilan ver</a></div>
+<ul class="list">${ads.map(a => `<li><a href="${adPath(a)}">#${a.no} ${esc(adText(a).slice(0, 70))}</a> <span class="meta">${esc(trDate(a.created_at))}</span></li>`).join('')}</ul>`;
+    res.set('Cache-Control', 'public, max-age=300').type('html')
+      .send(layout({ site, title, description, path: '/ilanlar', jsonLd: [list], body }));
+  });
+
   // ── Site haritası ──
   let sitemapCache = { at: 0, xml: '' };
   app.get('/sitemap.xml', async (req, res) => {
@@ -195,9 +290,10 @@ ${names.map(n => `<h2>${esc(icons[n] || '📦')} ${esc(n)} (${groups[n].length})
       const urls = [
         { loc: '/', freq: 'daily', pri: '1.0' },
         { loc: '/isletmeler', freq: 'daily', pri: '0.9' },
+        { loc: '/ilanlar', freq: 'daily', pri: '0.8' },
         ...pins.map(p => ({ loc: pinPath(p), freq: 'weekly', pri: '0.8', mod: day(p.reviewed_at || p.created_at) })),
-        ...ads.filter(a => a.active !== false && !a.pending)
-          .map(a => ({ loc: `/?ilan=${encodeURIComponent(a.id)}`, freq: 'weekly', pri: '0.6', mod: day(a.updated_at || a.created_at) })),
+        ...ads.filter(isPublicAd)
+          .map(a => ({ loc: adPath(a), freq: 'weekly', pri: '0.6', mod: day(a.updated_at || a.created_at) })),
         { loc: '/hakkimizda', freq: 'monthly', pri: '0.4' },
         { loc: '/iletisim', freq: 'monthly', pri: '0.4' },
         { loc: '/kullanim-sartlari', freq: 'yearly', pri: '0.2' },
@@ -216,5 +312,9 @@ ${names.map(n => `<h2>${esc(icons[n] || '📦')} ${esc(n)} (${groups[n].length})
     res.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /admin.html\nDisallow: /api/\nDisallow: /auth/\n\nSitemap: ${site}/sitemap.xml\n`);
   });
 
-  return { pinPath, organization };
+  return { pinPath, adPath, isPublicAd, organization };
 };
+
+module.exports.adPath = adPath;
+module.exports.isPublicAd = isPublicAd;
+module.exports.stripPhones = stripPhones;

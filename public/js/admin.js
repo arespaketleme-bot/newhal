@@ -632,7 +632,7 @@ async function saveToday(event) {
 }
 
 // ── Açılış ekranı ayarı ──────────────────────────────────────
-const WELCOME_DEFAULT_IMAGE = 'img/banner.png';
+const WELCOME_DEFAULT_IMAGE = 'img/banner.webp';
 let welcomeImageUrl = WELCOME_DEFAULT_IMAGE;
 
 function showWelcomePreview() {

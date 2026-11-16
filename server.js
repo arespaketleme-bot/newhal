@@ -74,19 +74,45 @@ app.use((req, res, next) => {
   next();
 });
 
+// Ana sayfadaki işletme sayısı her zaman güncel görünsün (Google'daki açıklama dahil)
+const seoHelpers = require('./seo');
+let pinCountCache = { at: 0, n: 0 };
+async function approvedPinCount() {
+  if (Date.now() - pinCountCache.at > 10 * 60 * 1000) {
+    try { pinCountCache = { at: Date.now(), n: (await db.getApprovedPins()).length }; } catch { /* eski sayı kalır */ }
+  }
+  return pinCountCache.n;
+}
+const countText = n => {
+  const r = Math.floor((n - 1) / 10) * 10;
+  if (r < 20) return 'tüm';
+  const suffix = r % 100 === 0 ? "'den"
+    : ({ 1: "'dan", 2: "'den", 3: "'dan", 4: "'tan", 5: "'den", 6: "'tan", 7: "'ten", 8: "'den", 9: "'dan" })[(r / 10) % 10];
+  return `${r}${suffix} fazla`;
+};
+async function indexHtml() {
+  const n = await approvedPinCount();
+  let html = fs.readFileSync(INDEX_HTML, 'utf8');
+  if (n) html = html.replace(/140'tan fazla/g, countText(n));
+  return html;
+}
+
 app.use(async (req, res, next) => {
-  if (req.method !== 'GET' || req.path !== '/' || !req.query.ilan) return next();
+  if (req.method !== 'GET' || req.path !== '/') return next();
   try {
+    if (!req.query.ilan) return res.set('Cache-Control', 'no-cache').type('html').send(await indexHtml());
     const ad = (await db.getAds()).find(a => a.id === String(req.query.ilan) && a.active !== false && !a.pending);
     if (!ad) return next();
     const siteUrl = process.env.SITE_URL || 'https://newhal.com';
     const summary = (ad.title || ad.body || 'İlan').replace(/\s+/g, ' ').trim();
     const title = `#${ad.no} · ${summary.slice(0, 70)} | NewHal İlanlar`;
-    const desc = (ad.body || ad.title || 'Mersin Hal Kompleksi ilanı').replace(/\s+/g, ' ').trim().slice(0, 200);
+    const desc = (seoHelpers.stripPhones(ad.body || ad.title) || 'Mersin Hal Kompleksi ilanı').slice(0, 200);
     const image = (ad.images || [])[0]
       || (ad.video && ad.video.type === 'youtube' ? `https://i.ytimg.com/vi/${ad.video.id}/hqdefault.jpg` : `${siteUrl}/img/ilan-logo.jpg`);
     const url = `${siteUrl}/?ilan=${encodeURIComponent(ad.id)}`;
-    let html = fs.readFileSync(INDEX_HTML, 'utf8');
+    // Google bu ilanın asıl sayfası olarak /ilan/... adresini tanısın; paylaşılan bağlantı uygulamayı açmaya devam eder
+    const canonical = seoHelpers.isPublicAd(ad) ? siteUrl + seoHelpers.adPath(ad) : url;
+    let html = await indexHtml();
     const setMeta = (prop, value) => {
       html = html.replace(new RegExp(`(<meta property="${prop}" content=")[^"]*(")`), `$1${escAttr(value)}$2`);
     };
@@ -96,7 +122,7 @@ app.use(async (req, res, next) => {
     setMeta('og:image', image); setMeta('twitter:image', image);
     html = html.replace(/<title>[^<]*<\/title>/, `<title>${escAttr(title)}</title>`);
     html = html.replace(/(<meta name="description" content=")[^"]*(")/, `$1${escAttr(desc)}$2`);
-    html = html.replace(/(<link rel="canonical" href=")[^"]*(")/, `$1${escAttr(url)}$2`);
+    html = html.replace(/(<link rel="canonical" href=")[^"]*(")/, `$1${escAttr(canonical)}$2`);
     res.set('Cache-Control', 'no-cache').type('html').send(html);
   } catch (err) {
     next();
@@ -2838,7 +2864,7 @@ setInterval(() => {
 const WELCOME_FILE = 'welcome-popup.json';
 const DEFAULT_WELCOME = {
   enabled: true,
-  image: 'img/banner.png',
+  image: 'img/banner.webp',
   title: 'NewHal Rehberine Hoş Geldiniz',
   text: "Mersin Hal Kompleksi'ndeki işletmeleri interaktif harita üzerinde keşfedin, yorum yapın ve kendi işletmenizi ekleyin.",
   button: 'Rehberi Keşfetmeye Başla',
