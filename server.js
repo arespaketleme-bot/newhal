@@ -2331,10 +2331,13 @@ function fbBotCandidate(post, ctx) {
   const { s, run, seen, known, minTime } = ctx;
   const { keywords, photoPosts } = s.settings;
   run.read++;
-  const url = String(post.url || '').split('?')[0];
+  // Gönderi linki sorgu kısmıyla düzgünleştirilir (permalink.php?story_fbid=.. gibi linkler kırpılınca hepsi aynı görünüyordu)
+  let url = '';
+  try { url = fbPostUrl(new URL(String(post.url || ''))) || ''; } catch {}
   let text = fbBotCleanText(post.text || '');
   const key = post.key || fbPostKey(url, text);
-  if (!key || seen.has(key) || (url && known.has(url))) { run.skipped++; run.duplicates = (run.duplicates || 0) + 1; return null; }
+  // Elle gönderimde yalnız gerçekten ilanı olan gönderi "zaten var" sayılır
+  if (!key || (!post.force && seen.has(key)) || (url && known.has(url))) { run.skipped++; run.duplicates = (run.duplicates || 0) + 1; return null; }
   if (minTime && post.time && post.time < minTime) { run.skipped++; run.old = (run.old || 0) + 1; return null; }
   seen.add(key);
   const photos = post.photos || [];
