@@ -805,49 +805,48 @@
       </style>
       <section class="section" id="sectionFbBot">
         <style>
-          #sectionFbBot .ag-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin:4px 0 18px; }
-          #sectionFbBot .ag-card { padding:14px; border-radius:14px; background:var(--bg-card); border:1px solid var(--border); display:flex; flex-direction:column; gap:4px; cursor:pointer; text-align:left; color:inherit; font:inherit; }
-          #sectionFbBot .ag-card:hover { border-color:var(--border-g); }
-          #sectionFbBot .ag-card b { font-size:14px; }
-          #sectionFbBot .ag-card span { font-size:12.5px; color:var(--text-3); line-height:1.45; }
-          #sectionFbBot .ag-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; background:#6b7280; }
-          #sectionFbBot .ag-dot.on { background:#22c55e; } #sectionFbBot .ag-dot.warn { background:#f59e0b; } #sectionFbBot .ag-dot.off { background:#6b7280; }
-          #sectionFbBot .ag-tabs { display:flex; gap:6px; flex-wrap:wrap; border-bottom:1px solid var(--border); margin-bottom:18px; }
-          #sectionFbBot .ag-tab { padding:10px 14px; border:0; border-bottom:2px solid transparent; background:none; color:var(--text-3); font:inherit; font-weight:700; cursor:pointer; }
-          #sectionFbBot .ag-tab.active { color:var(--text-1); border-bottom-color:#22c55e; }
-          #sectionFbBot .ag-tab small { font-weight:600; opacity:.75; margin-left:4px; }
-          #sectionFbBot .ag-pane { display:none; flex-direction:column; gap:16px; max-width:760px; }
-          #sectionFbBot .ag-pane.active { display:flex; }
-          #sectionFbBot .ag-box { padding:16px; border-radius:14px; background:var(--bg-card); border:1px solid var(--border); display:flex; flex-direction:column; gap:12px; }
-          #sectionFbBot .ag-box > h3 { font-size:15px; margin:0; }
-          #sectionFbBot .ag-box > p, #sectionFbBot .ag-hint { font-size:13px; color:var(--text-3); margin:0; line-height:1.5; }
+          #sectionFbBot .ag-wrap { max-width:760px; display:flex; flex-direction:column; gap:14px; }
+          #sectionFbBot .ag-intro { padding:16px; border-radius:14px; background:var(--bg-card); border:1px solid var(--border); font-size:14px; line-height:1.6; }
+          #sectionFbBot .ag-intro ul { margin:8px 0 0; padding-left:20px; display:flex; flex-direction:column; gap:4px; }
+          #sectionFbBot .ag-group-title { font-size:13px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--text-3); margin:10px 0 -4px; }
+          #sectionFbBot .ag-block { border-radius:14px; background:var(--bg-card); border:1px solid var(--border); }
+          #sectionFbBot .ag-block.todo { border-color:rgba(251,191,36,.5); }
+          #sectionFbBot .ag-block > summary { list-style:none; cursor:pointer; padding:14px 16px; display:flex; gap:12px; align-items:center; }
+          #sectionFbBot .ag-block > summary::-webkit-details-marker { display:none; }
+          #sectionFbBot .ag-block > summary .ag-ico { font-size:22px; flex-shrink:0; }
+          #sectionFbBot .ag-block > summary .ag-head { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+          #sectionFbBot .ag-block > summary b { font-size:15px; }
+          #sectionFbBot .ag-block > summary .ag-state { font-size:12.5px; color:var(--text-3); }
+          #sectionFbBot .ag-block > summary::after { content:'▾'; color:var(--text-3); transition:transform .2s; }
+          #sectionFbBot .ag-block[open] > summary::after { transform:rotate(180deg); }
+          #sectionFbBot .ag-badge { font-size:11px; font-weight:800; padding:3px 8px; border-radius:999px; white-space:nowrap; }
+          #sectionFbBot .ag-badge.ok { background:rgba(34,197,94,.15); color:#86efac; }
+          #sectionFbBot .ag-badge.todo { background:rgba(251,191,36,.15); color:#fbbf24; }
+          #sectionFbBot .ag-badge.opt { background:rgba(148,163,184,.15); color:#cbd5e1; }
+          #sectionFbBot .ag-body { padding:0 16px 16px; display:flex; flex-direction:column; gap:12px; font-size:14px; line-height:1.6; }
+          #sectionFbBot .ag-body p { margin:0; }
+          #sectionFbBot .ag-hint { font-size:12.5px; color:var(--text-3); margin:0; }
+          #sectionFbBot .ag-steps { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; counter-reset:ag; }
+          #sectionFbBot .ag-steps > li { counter-increment:ag; position:relative; padding:10px 12px 10px 46px; border-radius:12px; border:1px solid var(--border); }
+          #sectionFbBot .ag-steps > li::before { content:counter(ag); position:absolute; left:12px; top:10px; width:24px; height:24px; border-radius:50%; display:grid; place-items:center; font-weight:800; font-size:13px; background:rgba(34,197,94,.18); color:#86efac; }
           #sectionFbBot .ag-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-          #sectionFbBot .ag-row input, #sectionFbBot select, #sectionFbBot textarea { padding:9px 11px; border-radius:10px; font:inherit; }
           #sectionFbBot .ag-row input { flex:1 1 220px; min-width:0; }
-          #sectionFbBot label.ag-field { display:flex; flex-direction:column; gap:6px; font-size:13.5px; }
-          #sectionFbBot .ag-steps { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:12px; counter-reset:ag; }
-          #sectionFbBot .ag-steps > li { counter-increment:ag; position:relative; padding:12px 12px 12px 48px; border-radius:12px; border:1px solid var(--border); font-size:13.5px; line-height:1.55; }
-          #sectionFbBot .ag-steps > li::before { content:counter(ag); position:absolute; left:12px; top:12px; width:26px; height:26px; border-radius:50%; display:grid; place-items:center; font-weight:800; background:rgba(34,197,94,.18); color:#86efac; }
+          #sectionFbBot input:not([type="checkbox"]), #sectionFbBot select, #sectionFbBot textarea { padding:9px 11px; border-radius:10px; font:inherit; }
+          #sectionFbBot label.ag-field { display:flex; flex-direction:column; gap:6px; }
+          #sectionFbBot .ag-sub { padding:12px; border-radius:12px; border:1px solid var(--border); display:flex; flex-direction:column; gap:10px; }
+          #sectionFbBot .ag-sub > b { font-size:14px; }
           #sectionFbBot .ag-note { font-size:13px; padding:10px 12px; border-radius:10px; background:rgba(251,191,36,.1); border:1px solid rgba(251,191,36,.35); }
           #sectionFbBot .ag-ok { font-size:13px; padding:10px 12px; border-radius:10px; background:rgba(34,197,94,.08); border:1px solid rgba(34,197,94,.3); }
-          #sectionFbBot .ag-save { position:sticky; bottom:0; z-index:5; margin-top:20px; padding:12px 14px; border-radius:14px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; background:var(--bg-panel); border:1px solid var(--border); box-shadow:0 -8px 24px rgba(0,0,0,.35); max-width:760px; }
+          #sectionFbBot .ag-save { position:sticky; bottom:0; z-index:5; padding:12px 14px; border-radius:14px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; background:var(--bg-panel); border:1px solid var(--border); box-shadow:0 -8px 24px rgba(0,0,0,.35); }
           #sectionFbBot .ag-save span { font-size:13px; color:var(--text-3); flex:1; }
           #sectionFbBot .ag-save.dirty { border-color:rgba(251,191,36,.6); }
           #sectionFbBot .ag-save.dirty span { color:#fbbf24; }
-          #sectionFbBot code { font-size:12px; }
           #sectionFbBot a { color:#4ade80; }
-          #sectionFbBot .ag-pane, #sectionFbBot .ag-box, #sectionFbBot .ag-box * { min-width:0; overflow-wrap:anywhere; }
-          #sectionFbBot { max-width:100%; overflow-x:hidden; }
-          #sectionFbBot input[type="number"] { padding:9px 11px; border-radius:10px; font:inherit; }
+          #sectionFbBot code { font-size:12px; }
+          #sectionFbBot .ag-body, #sectionFbBot .ag-body * { min-width:0; overflow-wrap:anywhere; }
           @media (max-width: 640px) {
-            #sectionFbBot .ag-cards { grid-template-columns:1fr 1fr; gap:8px; }
-            #sectionFbBot .ag-card { padding:10px; }
-            #sectionFbBot .ag-card b { font-size:13px; }
-            #sectionFbBot .ag-card span { font-size:11.5px; }
-            #sectionFbBot .ag-tabs { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
-            #sectionFbBot .ag-tab { white-space:nowrap; padding:10px 10px; }
-            #sectionFbBot .ag-tab small { display:none; }
-            #sectionFbBot .ag-box { padding:14px 12px; }
+            #sectionFbBot .ag-block > summary { padding:12px; }
+            #sectionFbBot .ag-body { padding:0 12px 14px; }
             #sectionFbBot .ag-steps > li { padding:10px 10px 10px 42px; }
             #sectionFbBot .ag-steps > li::before { left:10px; }
           }
@@ -855,177 +854,172 @@
         <div class="section-head">
           <div>
             <h1>🤖 İlan Ajanı</h1>
-            <p>Facebook gruplarındaki hal ilanlarını bulur, ayıklar ve onayınıza sunar. İki yolu var: <b>tarayıcınızla</b> (ücretsiz, siz Facebook'ta gezerken) ya da <b>Apify ile</b> (ücretli, kendiliğinden).</p>
+            <p>Facebook gruplarındaki hal ilanlarını sizin yerinize bulur ve onayınıza sunar.</p>
           </div>
         </div>
 
-        <div class="ag-cards" id="fbBotCards"></div>
-
-        <div class="ag-tabs" role="tablist">
-          <button type="button" class="ag-tab" data-tab="browser" onclick="fbTab('browser')">🧭 Tarayıcıyla<small>ücretsiz</small></button>
-          <button type="button" class="ag-tab" data-tab="apify" onclick="fbTab('apify')">☁️ Apify ile<small>ücretli</small></button>
-          <button type="button" class="ag-tab" data-tab="common" onclick="fbTab('common')">⚙️ Ortak ayarlar</button>
-          <button type="button" class="ag-tab" data-tab="history" onclick="fbTab('history')">📜 Geçmiş</button>
-        </div>
-
-        <form id="fbBotForm" onsubmit="saveFbBot(event)" oninput="markFbBotDirty()" onchange="markFbBotDirty()">
-
-          <!-- ── Tarayıcıyla (ücretsiz) ── -->
-          <div class="ag-pane" data-pane="browser">
-            <div class="ag-box">
-              <h3>Nasıl çalışır?</h3>
-              <p>Bilgisayarınızda Facebook'ta bir hal grubunda gezinirken ekrandan geçen gönderiler okunur; ilan olanlar NewHal'e onay bekleyen ilan olarak gelir. Apify kullanılmaz, ücret yoktur. Üyesi olduğunuz <b>kapalı gruplar da</b> okunur. Yalnızca bilgisayarda (Chrome, Edge, Firefox) çalışır.</p>
-              <div id="fbCollectStatus" class="ag-ok">Tarayıcıdan henüz gönderi gelmedi.</div>
-            </div>
-            <div class="ag-box">
-              <h3>Kurulum (bir kez)</h3>
-              <ol class="ag-steps">
-                <li><b>Tampermonkey'i kurun.</b> <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener">tampermonkey.net</a> sayfasından tarayıcınıza ekleyin.</li>
-                <li><b>Betiklere izin verin</b> (Chrome / Edge). Adres çubuğuna <code>chrome://extensions</code> (Edge'de <code>edge://extensions</code>) yazın → Tampermonkey → <b>Ayrıntılar</b> → <b>"Kullanıcı komut dosyalarına izin ver"</b>i açın. Bu seçenek yoksa sağ üstteki <b>Geliştirici modu</b>nu açın.</li>
-                <li><b>NewHal betiğini kurun.</b> <a id="fbScriptLink" href="/newhal-facebook.user.js" target="_blank" rel="noopener">Buraya tıklayın</a>, açılan sayfada <b>Yükle</b>ye basın. Yeni sürümler kendiliğinden gelir.</li>
-                <li><b>Anahtarı girin.</b> Facebook'u açın, sol alttaki <b>🔑 NewHal</b> düğmesine basıp bu anahtarı yapıştırın:
-                  <div class="ag-row" style="margin-top:8px">
-                    <input id="fbCollectorKey" readonly />
-                    <button type="button" class="btn-sm" onclick="copyFbCollectorKey()">📋 Kopyala</button>
-                    <button type="button" class="btn-sm" onclick="resetFbCollectorKey()" title="Anahtar başkasının eline geçtiyse yenileyin">🔄 Yenile</button>
-                  </div>
-                </li>
-              </ol>
-            </div>
-            <div class="ag-box">
-              <h3>Kullanım</h3>
-              <ol class="ag-steps">
-                <li>Facebook'ta bir hal grubuna girin ve sol alttaki NewHal düğmesine basıp <b>toplamayı açın</b>.</li>
-                <li>Akışı aşağı kaydırın. Düğmedeki sayaçlar: <b>📄</b> sayfada bulunan · <b>👀</b> okunan · <b>📤</b> NewHal'e giden · <b>✅</b> ilan olan gönderi.</li>
-                <li>Tek bir gönderiyi kendiniz eklemek için üstündeki <b>🟢 NewHal'e Gönder</b> düğmesine basın (kelime ve yapay zeka elemesi uygulanmaz).</li>
-              </ol>
-              <p>Gizlilik: toplama yalnızca grup sayfalarında çalışır; ana sayfa akışınız ve uymayan gönderiler NewHal'e gönderilmez.</p>
-            </div>
-            <details class="ag-box">
-              <summary style="cursor:pointer;font-weight:700">🛠 Sorun giderme</summary>
-              <ol style="margin:8px 0 0;padding-left:20px;font-size:13px;display:flex;flex-direction:column;gap:6px">
-                <li><b>NewHal düğmesi hiç yok:</b> 2. adımdaki izni açıp Facebook'u yenileyin (F5). Tampermonkey simgesinde "NewHal: Facebook ilan toplayıcı" açık (yeşil) olmalı.</li>
-                <li><b>📄 0 kalıyor:</b> Facebook sayfa yapısını değiştirmiş olabilir. Tampermonkey simgesi → <b>"NewHal: tanılama raporu"</b>na basın ve kopyalanan metni destek sohbetine yapıştırın (gönderi yazısı ya da isim içermez).</li>
-                <li><b>⚠️ bağlanılamadı:</b> NewHal sitesi kapalı ya da güncelleniyor olabilir; düğmeye tıklayınca yeniden dener.</li>
-                <li><b>⚠️ anahtar geçersiz:</b> 4. adımdaki anahtarı yeniden kopyalayıp düğmeye basarak girin.</li>
-              </ol>
-            </details>
+        <form id="fbBotForm" class="ag-wrap" onsubmit="saveFbBot(event)" oninput="markFbBotDirty()" onchange="markFbBotDirty()">
+          <div class="ag-intro">
+            <b>İlanları iki şekilde toplayabilirsiniz.</b> Birini ya da ikisini birden kullanabilirsiniz:
+            <ul>
+              <li>🧭 <b>Ücretsiz yol:</b> Bilgisayarda Facebook'ta gezerken, ekranınızdan geçen ilanları toplar.</li>
+              <li>☁️ <b>Ücretli yol (Apify):</b> Siz bilgisayar başında olmasanız da belirli aralıklarla kendisi toplar.</li>
+            </ul>
+            <p class="ag-hint" style="margin-top:8px">Bulunan ilanlar hemen yayınlanmaz; <b>İlanlar</b> bölümünde onayınızı bekler.</p>
           </div>
 
-          <!-- ── Apify ile (ücretli) ── -->
-          <div class="ag-pane" data-pane="apify">
-            <div class="ag-box">
-              <h3>Nasıl çalışır?</h3>
-              <p>Apify adlı ücretli servis, aşağıdaki "Ortak ayarlar"daki grupları sizin yerinize okur. Bilgisayarınız kapalıyken de çalışır. Yalnızca <b>herkese açık</b> gruplar okunabilir. Her okunan gönderi yaklaşık 25 kuruş tutar.</p>
-            </div>
-            <div class="ag-box">
-              <h3>1. Apify anahtarı</h3>
-              <div id="fbBotApifyKeyStatus" class="ag-hint"></div>
-              <div class="ag-row">
-                <input id="fbBotApifyKeyInput" type="password" autocomplete="off" placeholder="apify_api_..." />
-                <button type="button" class="btn-sm" onclick="saveBotApifyKey()">🔑 Kaydet</button>
+          <div class="ag-group-title" id="fbTodoTitle">Yapılacaklar</div>
+          <div id="fbTodoList" style="display:flex;flex-direction:column;gap:12px"></div>
+          <div class="ag-group-title" id="fbReadyTitle">✅ Ayarı yapılanlar</div>
+          <div id="fbReadyList" style="display:flex;flex-direction:column;gap:12px"></div>
+
+          <!-- Bölümler; JavaScript hazır olup olmamalarına göre yukarıdaki iki listeye yerleştirir -->
+          <div hidden id="fbBlockStore">
+
+          <details class="ag-block" id="fbBlockBrowser">
+            <summary><span class="ag-ico">🧭</span><span class="ag-head"><b>Ücretsiz yol: Facebook'ta gezerken topla</b><span class="ag-state" data-state></span></span><span class="ag-badge" data-badge></span></summary>
+            <div class="ag-body">
+              <p>Bilgisayarınızda Facebook'ta bir hal grubunu açıp aşağı kaydırdığınızda, ilan olan gönderiler NewHal'e gelir. Ücret yoktur. Kapalı gruplar da okunur.</p>
+              <div id="fbCollectStatus" class="ag-ok"></div>
+              <div class="ag-sub"><b>Kurulum (bir kez, bilgisayarda)</b>
+                <ol class="ag-steps">
+                  <li><a href="https://www.tampermonkey.net/" target="_blank" rel="noopener"><b>Tampermonkey</b></a> eklentisini Chrome'a kurun.</li>
+                  <li>Chrome'un adres çubuğuna <code>chrome://extensions</code> yazın. Tampermonkey'in <b>Ayrıntılar</b> düğmesine basın ve <b>"Kullanıcı komut dosyalarına izin ver"</b> seçeneğini açın.</li>
+                  <li><a id="fbScriptLink" href="/newhal-facebook.user.js" target="_blank" rel="noopener"><b>NewHal eklentisini kurmak için buraya tıklayın</b></a>, açılan sayfada <b>Yükle</b>ye basın.</li>
+                  <li>Facebook'u açın. Sol alttaki <b>🔑 NewHal</b> yazısına tıklayın ve bu şifreyi yapıştırın:
+                    <div class="ag-row" style="margin-top:8px">
+                      <input id="fbCollectorKey" readonly />
+                      <button type="button" class="btn-sm" onclick="copyFbCollectorKey()">📋 Kopyala</button>
+                    </div>
+                  </li>
+                </ol>
               </div>
-              <p>Apify'da <b>Settings → API &amp; Integrations</b> sayfasından kopyalayın.</p>
+              <div class="ag-sub"><b>Kullanım</b>
+                <p>Facebook'ta bir hal grubuna girin, sol alttaki <b>NewHal</b> yazısına tıklayıp toplamayı açın ve sayfayı aşağı kaydırın. Tek bir gönderiyi eklemek için üstündeki <b>🟢 NewHal'e Gönder</b> düğmesine de basabilirsiniz.</p>
+              </div>
+              <details><summary style="cursor:pointer;font-weight:700">Çalışmıyorsa</summary>
+                <ul style="margin:8px 0 0;padding-left:20px;font-size:13px;display:flex;flex-direction:column;gap:6px">
+                  <li><b>Sol altta NewHal yazısı yok:</b> 2. adımı yapıp Facebook sayfasını yenileyin (F5).</li>
+                  <li><b>📄 sayısı 0 kalıyor:</b> Tampermonkey simgesine tıklayıp <b>"tanılama raporu"</b>nu seçin, kopyalanan yazıyı destek sohbetine yapıştırın.</li>
+                  <li><b>"şifre geçersiz" yazıyor:</b> 4. adımdaki şifreyi yeniden kopyalayıp girin. Şifre başkasının eline geçtiyse <a href="#" onclick="resetFbCollectorKey();return false">yenisini üretin</a>.</li>
+                  <li>Telefonda çalışmaz, bilgisayar gerekir.</li>
+                </ul>
+              </details>
             </div>
-            <div class="ag-box">
-              <h3>2. Şimdi çalıştır</h3>
-              <div id="fbBotApifyRun"></div>
-              <div class="ag-row"><button type="button" class="btn-sm btn-approve" id="fbBotRunBtn" onclick="runFbBot()">▶ Şimdi Çalıştır</button></div>
-            </div>
-            <div class="ag-box">
-              <h3>3. Ne kadar okunsun?</h3>
-              <label class="ag-field"><b>Her gruptan en fazla kaç gönderi</b>
-                <input type="number" id="fbBotPerSource" oninput="updateFbBotCost()" min="1" max="50" style="max-width:140px" />
-              </label>
-              <label class="ag-field"><b>Hangi tarihteki gönderiler</b>
-                <select id="fbBotMaxAge" style="max-width:320px">
-                  <option value="6">Son 6 saat</option><option value="12">Son 12 saat</option><option value="24">Son 24 saat (bugün)</option>
-                  <option value="48">Son 2 gün</option><option value="72">Son 3 gün</option><option value="168">Son 1 hafta</option><option value="0">Tarih fark etmez</option>
-                </select>
-              </label>
-            </div>
-            <div class="ag-box">
-              <h3>4. Otomatik çalışma</h3>
-              <label class="app-ctl"><input type="checkbox" id="fbBotAuto" onchange="updateFbBotCost()" /> <span><b>Kendiliğinden çalışsın</b><br><small>Kapalıyken yalnızca "Şimdi Çalıştır"a basınca çalışır.</small></span></label>
-              <label class="ag-field"><b>Ne sıklıkla?</b>
-                <select id="fbBotInterval" onchange="updateFbBotCost()" style="max-width:320px">
-                  <option value="1">Saatte bir</option><option value="2">2 saatte bir</option><option value="3">3 saatte bir</option>
-                  <option value="4">4 saatte bir</option><option value="6">6 saatte bir</option><option value="8">8 saatte bir</option>
-                  <option value="12">Günde 2 kez</option><option value="24">Günde 1 kez</option>
-                </select>
-              </label>
-              <div id="fbBotCost" class="ag-note"></div>
-              <details>
-                <summary style="cursor:pointer;font-weight:700">🌙 Site uyurken de çalışsın (önerilir)</summary>
-                <div style="font-size:13px;display:flex;flex-direction:column;gap:8px;margin-top:8px">
-                  <span>Render'ın ücretsiz planında site, ziyaretçi gelmeyince uykuya geçer ve ajan çalışamaz. Ücretsiz <a href="https://cron-job.org" target="_blank" rel="noopener">cron-job.org</a> hesabı açıp aşağıdaki adresi <b>30 dakikada bir</b> çağıracak bir görev ekleyin. Ajan yalnızca sırası geldiyse çalışır; ek ücret oluşmaz.</span>
-                  <div class="ag-row">
-                    <input id="fbBotCronUrl" readonly />
-                    <button type="button" class="btn-sm" onclick="copyFbBotCronUrl()">📋 Kopyala</button>
-                    <button type="button" class="btn-sm" onclick="resetFbBotCronKey()" title="Adres başkasının eline geçtiyse yenileyin">🔄 Yenile</button>
-                  </div>
+          </details>
+
+          <details class="ag-block" id="fbBlockApify">
+            <summary><span class="ag-ico">☁️</span><span class="ag-head"><b>Ücretli yol: Apify ile kendiliğinden topla</b><span class="ag-state" data-state></span></span><span class="ag-badge" data-badge></span></summary>
+            <div class="ag-body">
+              <p>Apify adlı servis, aşağıda seçtiğiniz grupları sizin yerinize okur. Bilgisayarınız kapalıyken de çalışır. Yalnızca herkese açık grupları okuyabilir. Her okunan gönderi yaklaşık 25 kuruş tutar.</p>
+              <div class="ag-sub"><b>1. Apify şifresi (API anahtarı)</b>
+                <div id="fbBotApifyKeyStatus" class="ag-hint"></div>
+                <div class="ag-row">
+                  <input id="fbBotApifyKeyInput" type="password" autocomplete="off" placeholder="apify_api_..." />
+                  <button type="button" class="btn-sm" onclick="saveBotApifyKey()">Kaydet</button>
                 </div>
-              </details>
+                <p class="ag-hint">apify.com hesabınızda <b>Settings → API &amp; Integrations</b> sayfasındadır.</p>
+              </div>
+              <div class="ag-sub"><b>2. Ne zaman çalışsın?</b>
+                <label class="app-ctl"><input type="checkbox" id="fbBotAuto" onchange="updateFbBotCost()" /> <span><b>Kendiliğinden çalışsın</b><br><small>Kapalıysa yalnızca aşağıdaki "Şimdi Çalıştır" düğmesiyle çalışır.</small></span></label>
+                <label class="ag-field">Ne sıklıkla?
+                  <select id="fbBotInterval" onchange="updateFbBotCost()" style="max-width:320px">
+                    <option value="1">Saatte bir</option><option value="2">2 saatte bir</option><option value="3">3 saatte bir</option>
+                    <option value="4">4 saatte bir</option><option value="6">6 saatte bir</option><option value="8">8 saatte bir</option>
+                    <option value="12">Günde 2 kez</option><option value="24">Günde 1 kez</option>
+                  </select>
+                </label>
+                <label class="ag-field">Her gruptan en fazla kaç gönderi okunsun?
+                  <input type="number" id="fbBotPerSource" oninput="updateFbBotCost()" min="1" max="50" style="max-width:140px" />
+                </label>
+                <label class="ag-field">Ne kadar eski gönderiler alınsın?
+                  <select id="fbBotMaxAge" style="max-width:320px">
+                    <option value="6">Son 6 saat</option><option value="12">Son 12 saat</option><option value="24">Son 24 saat</option>
+                    <option value="48">Son 2 gün</option><option value="72">Son 3 gün</option><option value="168">Son 1 hafta</option><option value="0">Fark etmez</option>
+                  </select>
+                </label>
+                <div id="fbBotCost" class="ag-note"></div>
+                <details><summary style="cursor:pointer;font-size:13px;font-weight:700">Site uyurken de çalışması için (önerilir)</summary>
+                  <div style="font-size:13px;display:flex;flex-direction:column;gap:8px;margin-top:8px">
+                    <span>Ücretsiz sunucuda site, ziyaretçi gelmeyince uyur ve ajan çalışamaz. <a href="https://cron-job.org" target="_blank" rel="noopener">cron-job.org</a> sitesinde ücretsiz hesap açıp bu adresi <b>30 dakikada bir</b> açacak bir görev ekleyin. Ek ücret oluşmaz.</span>
+                    <div class="ag-row">
+                      <input id="fbBotCronUrl" readonly />
+                      <button type="button" class="btn-sm" onclick="copyFbBotCronUrl()">📋 Kopyala</button>
+                      <button type="button" class="btn-sm" onclick="resetFbBotCronKey()" title="Adres başkasının eline geçtiyse yenileyin">🔄 Yenile</button>
+                    </div>
+                  </div>
+                </details>
+              </div>
+              <div class="ag-sub"><b>3. Şimdi çalıştır</b>
+                <div id="fbBotApifyRun"></div>
+                <div class="ag-row"><button type="button" class="btn-sm btn-approve" id="fbBotRunBtn" onclick="runFbBot()">▶ Şimdi Çalıştır</button></div>
+              </div>
             </div>
-          </div>
+          </details>
 
-          <!-- ── Ortak ayarlar ── -->
-          <div class="ag-pane" data-pane="common">
-            <div class="ag-ok">Bu ayarlar hem tarayıcı hem Apify için geçerlidir.</div>
-            <div class="ag-box">
-              <h3>📍 Gruplar ve sayfalar</h3>
-              <p>Apify işaretli grupları okur. Tarayıcı ise girdiğiniz her grupta çalışır; buradaki sayfalarda da toplar.</p>
-              <div id="fbBotCatalog" style="display:flex;flex-direction:column;gap:6px"></div>
-              <div class="ag-row">
-                <input id="fbBotCatName" placeholder="Grup adı" style="flex:1 1 140px" />
-                <input id="fbBotCatUrl" placeholder="https://www.facebook.com/groups/..." style="flex:2 1 220px" />
-                <button type="button" class="btn-sm" onclick="fbCatAdd()">+ Ekle</button>
+          <details class="ag-block" id="fbBlockSources">
+            <summary><span class="ag-ico">📍</span><span class="ag-head"><b>Hangi gruplar ve hangi kelimeler?</b><span class="ag-state" data-state></span></span><span class="ag-badge" data-badge></span></summary>
+            <div class="ag-body">
+              <div class="ag-sub"><b>Gruplar</b>
+                <p class="ag-hint">Apify işaretli grupları okur. Ücretsiz yol ise Facebook'ta girdiğiniz her hal grubunda çalışır.</p>
+                <div id="fbBotCatalog" style="display:flex;flex-direction:column;gap:6px"></div>
+                <div class="ag-row">
+                  <input id="fbBotCatName" placeholder="Grup adı" style="flex:1 1 140px" />
+                  <input id="fbBotCatUrl" placeholder="Grubun Facebook linki" style="flex:2 1 220px" />
+                  <button type="button" class="btn-sm" onclick="fbCatAdd()">+ Ekle</button>
+                </div>
+                <details><summary style="cursor:pointer;font-size:13px">Linkleri elle düzenle</summary>
+                  <textarea id="fbBotSources" oninput="renderFbCatalog()" rows="4" placeholder="https://www.facebook.com/groups/mersinhal" style="width:100%;margin-top:8px"></textarea>
+                </details>
               </div>
-              <details>
-                <summary style="cursor:pointer;font-size:13px">Link listesini elle düzenle</summary>
-                <textarea id="fbBotSources" oninput="renderFbCatalog()" rows="4" placeholder="https://www.facebook.com/groups/mersinhal" style="width:100%;margin-top:8px"></textarea>
-                <p class="ag-hint">Her satıra bir link.</p>
-              </details>
-            </div>
-            <div class="ag-box">
-              <h3>🔎 Hangi gönderiler ilan sayılsın?</h3>
-              <label class="ag-field"><b>Anahtar kelimeler</b>
-                <textarea id="fbBotKeywords" rows="4"></textarea>
-                <span class="ag-hint">Virgülle ayırın. Gönderide bunlardan biri geçerse aday olur.</span>
-              </label>
-              <label class="app-ctl"><input type="checkbox" id="fbBotPhotoPosts" /> <span><b>Yazısız fotoğraflı gönderileri de al</b><br><small>Fotoğrafı ve telefon numarası olan gönderiler de ilan olur (gruplarda çoğu ilan böyle).</small></span></label>
-            </div>
-            <div class="ag-box">
-              <h3>🤖 Yapay zeka elemesi</h3>
-              <p>Adayları Claude okur; "domates fiyatları uçtu" gibi sohbetleri, haberleri ve alakasız reklamları eler. Ürün, miktar ve fiyatı bildirime yazar.</p>
-              <div id="aiKeyStatus" class="ag-hint"></div>
-              <div class="ag-row">
-                <input id="aiKeyInput" type="password" autocomplete="off" placeholder="sk-ant-..." />
-                <button type="button" class="btn-sm" onclick="saveAiKey()">🔑 Kaydet</button>
+              <div class="ag-sub"><b>Kelimeler</b>
+                <p class="ag-hint">Gönderide bu kelimelerden biri geçerse ilan adayı olur. Virgülle ayırın.</p>
+                <textarea id="fbBotKeywords" rows="3"></textarea>
+                <label class="app-ctl"><input type="checkbox" id="fbBotPhotoPosts" /> <span><b>Yazısız ilanları da al</b><br><small>Sadece fotoğraf ve telefon numarası olan gönderiler de ilan sayılır.</small></span></label>
               </div>
-              <p>Anahtarı <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener">platform.claude.com</a> → API Keys bölümünden alın.</p>
-              <label class="app-ctl"><input type="checkbox" id="fbBotAiFilter" /> <span><b>Adayları yapay zekayla ele</b><br><small>Anahtar yoksa ya da hata olursa yalnızca anahtar kelimeye bakılır.</small></span></label>
-              <label class="ag-field"><b>Model</b>
+            </div>
+          </details>
+
+          <details class="ag-block" id="fbBlockAi">
+            <summary><span class="ag-ico">🤖</span><span class="ag-head"><b>Yapay zeka ile ayıklama</b><span class="ag-state" data-state></span></span><span class="ag-badge" data-badge></span></summary>
+            <div class="ag-body">
+              <p>"Domates fiyatları uçtu" gibi sohbetler kelimeye uyduğu için aday olur. Yapay zeka bunları eler, yalnızca gerçek ilanları bırakır. İsteğe bağlıdır; çok az ücretlidir.</p>
+              <div class="ag-sub"><b>Claude şifresi (API anahtarı)</b>
+                <div id="aiKeyStatus" class="ag-hint"></div>
+                <div class="ag-row">
+                  <input id="aiKeyInput" type="password" autocomplete="off" placeholder="sk-ant-..." />
+                  <button type="button" class="btn-sm" onclick="saveAiKey()">Kaydet</button>
+                </div>
+                <p class="ag-hint"><a href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener">platform.claude.com</a> → API Keys sayfasından alınır.</p>
+              </div>
+              <label class="app-ctl"><input type="checkbox" id="fbBotAiFilter" /> <span><b>Yapay zekayla ayıkla</b><br><small>Kapalıysa yalnızca kelimeye bakılır.</small></span></label>
+              <label class="ag-field">Model
                 <select id="fbBotAiModel" style="max-width:360px"></select>
-                <span class="ag-hint">Her turun gerçek maliyeti "Geçmiş" sekmesinde dolar olarak yazar.</span>
+                <span class="ag-hint">Her turun maliyeti en alttaki "Geçmiş"te yazar.</span>
               </label>
             </div>
-            <div class="ag-box">
-              <h3>📬 İlanlar ve bildirimler</h3>
-              <label class="ag-field"><b>Bulunan ilanlar</b>
+          </details>
+
+          <details class="ag-block" id="fbBlockNotify">
+            <summary><span class="ag-ico">📬</span><span class="ag-head"><b>Onay ve bildirimler</b><span class="ag-state" data-state></span></span><span class="ag-badge" data-badge></span></summary>
+            <div class="ag-body">
+              <label class="ag-field">Bulunan ilanlar
                 <select id="fbBotPublish" style="max-width:360px">
-                  <option value="pending">Onay beklesin (İlanlar bölümünden yayınlarım)</option>
+                  <option value="pending">Onayımı beklesin (önerilir)</option>
                   <option value="live">Hemen yayınlansın</option>
                 </select>
               </label>
-              <label class="app-ctl"><input type="checkbox" id="fbBotNotifyEach" /> <span><b>Her ilanı Telegram'a ayrı gönder</b><br><small>Fotoğrafı, Facebook bağlantısı ve onay bağlantısıyla. Kapalıyken yalnızca özet gelir.</small></span></label>
+              <label class="app-ctl"><input type="checkbox" id="fbBotNotifyEach" /> <span><b>Her ilanı Telegram'a ayrı gönder</b><br><small>Kapalıysa her turdan sonra tek bir özet gelir.</small></span></label>
+              <p class="ag-hint" data-telegram></p>
             </div>
+          </details>
+
           </div>
 
-          <!-- ── Geçmiş ── -->
-          <div class="ag-pane" data-pane="history">
-            <div id="fbBotHistory" style="display:flex;flex-direction:column;gap:10px"></div>
-          </div>
+          <details class="ag-block" id="fbBlockHistory">
+            <summary><span class="ag-ico">📜</span><span class="ag-head"><b>Geçmiş</b><span class="ag-state">Ajanın her turu ve kaç ilan bulduğu</span></span></summary>
+            <div class="ag-body"><div id="fbBotHistory" style="display:flex;flex-direction:column;gap:10px"></div></div>
+          </details>
 
           <div class="ag-save" id="fbBotSaveBar">
             <span id="fbBotSaveText">Tüm değişiklikler kayıtlı.</span>
