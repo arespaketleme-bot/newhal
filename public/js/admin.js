@@ -2217,6 +2217,7 @@ async function loadAds() {
     document.getElementById('adStoryDays').value = Number(settings.days) || 7;
     document.getElementById('adStoryGroupSize').value = Number(settings.groupSize) || 10;
     document.getElementById('adStoryFbVitrin').checked = settings.fbVitrin === true;
+    document.getElementById('adFeedAutoSec').value = Number.isInteger(settings.feedAutoSec) ? settings.feedAutoSec : 7;
     fbPick = { all: settings.fbVitrinAll !== false, ids: new Set(settings.fbVitrinIds || []) };
     loadFbStoryPicker();
   }
@@ -2280,6 +2281,7 @@ async function saveAdStorySettings() {
     days: Number(document.getElementById('adStoryDays').value),
     groupSize: Number(document.getElementById('adStoryGroupSize').value),
     fbVitrin: document.getElementById('adStoryFbVitrin').checked,
+    feedAutoSec: Math.min(60, Math.max(0, Math.round(Number(document.getElementById('adFeedAutoSec').value) || 0))),
     fbVitrinAll: fbPick.all,
     fbVitrinIds: [...fbPick.ids],
   };

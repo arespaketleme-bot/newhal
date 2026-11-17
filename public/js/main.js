@@ -2775,6 +2775,7 @@ async function loadAds() {
         days: Math.min(30, Math.max(1, Number(settings.days) || 7)),
         groupSize: Math.min(50, Math.max(1, Number(settings.groupSize) || 10)),
         fbVitrin: settings.fbVitrin === true,
+        feedAutoSec: Number.isFinite(Number(settings.feedAutoSec)) ? Number(settings.feedAutoSec) : 7,
         fbVitrinAll: settings.fbVitrinAll !== false,
         fbVitrinIds: Array.isArray(settings.fbVitrinIds) ? settings.fbVitrinIds : [],
       };
@@ -3305,6 +3306,38 @@ function openAdFeed(startAd) {
   track.children[startIndex]?.scrollIntoView({ block: 'start' });
   track.addEventListener('scroll', () => hint.classList.add('gone'), { once: true, passive: true });
   setTimeout(() => hint.classList.add('gone'), 3500);
+  startFeedAuto(feed, track);
+}
+
+// İlanlar yönetimin belirlediği saniyede bir kendiliğinden geçer; dokununca süre baştan başlar
+function startFeedAuto(feed, track) {
+  const sec = Number(adStorySettings.feedAutoSec ?? 7);
+  if (!(sec > 0) || track.children.length < 2) return;
+  let paused = false;
+  let last = Date.now();
+  const bar = document.createElement('div');
+  bar.className = 'ad-feed-progress';
+  const fill = document.createElement('span');
+  bar.appendChild(fill);
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'ad-feed-pause';
+  const paint = () => { btn.textContent = paused ? '▶' : '⏸'; btn.setAttribute('aria-label', paused ? 'Otomatik geçişi başlat' : 'Otomatik geçişi durdur'); };
+  paint();
+  btn.onclick = (e) => { e.stopPropagation(); paused = !paused; last = Date.now(); paint(); };
+  feed.append(bar, btn);
+  const touched = () => { last = Date.now(); };
+  ['pointerdown', 'touchstart', 'wheel', 'keydown'].forEach(ev => track.addEventListener(ev, touched, { passive: true }));
+  const timer = setInterval(() => {
+    if (!document.body.contains(feed)) { clearInterval(timer); return; }
+    const pct = paused ? 0 : Math.min(100, (Date.now() - last) / (sec * 10));
+    fill.style.width = `${pct}%`;
+    if (paused || document.hidden || Date.now() - last < sec * 1000) return;
+    last = Date.now();
+    const h = track.clientHeight;
+    const atEnd = track.scrollTop + h >= track.scrollHeight - 4;
+    track.scrollTo({ top: atEnd ? 0 : Math.round(track.scrollTop / h + 1) * h, behavior: 'smooth' });
+  }, 100);
 }
 
 function closeAdFeed(silent) {

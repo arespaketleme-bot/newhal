@@ -3115,3 +3115,8 @@ body.profile-page-open { overflow: hidden; }
 /* Sayfa ekrandan bir kaç piksel taşınca telefon görünümü yeniden ölçekliyor, alt menü oynuyordu */
 html { overflow-x: hidden; overflow-x: clip; max-width: 100%; }
 body { overflow-x: clip; max-width: 100%; }
+
+/* İlan akışında otomatik geçiş */
+.ad-feed-progress { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: rgba(255,255,255,.18); z-index: 6; pointer-events: none; }
+.ad-feed-progress span { display: block; height: 100%; width: 0; background: #22c55e; transition: width .1s linear; }
+.ad-feed-pause { position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); left: 64px; z-index: 6; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(0,0,0,.45); color: #fff; font-size: 16px; cursor: pointer; backdrop-filter: blur(6px); }
