@@ -141,7 +141,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 .btn-logout:hover { background: rgba(248,113,113,0.15); }
 
 /* ── Main ─────────────────────────────────────────────────── */
-.admin-main { flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-height: 100vh; }
+.admin-main { flex: 1; min-width: 0; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-height: 100vh; }
 
 .topbar {
   display: flex; align-items: center; gap: 16px;

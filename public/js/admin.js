@@ -895,44 +895,107 @@ async function loadSponsor() {
 
 // ── Facebook ilan botu ────────────────────────────────────────
 let fbBotPoll = null;
+const fbWhen = iso => new Date(iso).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+const FB_TRIGGER = { otomatik: '☁️ Apify · ⏰ otomatik', elle: '☁️ Apify · 👆 elle', betik: '🧭 Tarayıcı · toplama', 'betik-elle': '🧭 Tarayıcı · elle gönderilen' };
+
+// Bir turun özeti (Apify kutusu ve Geçmiş sekmesi aynı görünümü kullanır)
+function fbRunCard(r, open) {
+  const ai = r.ai && r.ai.checked ? `<br>🤖 Yapay zeka ${r.ai.checked} adayı inceledi, <b>${r.ai.rejected} tanesini eledi</b> · ≈ $${esc(String(r.ai.costUsd))}` : '';
+  return `<details class="ag-box" ${open ? 'open' : ''} style="gap:6px">
+    <summary style="cursor:pointer;font-size:13.5px"><b>${esc(fbWhen(r.at))}</b> · ${esc(FB_TRIGGER[r.trigger] || r.trigger || '')} · ✅ <b>${r.added || 0} ilan</b>${r.status === 'error' ? ' · ❌ hata' : ''}${(r.log || []).some(l => l.startsWith('❌')) ? ' · ⚠️ uyarı var' : ''}</summary>
+    <div style="font-size:13px;line-height:1.6">📖 ${r.read || 0} gönderi okundu · 🥬 ${r.matched || 0} aday · ⏭ ${r.skipped || 0} atlandı${ai}</div>
+    ${(r.log || []).map(l => `<div style="font-size:12.5px;color:var(--text-3)">${esc(l)}</div>`).join('')}
+  </details>`;
+}
+
 function renderFbBotStatus(d) {
-  const box = document.getElementById('fbBotStatus');
+  const s = d.settings;
   const r = d.lastRun;
+  // Özet kartları
+  const card = (tab, dot, title, line) => `<button type="button" class="ag-card" onclick="fbTab('${tab}')"><b><i class="ag-dot ${dot}"></i>${title}</b><span>${line}</span></button>`;
+  const collect = d.lastCollect;
+  document.getElementById('fbBotCards').innerHTML = [
+    card('browser', collect ? 'on' : 'off', '🧭 Tarayıcı', collect ? `Son toplama ${esc(fbWhen(collect.at))} · ${collect.added} ilan` : 'Henüz kullanılmadı · ücretsiz'),
+    card('apify', !d.apify ? 'warn' : s.auto ? 'on' : 'off', '☁️ Apify',
+      !d.apify ? 'Anahtar kayıtlı değil'
+        : d.running ? '⏳ Şu an çalışıyor'
+          : s.auto ? `Otomatik · ${s.intervalHours} saatte bir${d.nextRunAt ? ` · sıradaki ${esc(new Date(d.nextRunAt) <= new Date() ? 'şimdi' : fbWhen(d.nextRunAt))}` : ''}`
+            : `Elle çalışır${r ? ` · son ${esc(fbWhen(r.at))}` : ''}`),
+    card('common', !d.ai ? 'warn' : s.aiFilter !== false ? 'on' : 'off', '🤖 Yapay zeka',
+      !d.ai ? 'Anahtar kayıtlı değil · yalnızca kelimeye bakılır' : s.aiFilter !== false ? `Açık · ${esc((d.aiModels || {})[s.aiModel] || s.aiModel)}` : 'Kapalı'),
+    card('common', d.telegram ? 'on' : 'warn', '📲 Telegram', d.telegram ? (s.notifyEach !== false ? 'Her ilan ayrı bildirilir' : 'Yalnızca özet gelir') : 'Bot ayarlı değil'),
+  ].join('');
+
+  // Apify sekmesi: çalıştır kutusu
   const btn = document.getElementById('fbBotRunBtn');
-  btn.disabled = !!d.running;
-  btn.textContent = d.running ? '⏳ Çalışıyor...' : '▶ Çalıştır';
-  let html = d.apify ? '' : '<p style="color:#fbbf24">⚠️ Apify anahtarı kayıtlı değil. İlanlar → Facebook kutusundan kaydedin.</p>';
-  if (!d.telegram) html += '<p style="color:#fbbf24">⚠️ Telegram botu ayarlı değil; bildirim gönderilemez.</p>';
-  html += d.settings.auto
-    ? `<p>⏰ <b>Otomatik çalışma açık</b> · ${d.settings.intervalHours} saatte bir.${d.nextRunAt && !d.running ? ` Sıradaki tur: <b>${esc(new Date(d.nextRunAt) <= new Date() ? 'şimdi (site uyanınca)' : new Date(d.nextRunAt).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }))}</b>` : ''}</p>`
-    : '<p style="opacity:.75">⏸ Otomatik çalışma kapalı; ajan yalnızca "Çalıştır"a basınca çalışır.</p>';
-  if (d.running) html += '<p><b>⏳ Bot çalışıyor.</b> Gönderiler okunuyor, birkaç dakika sürebilir. Bu sayfa kendiliğinden yenilenir.</p>';
-  if (r) {
-    html += `<div style="padding:14px;border-radius:12px;border:1px solid rgba(148,163,184,.3)">
-      <b>Son çalışma:</b> ${esc(new Date(r.at).toLocaleString('tr-TR'))}${r.trigger === 'otomatik' ? ' · ⏰ otomatik' : r.trigger === 'elle' ? ' · 👆 elle' : ''}<br>
-      📖 ${r.read} gönderi okundu · 🥬 ${r.matched} uygun · ✅ <b>${r.added} ilan eklendi</b> · ⏭ ${r.skipped} atlandı
-      ${r.ai && r.ai.checked ? `<br>🤖 Yapay zeka ${r.ai.checked} adayı inceledi, <b>${r.ai.rejected} tanesini eledi</b> · maliyet ≈ $${esc(String(r.ai.costUsd))}` : ''}
-      ${(r.log || []).map(l => `<div style="font-size:13px;margin-top:6px">${esc(l)}</div>`).join('')}
-    </div>`;
-    if (r.added && d.settings.publish === 'pending') html += '<p style="margin-top:10px">Eklenen ilanlar <b>İlanlar</b> bölümünde "Onay bekliyor" olarak duruyor.</p>';
-  } else if (!d.running) html += '<p style="opacity:.75">Bot henüz hiç çalıştırılmadı.</p>';
-  const past = (d.history || []).filter(h => !(r && h.at === r.at));
-  if (past.length) {
-    html += `<details style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">📜 Eski çalışmalar (${past.length})</summary>` +
-      past.map(h => `<details style="margin-top:8px;padding:10px 12px;border-radius:10px;border:1px solid rgba(148,163,184,.25)">
-        <summary style="cursor:pointer">${esc(new Date(h.at).toLocaleString('tr-TR'))}${h.trigger === 'otomatik' ? ' ⏰' : String(h.trigger || '').startsWith('betik') ? ' 🧭 tarayıcı' : ''} · 📖 ${h.read} · ✅ ${h.added} ilan · ⏭ ${h.skipped}${h.status === 'error' ? ' · ❌' : ''}</summary>
-        ${(h.log || []).length ? h.log.map(l => `<div style="font-size:13px;margin-top:6px">${esc(l)}</div>`).join('') : '<div style="font-size:13px;margin-top:6px;opacity:.7">Not yok.</div>'}
-      </details>`).join('') + '</details>';
-  }
-  box.innerHTML = html;
+  btn.disabled = !!d.running || !d.apify;
+  btn.textContent = d.running ? '⏳ Çalışıyor...' : '▶ Şimdi Çalıştır';
+  let html = '';
+  if (!d.apify) html += '<div class="ag-note">Önce yukarıdan Apify anahtarını kaydedin.</div>';
+  else if (d.running) html += '<div class="ag-note">⏳ Ajan çalışıyor. Gönderiler okunuyor, birkaç dakika sürebilir; bu sayfa kendiliğinden yenilenir.</div>';
+  html += r ? fbRunCard(r, true) : '<p class="ag-hint">Apify ile henüz hiç çalıştırılmadı.</p>';
+  if (r && r.added && s.publish === 'pending') html += '<p class="ag-hint">Eklenen ilanlar <b>İlanlar</b> bölümünde "Onay bekliyor" olarak duruyor.</p>';
+  document.getElementById('fbBotApifyRun').innerHTML = html;
+
+  // Geçmiş sekmesi
+  const hist = d.history || [];
+  document.getElementById('fbBotHistory').innerHTML = hist.length
+    ? hist.map((h, i) => fbRunCard(h, i === 0)).join('')
+    : '<p class="ag-hint">Henüz hiç tur yok.</p>';
+
   clearTimeout(fbBotPoll);
   if (d.running) fbBotPoll = setTimeout(loadFbBot, 5000);
 }
+
+// Sekmeler (son açılan hatırlanır)
+function fbTab(name) {
+  document.querySelectorAll('#sectionFbBot .ag-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('#sectionFbBot .ag-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === name));
+  try { localStorage.setItem('fbBotTab', name); } catch {}
+}
+
+// Kaydedilmemiş değişiklik uyarısı (anahtar kutuları ve grup ekleme alanı ayrı kaydedildiği için sayılmaz)
+let fbBotDirty = false;
+const FB_NOT_SETTINGS = new Set(['aiKeyInput', 'fbBotApifyKeyInput', 'fbBotCatName', 'fbBotCatUrl', 'fbCollectorKey', 'fbBotCronUrl']);
+function markFbBotDirty(e) {
+  const t = (e || window.event || {}).target;
+  if (t && (FB_NOT_SETTINGS.has(t.id) || t.readOnly)) return;
+  setFbBotDirty(true);
+}
+function setFbBotDirty(on) {
+  fbBotDirty = on;
+  document.getElementById('fbBotSaveBar')?.classList.toggle('dirty', on);
+  const t = document.getElementById('fbBotSaveText');
+  if (t) t.textContent = on ? '⚠️ Kaydedilmemiş değişiklik var.' : 'Tüm değişiklikler kayıtlı.';
+}
+
+// Apify anahtarı (İlanlar bölümündekiyle aynı anahtar)
+async function loadBotApifyKey() {
+  const res = await api('/api/admin/apify');
+  if (!res || !res.ok) return;
+  const d = await res.json();
+  document.getElementById('fbBotApifyKeyStatus').innerHTML = d.configured
+    ? `✅ Anahtar kayıtlı <code>${esc(d.hint || '')}</code>. Değiştirmek için yenisini yapıştırın.`
+    : '⚠️ Anahtar kayıtlı değil.';
+}
+async function saveBotApifyKey() {
+  const input = document.getElementById('fbBotApifyKeyInput');
+  const token = input.value.trim();
+  if (!token) { showToast('Önce anahtarı yapıştırın', 'error'); return; }
+  const res = await api('/api/admin/apify', { method: 'PUT', body: JSON.stringify({ token }) });
+  if (!res) return;
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) { showToast(d.error || 'Kaydedilemedi', 'error'); return; }
+  input.value = '';
+  showToast('Apify anahtarı kaydedildi', 'success');
+  loadFbBot();
+}
+
 async function loadFbBot() {
   const res = await api('/api/admin/fb-bot');
   if (!res || !res.ok) return;
   const d = await res.json();
-  if (document.activeElement?.id?.startsWith('fbBot') !== true) {
+  if (!fbBotDirty && document.activeElement?.id?.startsWith('fbBot') !== true) {
     document.getElementById('fbBotSources').value = (d.settings.sources || []).join('\n');
     document.getElementById('fbBotKeywords').value = (d.settings.keywords || []).join(', ');
     document.getElementById('fbBotPerSource').value = d.settings.perSource;
@@ -953,11 +1016,17 @@ async function loadFbBot() {
   document.getElementById('fbCollectorKey').value = d.collectorKey || '';
   if (d.scriptUrl) document.getElementById('fbScriptLink').href = d.scriptUrl;
   document.getElementById('fbCollectStatus').textContent = d.lastCollect
-    ? `Son tarayıcı toplaması: ${new Date(d.lastCollect.at).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })} · ${d.lastCollect.read} gönderi geldi · ${d.lastCollect.added} ilan eklendi`
-    : 'Tarayıcıdan henüz gönderi gelmedi.';
+    ? `✅ Çalışıyor. Son toplama: ${fbWhen(d.lastCollect.at)} · ${d.lastCollect.read} gönderi geldi · ${d.lastCollect.added} ilan eklendi`
+    : 'Tarayıcıdan henüz gönderi gelmedi. Kurulumu yapıp bir grupta toplamayı açın.';
   loadAiKeyStatus();
+  loadBotApifyKey();
   updateFbBotCost();
   renderFbBotStatus(d);
+  if (!document.querySelector('#sectionFbBot .ag-tab.active')) {
+    let tab = 'browser';
+    try { tab = localStorage.getItem('fbBotTab') || tab; } catch {}
+    fbTab(tab);
+  }
 }
 
 // Apify gönderi başına ücret aldığı için otomatik çalışmanın tahmini aylık maliyeti gösterilir
@@ -996,7 +1065,7 @@ async function saveAiKey() {
   if (!res.ok) { showToast(d.error || 'Kaydedilemedi', 'error'); return; }
   input.value = '';
   showToast('Anahtar kaydedildi', 'success');
-  loadAiKeyStatus();
+  loadFbBot();
 }
 async function copyFbCollectorKey() {
   const v = document.getElementById('fbCollectorKey').value;
@@ -1094,7 +1163,8 @@ async function saveFbBot(event) {
   if (!res) return false;
   const d = await res.json().catch(() => ({}));
   if (!res.ok) { showToast(d.error || 'Kaydedilemedi', 'error'); return false; }
-  if (event) showToast('Bot ayarları kaydedildi', 'success');
+  setFbBotDirty(false);
+  if (event) { showToast('Ajan ayarları kaydedildi', 'success'); loadFbBot(); }
   return true;
 }
 async function runFbBot() {
