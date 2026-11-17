@@ -3748,6 +3748,9 @@ app.delete('/api/profile/me', requireAuth, async (req, res) => {
 // ── Arama motoru sayfaları (işletme sayfaları, site haritası) ──
 require('./seo')(app, { db, getClaims, siteUrl: SITE_URL });
 
+// ── Kripto ödeme sayfası (/payments) ──
+require('./payments')(app, { db, requireAdmin, siteUrl: SITE_URL });
+
 // ── Sayfa yönlendirme ─────────────────────────────────────────
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));

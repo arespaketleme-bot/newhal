@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#080c16" />
+  <title>Kripto Ödeme · NewHal</title>
+  <meta name="description" content="NewHal kripto para ile ödeme sayfası." />
+  <meta name="robots" content="noindex" />
+  <link rel="canonical" href="https://newhal.com/payments" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #080c16; color: #d1d5db; font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 40px 16px 64px; }
+    h1 { color: #fff; font-size: 28px; margin: 0 0 4px; }
+    h2 { color: #fff; font-size: 19px; margin: 0 0 12px; }
+    a { color: #34d399; }
+    .back { display: inline-block; margin-bottom: 24px; text-decoration: none; }
+    .muted { color: #94a3b8; font-size: 14px; }
+    .card { background: #0f1526; border: 1px solid #1e293b; border-radius: 14px; padding: 20px; margin-top: 20px; }
+    label { display: block; font-size: 14px; color: #cbd5e1; margin: 12px 0 4px; }
+    input { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid #334155; background: #0b1120; color: #fff; font-size: 16px; }
+    button { margin-top: 16px; padding: 12px 18px; border: 0; border-radius: 10px; background: #10b981; color: #04130d; font-weight: 700; font-size: 16px; cursor: pointer; width: 100%; }
+    button:disabled { opacity: .6; cursor: wait; }
+    .msg { margin-top: 12px; font-size: 14px; min-height: 1em; }
+    .ok { color: #34d399; } .err { color: #f87171; }
+    .banner { padding: 12px 14px; border-radius: 10px; margin-top: 16px; }
+    .banner.ok { background: #052e22; } .banner.err { background: #3b0d0d; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+    td, th { text-align: left; padding: 6px 4px; border-bottom: 1px solid #1e293b; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .hidden { display: none; }
+    .scroll { overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="back" href="/">← NewHal'e dön</a>
+    <h1>Kripto ile Ödeme</h1>
+    <p class="muted">Ödemeler NOWPayments güvencesiyle alınır. Bitcoin, USDT, Ethereum ve 300'den fazla kripto para ile ödeyebilirsiniz.</p>
+    <div id="durum"></div>
+
+    <section class="card" id="receive">
+      <h2>Ödeme yap</h2>
+      <form id="payForm">
+        <label for="amount">Tutar (USD)</label>
+        <input id="amount" type="number" min="1" max="100000" step="0.01" inputmode="decimal" required placeholder="Örn. 25" />
+        <label for="note">Açıklama (isteğe bağlı)</label>
+        <input id="note" type="text" maxlength="120" placeholder="Örn. Vitrin ilanı" />
+        <button type="submit" id="payBtn">Kripto ile öde</button>
+        <div class="msg" id="payMsg"></div>
+      </form>
+      <p class="muted">Butona basınca ödeme sayfası açılır. Orada hangi kripto para ile ödeyeceğinizi seçersiniz.</p>
+    </section>
+
+    <section class="card hidden" id="admin">
+      <h2>Yönetici: bakiye</h2>
+      <div id="balance" class="muted">Yükleniyor…</div>
+
+      <h2 style="margin-top:24px">Yönetici: kripto gönder</h2>
+      <form id="sendForm">
+        <label for="addr">Alıcı cüzdan adresi</label>
+        <input id="addr" type="text" required autocomplete="off" />
+        <div class="row">
+          <div><label for="cur">Para (örn. usdttrc20)</label><input id="cur" type="text" required value="usdttrc20" /></div>
+          <div><label for="amt">Miktar</label><input id="amt" type="number" step="any" min="0" required /></div>
+        </div>
+        <button type="submit" id="sendBtn">Gönderim talebi oluştur</button>
+      </form>
+      <form id="verifyForm" class="hidden">
+        <label for="code">NOWPayments doğrulama kodu (e-posta ya da doğrulama uygulaması)</label>
+        <input id="code" type="text" inputmode="numeric" autocomplete="one-time-code" required />
+        <button type="submit" id="verifyBtn">Gönderimi onayla</button>
+      </form>
+      <div class="msg" id="sendMsg"></div>
+
+      <h2 style="margin-top:24px">Son hareketler</h2>
+      <div class="scroll"><table><thead><tr><th>Tarih</th><th>Yön</th><th>Tutar</th><th>Durum</th></tr></thead><tbody id="list"></tbody></table></div>
+    </section>
+  </main>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const setMsg = (el, text, ok) => { el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); };
+
+  const d = new URLSearchParams(location.search).get('durum');
+  if (d === 'basarili') $('durum').innerHTML = '<div class="banner ok">Ödemeniz alındı. Onaylanması birkaç dakika sürebilir. Teşekkürler.</div>';
+  if (d === 'iptal') $('durum').innerHTML = '<div class="banner err">Ödeme tamamlanmadı. İsterseniz tekrar deneyebilirsiniz.</div>';
+
+  fetch('/api/payments/config').then(r => r.json()).then(c => {
+    if (!c.enabled) { $('payBtn').disabled = true; setMsg($('payMsg'), 'Kripto ödeme çok yakında açılacak.', false); }
+  }).catch(() => {});
+
+  $('payForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = $('payBtn'); btn.disabled = true; setMsg($('payMsg'), 'Ödeme sayfası hazırlanıyor…', true);
+    try {
+      const r = await fetch('/api/payments/invoice', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: $('amount').value, note: $('note').value }) });
+      const j = await r.json();
+      if (!r.ok || !j.url) throw new Error(j.error || 'Ödeme sayfası açılamadı');
+      location.href = j.url;
+    } catch (err) { setMsg($('payMsg'), err.message, false); btn.disabled = false; }
+  });
+
+  let token = null;
+  try { token = localStorage.getItem('newhal_admin_token'); } catch {}
+  if (!token) return;
+  const auth = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
+
+  async function loadAdmin() {
+    const r = await fetch('/api/admin/payments', { headers: auth });
+    if (!r.ok) return;
+    $('admin').classList.remove('hidden');
+    const j = await r.json();
+    const b = j.balance;
+    if (!b) $('balance').textContent = 'Hesap henüz bağlı değil.';
+    else if (b.error) $('balance').textContent = 'Bakiye okunamadı: ' + b.error;
+    else {
+      const rows = Object.entries(b).filter(([, v]) => v && Number(v.amount) > 0);
+      $('balance').innerHTML = rows.length ? rows.map(([k, v]) => `<div><b>${esc(k.toUpperCase())}</b>: ${esc(v.amount)}${Number(v.pendingAmount) > 0 ? ' (bekleyen ' + esc(v.pendingAmount) + ')' : ''}</div>`).join('') : 'Bakiye boş.';
+    }
+    $('list').innerHTML = (j.items || []).slice(0, 50).map(x => `<tr>
+      <td>${esc(new Date(x.updated_at || x.created_at).toLocaleString('tr-TR'))}</td>
+      <td>${x.type === 'in' ? 'Gelen' : 'Giden'}</td>
+      <td>${x.type === 'in' ? esc(x.amount_usd) + ' USD' + (x.pay_currency ? ' (' + esc(x.actually_paid) + ' ' + esc(String(x.pay_currency).toUpperCase()) + ')' : '') : esc(x.amount) + ' ' + esc(String(x.currency || '').toUpperCase())}</td>
+      <td>${esc(x.status)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Henüz hareket yok.</td></tr>';
+  }
+  loadAdmin();
+
+  let pendingId = null;
+  $('sendForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const amt = $('amt').value, cur = $('cur').value.trim(), addr = $('addr').value.trim();
+    if (!confirm(`${amt} ${cur.toUpperCase()} şu adrese gönderilecek:\n${addr}\n\nAdres doğru mu?`)) return;
+    $('sendBtn').disabled = true; setMsg($('sendMsg'), 'Talep oluşturuluyor…', true);
+    try {
+      const r = await fetch('/api/admin/payments/payout', { method: 'POST', headers: auth, body: JSON.stringify({ address: addr, currency: cur, amount: amt }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      pendingId = j.id;
+      $('verifyForm').classList.remove('hidden');
+      setMsg($('sendMsg'), 'Talep oluştu. NOWPayments size bir doğrulama kodu gönderdi, onu girin.', true);
+      loadAdmin();
+    } catch (err) { setMsg($('sendMsg'), err.message, false); }
+    $('sendBtn').disabled = false;
+  });
+
+  $('verifyForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!pendingId) return;
+    $('verifyBtn').disabled = true;
+    try {
+      const r = await fetch(`/api/admin/payments/payout/${encodeURIComponent(pendingId)}/verify`, { method: 'POST', headers: auth, body: JSON.stringify({ code: $('code').value }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      setMsg($('sendMsg'), 'Gönderim onaylandı.', true);
+      $('verifyForm').classList.add('hidden'); $('sendForm').reset(); $('code').value = ''; pendingId = null;
+      loadAdmin();
+    } catch (err) { setMsg($('sendMsg'), err.message, false); }
+    $('verifyBtn').disabled = false;
+  });
+})();
+</script>
+</body>
+</html>
