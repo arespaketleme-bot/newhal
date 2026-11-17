@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         NewHal: Facebook ilan toplayıcı
 // @namespace    https://newhal.com/
-// @version      2.0.0
+// @version      2.0.1
 // @description  Facebook'ta gezerken hal ilanlarını Apify'sız toplar: gönderilere "NewHal'e Gönder" düğmesi ekler, toplama modu açıkken gruplarda ekrandan geçen uygun gönderileri NewHal ilan ajanına yollar.
 // @author       NewHal
-// @match        https://www.facebook.com/*
-// @match        https://web.facebook.com/*
+// @match        https://facebook.com/*
+// @match        https://*.facebook.com/*
 // @icon         https://newhal.com/icons/icon-192.png
 // @grant        GM_registerMenuCommand
 // @grant        GM_xmlhttpRequest
@@ -279,12 +279,17 @@
         position: 'fixed', left: '16px', bottom: '16px', zIndex: 2147483646, padding: '9px 14px', border: '0', borderRadius: '999px',
         font: '700 12.5px system-ui, sans-serif', cursor: 'pointer', boxShadow: '0 6px 20px rgba(0,0,0,.35)', maxWidth: '70vw', textAlign: 'left',
       });
-      pill.addEventListener('click', () => setCollecting(!state.collecting));
+      pill.addEventListener('click', () => {
+        if (!state.key || /anahtar/i.test(state.lastError)) { askKey(); return; }
+        if (state.lastError) { loadConfig(); return; }    // bağlantı hatasında tıklayınca yeniden dener
+        setCollecting(!state.collecting);
+      });
       document.body.appendChild(pill);
     }
     const on = state.collecting;
     let text;
-    if (!state.key) text = '🔑 NewHal: anahtarı girin';
+    if (!state.key) text = '🔑 NewHal: anahtarı girmek için tıklayın';
+    else if (!state.config && !state.lastError) text = '⏳ NewHal bağlanıyor...';
     else if (state.lastError) text = `⚠️ NewHal: ${state.lastError}`;
     else if (!on) text = '⏸ NewHal toplama kapalı';
     else if (!pageAllowed()) text = '🟢 NewHal açık · bir gruba girin';
@@ -352,5 +357,7 @@
     clearTimeout(timer);
     timer = setTimeout(scan, 400);
   }).observe(document.body, { childList: true, subtree: true });
+  // Düğme hemen görünsün; sunucu cevabı gelince güncellenir
+  renderPill();
   loadConfig().then(scan);
 })();

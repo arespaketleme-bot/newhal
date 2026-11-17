@@ -816,7 +816,8 @@
               <legend style="padding:0 6px;font-weight:800">🧭 Tarayıcıyla topla (Apify'sız, ücretsiz)</legend>
               <small style="opacity:.85">Facebook'ta kendi hesabınızla gezerken ilanları toplar. Kapalı gruplar da okunur (üyesi olduğunuz için). Aşağıdaki süzgeçler, yapay zeka elemesi ve Telegram bildirimleri aynen çalışır. Yalnızca bilgisayarda (Chrome, Edge, Firefox) çalışır.</small>
               <ol style="margin:0;padding-left:20px;font-size:13px;display:flex;flex-direction:column;gap:6px">
-                <li>Tarayıcınıza <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener">Tampermonkey</a> eklentisini kurun.</li>
+                <li>Tarayıcınıza <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener">Tampermonkey</a> eklentisini kurun.
+                  <br><b>Chrome / Edge'de ayrıca:</b> adres çubuğuna <code>chrome://extensions</code> (Edge'de <code>edge://extensions</code>) yazın → Tampermonkey'de <b>Ayrıntılar</b> → <b>"Kullanıcı komut dosyalarına izin ver"</b> anahtarını açın. Bu seçenek yoksa sağ üstteki <b>Geliştirici modu</b>nu açın. Bu yapılmazsa betik hiç çalışmaz.</li>
                 <li><a id="fbScriptLink" href="/newhal-facebook.user.js" target="_blank" rel="noopener"><b>NewHal betiğini kurun</b></a> (açılan sayfada "Yükle"ye basın).</li>
                 <li>Facebook'u açın; sol alttaki <b>🔑 NewHal</b> düğmesine basıp şu anahtarı yapıştırın:
                   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
@@ -827,6 +828,14 @@
                 </li>
                 <li>Bir hal grubuna girin, sol alttaki düğmeye basıp <b>toplamayı açın</b> ve akışı aşağı kaydırın. Her gönderide ayrıca <b>🟢 NewHal'e Gönder</b> düğmesi de olur.</li>
               </ol>
+              <details style="font-size:13px"><summary style="cursor:pointer;font-weight:700">Facebook'ta NewHal düğmesi görünmüyorsa</summary>
+                <ol style="margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px">
+                  <li>Yukarıdaki "Kullanıcı komut dosyalarına izin ver" (ya da Geliştirici modu) ayarını açın, sonra Facebook sekmesini yenileyin (F5).</li>
+                  <li>Tarayıcının sağ üstündeki Tampermonkey simgesine tıklayın: "NewHal: Facebook ilan toplayıcı" yanındaki anahtar <b>açık</b> (yeşil) olmalı.</li>
+                  <li>Simgede hâlâ betik görünmüyorsa "NewHal betiğini kurun" bağlantısına tekrar tıklayıp "Yükle"ye basın.</li>
+                  <li>Telefonda çalışmaz; bilgisayarda Chrome, Edge ya da Firefox kullanın.</li>
+                </ol>
+              </details>
               <div id="fbCollectStatus" style="font-size:13px;opacity:.85"></div>
             </fieldset>
             <div style="display:flex;flex-direction:column;gap:6px"><b>Grup ve sayfa listesi</b>
