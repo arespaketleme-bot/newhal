@@ -5,6 +5,7 @@ const jwt     = require('jsonwebtoken');
 const path    = require('path');
 const fs      = require('fs');
 const crypto  = require('crypto');
+const aiIlan  = require('./ai-ilan');
 const db      = require('./database');
 const bcrypt  = require('bcryptjs');
 const webpush = require('web-push');
@@ -2007,6 +2008,30 @@ app.post('/api/admin/ads/import-image', requireAdmin, async (req, res) => {
 
 // ── Facebook linkinden ilan (Apify ile okunur) ─────────────────
 // Apify anahtarı herkese kapalı depoda tutulur, tarayıcıya hiç gönderilmez.
+// ── Claude API anahtarı (ilan ajanının yapay zeka elemesi) ─────
+// Özel depoda saklanır; koda ve GitHub'a yazılmaz. Ortam değişkeni de kullanılabilir.
+const ANTHROPIC_FILE = 'anthropic.json';
+async function getAnthropicKey() {
+  const saved = await db.getPrivateJson(ANTHROPIC_FILE);
+  return (saved && saved.key) || process.env.ANTHROPIC_API_KEY || '';
+}
+app.get('/api/admin/anthropic', requireAdmin, async (req, res) => {
+  const key = await getAnthropicKey();
+  res.json({ saved: !!key, hint: key ? `${key.slice(0, 10)}…${key.slice(-4)}` : '' });
+});
+app.put('/api/admin/anthropic', requireAdmin, async (req, res) => {
+  const key = String((req.body && req.body.key) || '').trim();
+  if (!key) {
+    if (!(await db.savePrivateJson(ANTHROPIC_FILE, {}))) return res.status(500).json({ error: 'Kaydedilemedi' });
+    return res.json({ saved: !!process.env.ANTHROPIC_API_KEY });
+  }
+  if (!/^sk-ant-[A-Za-z0-9_-]{20,}$/.test(key)) return res.status(400).json({ error: 'Anahtar "sk-ant-" ile başlamalı' });
+  const problem = await aiIlan.testApiKey(key);
+  if (problem) return res.status(400).json({ error: problem });
+  if (!(await db.savePrivateJson(ANTHROPIC_FILE, { key, saved_at: new Date().toISOString() }))) return res.status(500).json({ error: 'Kaydedilemedi' });
+  res.json({ saved: true, hint: `${key.slice(0, 10)}…${key.slice(-4)}` });
+});
+
 const APIFY_FILE = 'apify.json';
 async function getApifyToken() {
   const saved = await db.getPrivateJson(APIFY_FILE);
@@ -2144,6 +2169,8 @@ const FBBOT_DEFAULT = {
   auto: false,          // ajan: belirlenen aralıkla kendiliğinden çalışır (Apify ücretli olduğu için varsayılan kapalı)
   intervalHours: 6,
   notifyEach: true,     // bulunan her ilan için ayrı Telegram mesajı
+  aiFilter: true,       // anahtar kayıtlıysa adaylar yapay zekayla elenir
+  aiModel: 'claude-opus-5-5',
 };
 const FBBOT_INTERVALS = [1, 2, 3, 4, 6, 8, 12, 24];
 const FBBOT_NOTIFY_MAX = 10;   // bir çalışmada en fazla bu kadar ilan tek tek bildirilir
@@ -2209,7 +2236,8 @@ app.get('/api/admin/fb-bot', requireAdmin, async (req, res) => {
   const s = await getFbBot();
   const next = fbBotNextRunAt(s);
   res.json({ settings: s.settings, lastRun: s.lastRun, history: s.history || [], running: fbBotRunning, apify: !!(await getApifyToken()),
-    cronUrl: fbBotCronUrl(s), nextRunAt: next ? new Date(next).toISOString() : null, telegram: !!(await getTelegramConfig().catch(() => null))?.bot_token });
+    cronUrl: fbBotCronUrl(s), nextRunAt: next ? new Date(next).toISOString() : null,
+    ai: !!(await getAnthropicKey()), aiModels: Object.fromEntries(Object.entries(aiIlan.AI_MODELS).map(([k, v]) => [k, v.label])), telegram: !!(await getTelegramConfig().catch(() => null))?.bot_token });
 });
 app.put('/api/admin/fb-bot', requireAdmin, async (req, res) => {
   const s = await getFbBot();
@@ -2232,6 +2260,8 @@ app.put('/api/admin/fb-bot', requireAdmin, async (req, res) => {
     auto: b.auto === true,
     intervalHours: FBBOT_INTERVALS.includes(Number(b.intervalHours)) ? Number(b.intervalHours) : FBBOT_DEFAULT.intervalHours,
     notifyEach: b.notifyEach !== false,
+    aiFilter: b.aiFilter !== false,
+    aiModel: aiIlan.AI_MODELS[b.aiModel] ? b.aiModel : aiIlan.AI_DEFAULT_MODEL,
   };
   if (!(await saveFbBot())) return res.status(500).json({ error: 'Kaydedilemedi' });
   res.json({ settings: s.settings });
@@ -2269,6 +2299,7 @@ async function runFbBot(trigger = 'elle') {
   const ads = await db.getAds();
   const known = new Set(ads.map(a => a.source && a.source.url).filter(Boolean));
   const newAds = [];
+  const candidates = [];
   for (const source of sources) {
     const isGroup = /\/groups\//i.test(source);
     const actor = isGroup ? 'apify~facebook-groups-scraper' : 'apify~facebook-posts-scraper';
@@ -2286,7 +2317,7 @@ async function runFbBot(trigger = 'elle') {
       log.push(`❌ ${source}: ${err.message}`);
       continue;
     }
-    let srcAdded = 0;
+    let srcCandidates = 0;
     for (const item of items) {
       if (!item || item.error) continue;
       run.read++;
@@ -2310,22 +2341,61 @@ async function runFbBot(trigger = 'elle') {
 ${text}`;
       }
       run.matched++;
-      const images = [];
-      for (const u of photos.slice(0, 5)) {
-        try { images.push(await importFbImage(u)); } catch {}
-      }
-      if (!keywordHit && !images.length) { run.skipped++; continue; }
-      const ad = cleanAd({ body: text, images });
-      if (!ad.title) { run.skipped++; continue; }
-      newAds.push({
-        id: crypto.randomUUID(), ...ad, featured: false, active: true,
-        ...(publish === 'pending' ? { pending: true } : {}),
-        created_at: new Date().toISOString(),
-        source: { type: 'facebook', url, author: (item.user && item.user.name) || '', bot: true },
-      });
-      srcAdded++;
+      candidates.push({ text, photos, keywordHit, url, author: (item.user && item.user.name) || '' });
+      srcCandidates++;
     }
-    log.push(`✅ ${source}: ${items.length} gönderi okundu, ${srcAdded} ilan eklendi`);
+    log.push(`✅ ${source}: ${items.length} gönderi okundu, ${srcCandidates} aday`);
+  }
+
+  // Yapay zeka elemesi: yazısı olan adaylar tek istekte değerlendirilir.
+  // Yalnızca fotoğraf + telefon olan gönderilerde değerlendirilecek yazı olmadığı için eleme yapılmaz.
+  const aiKey = s.settings.aiFilter !== false && candidates.some(c => c.keywordHit) ? await getAnthropicKey() : '';
+  if (aiKey) {
+    const textual = candidates.map((c, i) => ({ c, i })).filter(x => x.c.keywordHit);
+    try {
+      const { results, costUsd, model } = await aiIlan.classifyPosts({
+        apiKey: aiKey, model: s.settings.aiModel,
+        posts: textual.map(x => ({ text: x.c.text, hasPhoto: x.c.photos.length > 0 })),
+      });
+      let rejected = 0;
+      const samples = [];
+      textual.forEach((x, k) => {
+        const info = results.get(k);
+        if (!info) return;                       // sonuç gelmediyse aday korunur (temkinli taraf)
+        x.c.ai = info;
+        if (info.is_listing) return;
+        x.c.rejected = true;
+        rejected++;
+        if (samples.length < 5) samples.push(`🚫 Elendi: "${x.c.text.replace(/\s+/g, ' ').slice(0, 60)}…" (${aiIlan.KIND_LABELS[info.kind] || info.kind}: ${info.reason})`);
+      });
+      run.ai = { checked: textual.length, rejected, costUsd: Math.round(costUsd * 10000) / 10000, model };
+      log.push(`🤖 Yapay zeka ${textual.length} adayı inceledi, ${rejected} tanesini eledi · yaklaşık $${costUsd.toFixed(4)}`);
+      log.push(...samples);
+    } catch (err) {
+      run.ai = { error: err.message };
+      log.push(`⚠️ Yapay zeka kontrolü yapılamadı, anahtar kelime eşleşmesi kullanıldı: ${err.message}`);
+    }
+  }
+
+  // Elenmeyen adaylar ilan olur; fotoğraflar yalnızca bunlar için indirilir
+  for (const c of candidates) {
+    if (c.rejected) { run.skipped++; continue; }
+    const images = [];
+    for (const u of c.photos.slice(0, 5)) {
+      try { images.push(await importFbImage(u)); } catch {}
+    }
+    if (!c.keywordHit && !images.length) { run.skipped++; continue; }
+    const ad = cleanAd({ body: c.text, images });
+    if (!ad.title) { run.skipped++; continue; }
+    newAds.push({
+      id: crypto.randomUUID(), ...ad, featured: false, active: true,
+      ...(publish === 'pending' ? { pending: true } : {}),
+      created_at: new Date().toISOString(),
+      source: {
+        type: 'facebook', url: c.url, author: c.author, bot: true,
+        ...(c.ai ? { ai: { kind: c.ai.kind, product: c.ai.product, quantity: c.ai.quantity, price: c.ai.price, location: c.ai.location } } : {}),
+      },
+    });
   }
   if (newAds.length) {
     const fresh = await db.getAds();
@@ -2351,7 +2421,7 @@ ${text}`;
   const errors = log.filter(l => l.startsWith('❌')).length;
   if (trigger !== 'otomatik' || run.added || errors) {
     const extra = s.settings.notifyEach !== false && run.added > FBBOT_NOTIFY_MAX ? `\n➕ ${run.added - FBBOT_NOTIFY_MAX} ilan daha var, yönetim panelinden bakın.` : '';
-    sendTelegram(`🤖 <b>İlan botu bitti</b> · ${trigger === 'otomatik' ? '⏰ otomatik' : '👆 elle'}\n📖 ${run.read} gönderi okundu · ✅ ${run.added} ilan eklendi${publish === 'pending' && run.added ? ' (onay bekliyor)' : ''}${errors ? `\n⚠️ ${errors} kaynak okunamadı` : ''}${extra}`).catch(() => {});
+    sendTelegram(`🤖 <b>İlan botu bitti</b> · ${trigger === 'otomatik' ? '⏰ otomatik' : '👆 elle'}\n📖 ${run.read} gönderi okundu · ✅ ${run.added} ilan eklendi${publish === 'pending' && run.added ? ' (onay bekliyor)' : ''}${run.ai && run.ai.checked ? `\n🤖 Yapay zeka ${run.ai.rejected} gönderiyi eledi (~$${run.ai.costUsd})` : ''}${run.ai && run.ai.error ? '\n⚠️ Yapay zeka kontrolü yapılamadı' : ''}${errors ? `\n⚠️ ${errors} kaynak okunamadı` : ''}${extra}`).catch(() => {});
   }
 }
 
@@ -2365,6 +2435,7 @@ async function notifyFbBotAd(ad, publish) {
     `<b>${tgEsc(ad.title || 'İlan')}</b>`,
     excerpt && excerpt !== ad.title ? tgEsc(excerpt) : null,
     '',
+    ad.source && ad.source.ai && aiIlan.describeAi(ad.source.ai) ? `🤖 ${tgEsc(aiIlan.describeAi(ad.source.ai))}` : null,
     ad.source && ad.source.author ? `👤 ${tgEsc(ad.source.author)}` : null,
     ad.source && ad.source.url ? `🔗 <a href="${tgEsc(ad.source.url)}">Facebook'taki gönderi</a>` : null,
     publish === 'pending'

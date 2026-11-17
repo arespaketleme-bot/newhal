@@ -876,6 +876,21 @@
                 </div>
               </details>
             </fieldset>
+            <fieldset style="display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:12px;border:1px solid rgba(56,189,248,.45)">
+              <legend style="padding:0 6px;font-weight:800">🤖 Yapay zeka elemesi</legend>
+              <small style="opacity:.8">Anahtar kelimeye uyan gönderileri Claude okur; "domates fiyatları uçtu" gibi sohbetleri, haberleri ve alakasız reklamları eler. Uygun ilanlarda ürün, miktar ve fiyatı Telegram mesajına yazar. Apify ücretini azaltmaz (Apify okunan her gönderiyi ücretlendirir); gereksiz bildirimi ve onay yükünü azaltır.</small>
+              <div id="aiKeyStatus" style="font-size:13px"></div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <input id="aiKeyInput" type="password" autocomplete="off" placeholder="sk-ant-..." style="flex:1 1 220px;padding:8px 10px;border-radius:10px;font:inherit" />
+                <button type="button" class="btn-sm" onclick="saveAiKey()">🔑 Anahtarı Kaydet</button>
+              </div>
+              <small style="opacity:.75">Anahtarı <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener">platform.claude.com</a> → API Keys bölümünden alın. Sunucuda gizli depoda saklanır, sayfada bir daha gösterilmez.</small>
+              <label class="app-ctl"><input type="checkbox" id="fbBotAiFilter" /> <span><b>Adayları yapay zekayla ele</b><br><small>Kapalıysa ya da anahtar yoksa eskisi gibi yalnızca anahtar kelimeye bakılır. Yapay zeka hata verirse de anahtar kelimeye geri dönülür, tur yarıda kalmaz.</small></span></label>
+              <label style="display:flex;flex-direction:column;gap:6px"><b>Model</b>
+                <select id="fbBotAiModel" style="padding:10px 12px;border-radius:10px;font:inherit;max-width:360px"></select>
+                <small style="opacity:.75">Her turun gerçek maliyeti "Son çalışma" kutusunda dolar olarak yazar. Bir hafta sonra bakıp karar verebilirsiniz.</small>
+              </label>
+            </fieldset>
             <label class="app-ctl"><input type="checkbox" id="fbBotPhotoPosts" /> <span><b>Yazısız fotoğraflı gönderileri de al</b><br><small>Gruplarda çoğu ilan sadece fotoğraf ve telefon numarasından oluşur. Açıksa fotoğrafı ve telefonu olan gönderiler de ilan olur.</small></span></label>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
               <button type="submit" class="btn-sm">💾 Ayarları Kaydet</button>

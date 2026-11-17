@@ -8,6 +8,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.9.0",
     "@supabase/supabase-js": "^2.107.0",
     "apify-client": "^2.23.3",
     "bcryptjs": "^2.4.3",

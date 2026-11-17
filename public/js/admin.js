@@ -911,6 +911,7 @@ function renderFbBotStatus(d) {
     html += `<div style="padding:14px;border-radius:12px;border:1px solid rgba(148,163,184,.3)">
       <b>Son çalışma:</b> ${esc(new Date(r.at).toLocaleString('tr-TR'))}${r.trigger === 'otomatik' ? ' · ⏰ otomatik' : r.trigger === 'elle' ? ' · 👆 elle' : ''}<br>
       📖 ${r.read} gönderi okundu · 🥬 ${r.matched} uygun · ✅ <b>${r.added} ilan eklendi</b> · ⏭ ${r.skipped} atlandı
+      ${r.ai && r.ai.checked ? `<br>🤖 Yapay zeka ${r.ai.checked} adayı inceledi, <b>${r.ai.rejected} tanesini eledi</b> · maliyet ≈ $${esc(String(r.ai.costUsd))}` : ''}
       ${(r.log || []).map(l => `<div style="font-size:13px;margin-top:6px">${esc(l)}</div>`).join('')}
     </div>`;
     if (r.added && d.settings.publish === 'pending') html += '<p style="margin-top:10px">Eklenen ilanlar <b>İlanlar</b> bölümünde "Onay bekliyor" olarak duruyor.</p>';
@@ -941,10 +942,15 @@ async function loadFbBot() {
     document.getElementById('fbBotAuto').checked = d.settings.auto === true;
     document.getElementById('fbBotInterval').value = String(d.settings.intervalHours || 6);
     document.getElementById('fbBotNotifyEach').checked = d.settings.notifyEach !== false;
+    document.getElementById('fbBotAiFilter').checked = d.settings.aiFilter !== false;
+    const modelSel = document.getElementById('fbBotAiModel');
+    modelSel.innerHTML = Object.entries(d.aiModels || {}).map(([k, label]) => `<option value="${esc(k)}">${esc(label)}</option>`).join('');
+    modelSel.value = d.settings.aiModel || 'claude-opus-5-5';
     fbCatalog = d.settings.catalog || [];
     renderFbCatalog();
   }
   document.getElementById('fbBotCronUrl').value = d.cronUrl || '';
+  loadAiKeyStatus();
   updateFbBotCost();
   renderFbBotStatus(d);
 }
@@ -964,6 +970,28 @@ function updateFbBotCost() {
   const tl = n => n.toLocaleString('tr-TR', { maximumFractionDigits: 0 });
   box.innerHTML = `💰 <b>Tahmini maliyet${auto ? '' : ' (açarsanız)'}:</b> tur başına ${perRun} gönderi × günde ${tl(runsPerDay)} tur ≈ <b>ayda ${tl(monthly)} TL</b> (Apify, gönderi başına ~25 kuruş).` +
     (monthly > 500 ? '<br>⚠️ Yüksek. Aralığı uzatın ya da kaynak başına gönderi sayısını azaltın.' : '');
+}
+// Claude API anahtarı (yapay zeka elemesi)
+async function loadAiKeyStatus() {
+  const res = await api('/api/admin/anthropic');
+  if (!res || !res.ok) return;
+  const d = await res.json();
+  document.getElementById('aiKeyStatus').innerHTML = d.saved
+    ? `✅ Anahtar kayıtlı <code>${esc(d.hint || '')}</code>`
+    : '⚠️ Anahtar kayıtlı değil; yapay zeka elemesi çalışmaz.';
+}
+async function saveAiKey() {
+  const input = document.getElementById('aiKeyInput');
+  const key = input.value.trim();
+  if (!key) { showToast('Önce anahtarı yapıştırın', 'error'); return; }
+  showToast('Anahtar deneniyor...', 'success');
+  const res = await api('/api/admin/anthropic', { method: 'PUT', body: JSON.stringify({ key }) });
+  if (!res) return;
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) { showToast(d.error || 'Kaydedilemedi', 'error'); return; }
+  input.value = '';
+  showToast('Anahtar kaydedildi', 'success');
+  loadAiKeyStatus();
 }
 async function copyFbBotCronUrl() {
   const v = document.getElementById('fbBotCronUrl').value;
@@ -1040,6 +1068,8 @@ async function saveFbBot(event) {
     auto: document.getElementById('fbBotAuto').checked,
     intervalHours: Number(document.getElementById('fbBotInterval').value),
     notifyEach: document.getElementById('fbBotNotifyEach').checked,
+    aiFilter: document.getElementById('fbBotAiFilter').checked,
+    aiModel: document.getElementById('fbBotAiModel').value,
     catalog: fbCatalog,
   };
   const res = await api('/api/admin/fb-bot', { method: 'PUT', body: JSON.stringify(body) });
