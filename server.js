@@ -657,6 +657,19 @@ async function sendTelegram(html) {
   return true;
 }
 
+async function sendTelegramPhoto(photoUrl, captionHtml) {
+  const cfg = await getTelegramConfig();
+  if (!cfg || !cfg.bot_token || !cfg.chat_id) return false;
+  const r = await fetch(`https://api.telegram.org/bot${cfg.bot_token}/sendPhoto`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: cfg.chat_id, photo: photoUrl, caption: captionHtml, parse_mode: 'HTML' }),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!d.ok) throw new Error(d.description || `HTTP ${r.status}`);
+  return true;
+}
+
 async function notifyNewMember(user) {
   const time = new Date().toLocaleString('tr-TR', {
     timeZone: 'Europe/Istanbul', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -2128,21 +2141,75 @@ const FBBOT_DEFAULT = {
   maxAgeHours: 24,      // yalnız son X saatte paylaşılanlar (0 = sınır yok)
   publish: 'pending',   // 'pending' = onay bekler, 'live' = hemen yayınlanır
   photoPosts: true,     // yazısız ama resimli ve telefonlu gönderiler de alınır
+  auto: false,          // ajan: belirlenen aralıkla kendiliğinden çalışır (Apify ücretli olduğu için varsayılan kapalı)
+  intervalHours: 6,
+  notifyEach: true,     // bulunan her ilan için ayrı Telegram mesajı
 };
+const FBBOT_INTERVALS = [1, 2, 3, 4, 6, 8, 12, 24];
+const FBBOT_NOTIFY_MAX = 10;   // bir çalışmada en fazla bu kadar ilan tek tek bildirilir
 let fbBotState = null;   // { settings, seen: [], lastRun }
 let fbBotRunning = false;
 async function getFbBot() {
   if (!fbBotState) {
     const saved = (await db.getPrivateJson(FBBOT_FILE)) || {};
-    fbBotState = { settings: { ...FBBOT_DEFAULT, ...(saved.settings || {}) }, seen: saved.seen || [], lastRun: saved.lastRun || null, history: saved.history || [] };
+    fbBotState = { settings: { ...FBBOT_DEFAULT, ...(saved.settings || {}) }, seen: saved.seen || [], lastRun: saved.lastRun || null, history: saved.history || [], cronKey: saved.cronKey || '' };
+    // Dış zamanlayıcının çağıracağı gizli adres anahtarı (bir kez üretilir)
+    if (!fbBotState.cronKey) { fbBotState.cronKey = crypto.randomBytes(18).toString('base64url'); await saveFbBot(); }
   }
   return fbBotState;
 }
+const fbBotCronUrl = s => `${SITE_URL}/api/cron/fb-bot?key=${encodeURIComponent(s.cronKey)}`;
+
+// Sıradaki otomatik çalışma zamanı (otomatik kapalıysa null)
+function fbBotNextRunAt(s) {
+  if (!s.settings.auto) return null;
+  const last = s.lastRun ? Date.parse(s.lastRun.at) : 0;
+  return last ? last + s.settings.intervalHours * 3600000 : Date.now();
+}
+// 5 dk pay: zamanlayıcı birkaç dakika erken gelirse tur kaçmasın
+const fbBotDue = s => s.settings.auto && Date.now() >= fbBotNextRunAt(s) - 5 * 60000;
+
+// Botu başlatır; hata varsa metnini döndürür
+async function startFbBot(trigger) {
+  if (fbBotRunning) return 'Bot zaten çalışıyor';
+  const s = await getFbBot();
+  if (!s.settings.sources.length) return 'Önce en az bir Facebook sayfa ya da grup linki ekleyin';
+  if (!(await getApifyToken())) return 'Önce Apify anahtarını kaydedin (İlanlar → Facebook kutusu)';
+  fbBotRunning = true;
+  runFbBot(trigger).catch(err => {
+    console.error('İlan botu hatası:', err.message);
+    sendTelegram(`❌ <b>İlan botu hata verdi</b>\n${tgEsc(err.message)}`).catch(() => {});
+  }).finally(() => { fbBotRunning = false; });
+  return null;
+}
+
+// Sunucu uyanıkken 10 dakikada bir sıra gelip gelmediğine bakılır.
+// Render'ın ücretsiz planında site uyuyabildiği için dış zamanlayıcı da /api/cron/fb-bot'u çağırabilir.
+setInterval(async () => {
+  try { const s = await getFbBot(); if (fbBotDue(s)) await startFbBot('otomatik'); }
+  catch (err) { console.error('İlan botu zamanlayıcı hatası:', err.message); }
+}, 10 * 60000).unref();
+
+app.get('/api/cron/fb-bot', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const s = await getFbBot();
+  const key = String(req.query.key || '');
+  const given = Buffer.from(key), expected = Buffer.from(s.cronKey);
+  const ok = given.length === expected.length && crypto.timingSafeEqual(given, expected);
+  if (!ok) return res.status(403).json({ error: 'Geçersiz anahtar' });
+  if (!s.settings.auto) return res.json({ ok: true, started: false, reason: 'Otomatik çalışma kapalı' });
+  if (fbBotRunning) return res.json({ ok: true, started: false, reason: 'Bot zaten çalışıyor' });
+  if (!fbBotDue(s)) return res.json({ ok: true, started: false, reason: 'Henüz sırası gelmedi', nextRunAt: new Date(fbBotNextRunAt(s)).toISOString() });
+  const error = await startFbBot('otomatik');
+  res.json({ ok: !error, started: !error, ...(error ? { reason: error } : {}) });
+});
 const saveFbBot = () => db.savePrivateJson(FBBOT_FILE, fbBotState);
 
 app.get('/api/admin/fb-bot', requireAdmin, async (req, res) => {
   const s = await getFbBot();
-  res.json({ settings: s.settings, lastRun: s.lastRun, history: s.history || [], running: fbBotRunning, apify: !!(await getApifyToken()) });
+  const next = fbBotNextRunAt(s);
+  res.json({ settings: s.settings, lastRun: s.lastRun, history: s.history || [], running: fbBotRunning, apify: !!(await getApifyToken()),
+    cronUrl: fbBotCronUrl(s), nextRunAt: next ? new Date(next).toISOString() : null, telegram: !!(await getTelegramConfig().catch(() => null))?.bot_token });
 });
 app.put('/api/admin/fb-bot', requireAdmin, async (req, res) => {
   const s = await getFbBot();
@@ -2162,18 +2229,24 @@ app.put('/api/admin/fb-bot', requireAdmin, async (req, res) => {
       stars: Math.min(5, Math.max(0, Math.round(Number(c && c.stars) || 0))),
     })).filter(c => /^https:\/\/([^/]+\.)?facebook\.com\//i.test(c.url)).slice(0, 60),
     maxAgeHours: Math.min(720, Math.max(0, Math.round(Number(b.maxAgeHours) || 0))),
+    auto: b.auto === true,
+    intervalHours: FBBOT_INTERVALS.includes(Number(b.intervalHours)) ? Number(b.intervalHours) : FBBOT_DEFAULT.intervalHours,
+    notifyEach: b.notifyEach !== false,
   };
   if (!(await saveFbBot())) return res.status(500).json({ error: 'Kaydedilemedi' });
   res.json({ settings: s.settings });
 });
 app.post('/api/admin/fb-bot/run', requireAdmin, async (req, res) => {
-  if (fbBotRunning) return res.status(409).json({ error: 'Bot zaten çalışıyor' });
-  const s = await getFbBot();
-  if (!s.settings.sources.length) return res.status(400).json({ error: 'Önce en az bir Facebook sayfa ya da grup linki ekleyin' });
-  if (!(await getApifyToken())) return res.status(400).json({ error: 'Önce Apify anahtarını kaydedin (İlanlar → Facebook kutusu)' });
-  fbBotRunning = true;
+  const error = await startFbBot('elle');
+  if (error) return res.status(fbBotRunning ? 409 : 400).json({ error });
   res.status(202).json({ started: true });
-  runFbBot().catch(err => console.error('İlan botu hatası:', err.message)).finally(() => { fbBotRunning = false; });
+});
+// Gizli adres sızdıysa yenisi üretilir (eski adres çalışmaz olur)
+app.post('/api/admin/fb-bot/cron-key', requireAdmin, async (req, res) => {
+  const s = await getFbBot();
+  s.cronKey = crypto.randomBytes(18).toString('base64url');
+  if (!(await saveFbBot())) return res.status(500).json({ error: 'Kaydedilemedi' });
+  res.json({ cronUrl: fbBotCronUrl(s) });
 });
 
 function fbBotCleanText(text) {
@@ -2183,14 +2256,14 @@ function fbBotCleanText(text) {
     .join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-async function runFbBot() {
+async function runFbBot(trigger = 'elle') {
   const s = await getFbBot();
   const { sources, keywords, perSource, publish, photoPosts } = s.settings;
   const maxAgeHours = s.settings.maxAgeHours ?? FBBOT_DEFAULT.maxAgeHours;
   const minTime = maxAgeHours > 0 ? Date.now() - maxAgeHours * 3600000 : 0;
   const token = await getApifyToken();
   const log = [];
-  const run = { at: new Date().toISOString(), status: 'running', read: 0, matched: 0, added: 0, skipped: 0, log };
+  const run = { at: new Date().toISOString(), status: 'running', trigger, read: 0, matched: 0, added: 0, skipped: 0, log };
   s.lastRun = run;
   const seen = new Set(s.seen);
   const ads = await db.getAds();
@@ -2269,7 +2342,41 @@ ${text}`;
   s.seen = [...seen].slice(-3000);
   s.history = [run, ...(s.history || [])].slice(0, 50);
   await saveFbBot();
-  sendTelegram(`🤖 <b>İlan botu bitti</b>\n📖 ${run.read} gönderi okundu · ✅ ${run.added} ilan eklendi${publish === 'pending' && run.added ? ' (onay bekliyor)' : ''}`).catch(() => {});
+  // Bulunan her ilan için ayrı mesaj (fotoğraflı), en fazla FBBOT_NOTIFY_MAX tane
+  const saved = run.status !== 'error';
+  if (saved && s.settings.notifyEach !== false) {
+    for (const ad of newAds.slice(0, FBBOT_NOTIFY_MAX)) await notifyFbBotAd(ad, publish).catch(err => console.error('İlan bildirimi gönderilemedi:', err.message));
+  }
+  // Özet: elle çalıştırmada her zaman; otomatikte yalnızca ilan bulunduysa ya da hata varsa (boş turlar rahatsız etmesin)
+  const errors = log.filter(l => l.startsWith('❌')).length;
+  if (trigger !== 'otomatik' || run.added || errors) {
+    const extra = s.settings.notifyEach !== false && run.added > FBBOT_NOTIFY_MAX ? `\n➕ ${run.added - FBBOT_NOTIFY_MAX} ilan daha var, yönetim panelinden bakın.` : '';
+    sendTelegram(`🤖 <b>İlan botu bitti</b> · ${trigger === 'otomatik' ? '⏰ otomatik' : '👆 elle'}\n📖 ${run.read} gönderi okundu · ✅ ${run.added} ilan eklendi${publish === 'pending' && run.added ? ' (onay bekliyor)' : ''}${errors ? `\n⚠️ ${errors} kaynak okunamadı` : ''}${extra}`).catch(() => {});
+  }
+}
+
+// Telegram: tek ilan bildirimi (fotoğraf varsa fotoğraflı)
+async function notifyFbBotAd(ad, publish) {
+  const body = String(ad.body || '').replace(/\s+\n/g, '\n').trim();
+  const excerpt = body.length > 600 ? body.slice(0, 600) + '…' : body;
+  const lines = [
+    `🆕 <b>Facebook'ta yeni ilan bulundu</b>${publish === 'pending' ? ' · onay bekliyor' : ' · yayında'}`,
+    '',
+    `<b>${tgEsc(ad.title || 'İlan')}</b>`,
+    excerpt && excerpt !== ad.title ? tgEsc(excerpt) : null,
+    '',
+    ad.source && ad.source.author ? `👤 ${tgEsc(ad.source.author)}` : null,
+    ad.source && ad.source.url ? `🔗 <a href="${tgEsc(ad.source.url)}">Facebook'taki gönderi</a>` : null,
+    publish === 'pending'
+      ? `✅ <a href="${tgEsc(`${SITE_URL}/admin?bolum=ads`)}">Yönetim panelinde onayla</a>`
+      : `👀 <a href="${tgEsc(`${SITE_URL}/?ilan=${ad.id}`)}">Sitede gör</a>`,
+  ].filter(l => l !== null);
+  const html = lines.join('\n').replace(/\n{3,}/g, '\n\n');
+  const photo = (ad.images || []).find(u => /^https:\/\//.test(u));
+  if (photo && html.length <= 1024) {
+    try { if (await sendTelegramPhoto(photo, html)) return; } catch {}
+  }
+  await sendTelegram(html);
 }
 
 app.post('/api/admin/ads', requireAdmin, async (req, res) => {

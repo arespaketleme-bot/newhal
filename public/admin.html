@@ -100,7 +100,7 @@
         </button>
         <button class="nav-item" id="navFbBot" onclick="showSection('fbBot')">
           <span aria-hidden="true">🤖</span>
-          İlan Botu
+          İlan Ajanı
         </button>
         <button class="nav-item" id="navSponsor" onclick="showSection('sponsor')">
           <span aria-hidden="true">📣</span>
@@ -806,8 +806,8 @@
       <section class="section" id="sectionFbBot">
         <div class="section-head">
           <div>
-            <h1>🤖 İlan Botu</h1>
-            <p>"Çalıştır"a basınca aşağıdaki Facebook sayfa ve gruplarındaki son gönderileri okur; sebze-meyve ile ilgili olanları, daha önce eklenmediyse resimleriyle ilan olarak ekler.</p>
+            <h1>🤖 İlan Ajanı</h1>
+            <p>Aşağıdaki Facebook sayfa ve gruplarındaki son gönderileri okur; sebze-meyve ile ilgili olanları, daha önce eklenmediyse resimleriyle ilan olarak ekler. Otomatik çalışma açıksa bunu belirlediğiniz aralıkla kendiliğinden yapar ve bulduğu her ilanı Telegram'dan bildirir.</p>
           </div>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
@@ -830,7 +830,7 @@
               <small style="opacity:.75">Virgülle ayırın. Gönderide bu kelimelerden biri geçerse ilan olur.</small>
             </label>
             <label style="display:flex;flex-direction:column;gap:6px"><b>Her kaynaktan en fazla kaç gönderi okunsun?</b>
-              <input type="number" id="fbBotPerSource" min="1" max="50" style="padding:10px 12px;border-radius:10px;font:inherit;max-width:140px" />
+              <input type="number" id="fbBotPerSource" oninput="updateFbBotCost()" min="1" max="50" style="padding:10px 12px;border-radius:10px;font:inherit;max-width:140px" />
               <small style="opacity:.75">Her gönderi yaklaşık 25 kuruş (Apify).</small>
             </label>
             <label style="display:flex;flex-direction:column;gap:6px"><b>Hangi tarihteki ilanlar alınsın?</b>
@@ -851,6 +851,31 @@
                 <option value="live">Hemen yayınlansın</option>
               </select>
             </label>
+            <fieldset style="display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:12px;border:1px solid rgba(16,185,129,.4)">
+              <legend style="padding:0 6px;font-weight:800">⏰ Otomatik çalışma</legend>
+              <label class="app-ctl"><input type="checkbox" id="fbBotAuto" onchange="updateFbBotCost()" /> <span><b>Ajan kendiliğinden çalışsın</b><br><small>Açıkken aşağıdaki aralıkla Facebook'u tarar. Kapalıyken sadece "Çalıştır"a basınca çalışır.</small></span></label>
+              <label style="display:flex;flex-direction:column;gap:6px"><b>Ne sıklıkla?</b>
+                <select id="fbBotInterval" onchange="updateFbBotCost()" style="padding:10px 12px;border-radius:10px;font:inherit;max-width:320px">
+                  <option value="1">Saatte bir</option><option value="2">2 saatte bir</option><option value="3">3 saatte bir</option>
+                  <option value="4">4 saatte bir</option><option value="6">6 saatte bir</option><option value="8">8 saatte bir</option>
+                  <option value="12">Günde 2 kez</option><option value="24">Günde 1 kez</option>
+                </select>
+              </label>
+              <div id="fbBotCost" style="font-size:13px;padding:10px 12px;border-radius:10px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35)"></div>
+              <label class="app-ctl"><input type="checkbox" id="fbBotNotifyEach" /> <span><b>Bulunan her ilanı Telegram'a ayrı gönder</b><br><small>Fotoğrafı, Facebook bağlantısı ve onay bağlantısıyla. Bir turda en fazla 10 ilan tek tek gelir. Kapalıyken yalnızca özet gelir.</small></span></label>
+              <details>
+                <summary style="cursor:pointer;font-weight:700">🌙 Site uyurken de çalışsın (önerilir)</summary>
+                <div style="font-size:13px;display:flex;flex-direction:column;gap:8px;margin-top:8px">
+                  <span>Render'ın ücretsiz planında site, ziyaretçi gelmeyince uykuya geçer ve ajan çalışamaz. Ücretsiz <a href="https://cron-job.org" target="_blank" rel="noopener">cron-job.org</a> hesabı açıp aşağıdaki adresi <b>30 dakikada bir</b> çağıracak bir görev ekleyin. Adres siteyi uyandırır; ajan yalnızca sırası geldiyse çalışır, yani ek ücret oluşmaz.</span>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap">
+                    <input id="fbBotCronUrl" readonly style="flex:1 1 260px;padding:8px 10px;border-radius:10px;font:inherit;font-size:12px" />
+                    <button type="button" class="btn-sm" onclick="copyFbBotCronUrl()">📋 Kopyala</button>
+                    <button type="button" class="btn-sm" onclick="resetFbBotCronKey()" title="Adres başkasının eline geçtiyse yenileyin">🔄 Yenile</button>
+                  </div>
+                  <small style="opacity:.75">Bu adres gizlidir; bilen herkes ajanı sırası geldiğinde tetikleyebilir (sıklık ve maliyet yine sizin ayarınızla sınırlı).</small>
+                </div>
+              </details>
+            </fieldset>
             <label class="app-ctl"><input type="checkbox" id="fbBotPhotoPosts" /> <span><b>Yazısız fotoğraflı gönderileri de al</b><br><small>Gruplarda çoğu ilan sadece fotoğraf ve telefon numarasından oluşur. Açıksa fotoğrafı ve telefonu olan gönderiler de ilan olur.</small></span></label>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
               <button type="submit" class="btn-sm">💾 Ayarları Kaydet</button>
