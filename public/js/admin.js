@@ -2196,6 +2196,13 @@ function fillAdPinSelect(selected) {
   select.value = selected ? String(selected) : '';
 }
 
+async function refreshAdsList(btn) {
+  btn.disabled = true;
+  const t = btn.textContent;
+  btn.textContent = '⏳ Yenileniyor...';
+  try { await loadAds(); showToast('İlanlar yenilendi', 'success'); }
+  finally { btn.disabled = false; btn.textContent = t; }
+}
 async function loadAds() {
   fillAdPinSelect(document.getElementById('adPin').value);
   loadFacebookStatus();
