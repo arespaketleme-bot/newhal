@@ -289,3 +289,9 @@ body.has-trends .voice-intro { top: calc(var(--trend-h) + env(safe-area-inset-to
 .voice-intro-pause:hover { border-color: var(--border-g); }
 .voice-intro.paused .voice-intro-wave i { animation-play-state: paused; }
 @media (max-width: 420px) { .voice-intro { gap: 8px; padding: 10px; } .voice-intro-join { padding: 9px 11px; } }
+
+/* Telefonda alt menü şeffaf, arkası buzlu cam gibi görünür */
+@media (max-width: 768px) {
+  .bottom-nav { background: rgba(10,15,13,0.55) !important; backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); border-top-color: rgba(255,255,255,0.08); }
+  :root[data-theme="light"] .bottom-nav { background: rgba(255,255,255,0.55) !important; border-top-color: rgba(15,23,42,0.08); }
+}
