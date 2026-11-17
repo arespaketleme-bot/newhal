@@ -2279,6 +2279,25 @@ app.post('/api/admin/fb-bot/cron-key', requireAdmin, async (req, res) => {
   res.json({ cronUrl: fbBotCronUrl(s) });
 });
 
+// Apify hata yanıtını yöneticinin anlayacağı Türkçe açıklamaya çevirir
+function fbSourceProblem(status, body) {
+  const e = (body && body.error) || {};
+  const type = String(e.type || '');
+  const msg = String(e.message || '').slice(0, 160);
+  let why;
+  if (status === 401) why = 'Apify anahtarı geçersiz ya da silinmiş. İlanlar → Facebook kutusundan yeni anahtar kaydedin';
+  else if (status === 402 || /not-enough-usage|insufficient|limit-exceeded|usage/i.test(type)) why = 'Apify kredisi bitti ya da aylık sınır doldu. Apify hesabınızdan bakiye ekleyin';
+  else if (/not-rented|rent|paid-actor|subscription/i.test(type + ' ' + msg)) why = 'Bu Apify aracı için kiralama/abonelik gerekiyor. Apify Store\'da aracı açıp "Try for free" ya da kiralama adımını tamamlayın';
+  else if (status === 403) why = 'Apify bu işleme izin vermedi';
+  else if (status === 404) why = 'Apify aracı bulunamadı';
+  else if (status === 408 || /timeout/i.test(type)) why = 'süre doldu (5 dk). Kaynak başına gönderi sayısını azaltın';
+  else if (status === 429) why = 'Apify çok sık çağrıldı; bir süre sonra kendiliğinden düzelir';
+  else if (status === 400) why = 'Apify linki kabul etmedi; linkin doğru ve herkese açık bir Facebook grup/sayfa linki olduğundan emin olun';
+  else if (status >= 500) why = 'Apify tarafında geçici bir hata';
+  else why = 'okunamadı';
+  return `${why} (${status}${type ? ` · ${type}` : ''}${msg && !why.includes(msg) ? ` · ${msg}` : ''})`;
+}
+
 function fbBotCleanText(text) {
   return String(text || '').replace(/\r/g, '')
     .split('\n').map(l => l.replace(/\s+/g, ' ').trim())
@@ -2311,10 +2330,19 @@ async function runFbBot(trigger = 'elle') {
           ...(minTime ? { onlyPostsNewerThan: new Date(minTime - 86400000).toISOString().slice(0, 10) } : {}) }),
         signal: AbortSignal.timeout(300000),
       });
-      items = await r.json().catch(() => []);
-      if (!r.ok || !Array.isArray(items)) { log.push(`❌ ${source}: okunamadı (${r.status})`); continue; }
+      const body = await r.json().catch(() => null);
+      if (!r.ok || !Array.isArray(body)) { log.push(`❌ ${source}: ${fbSourceProblem(r.status, body)}`); continue; }
+      items = body;
+      // Apify bazen 200 döner ama gönderi yerine hata kaydı verir (kapalı grup, giriş isteyen sayfa vb.)
+      const failed = items.filter(it => it && it.error);
+      if (items.length && failed.length === items.length) {
+        const why = String(failed[0].errorDescription || failed[0].error || '').slice(0, 160);
+        log.push(`❌ ${source}: hiç gönderi alınamadı${isGroup ? ' — grup kapalı (gizli) olabilir; yalnızca herkese açık gruplar okunabilir' : ' — sayfa herkese açık olmayabilir'}${why ? ` (Apify: ${why})` : ''}`);
+        continue;
+      }
+      if (!items.length) log.push(`⚠️ ${source}: 0 gönderi döndü — ${isGroup ? 'grup kapalı olabilir ya da' : 'sayfa herkese açık olmayabilir ya da'} seçilen süre içinde gönderi yok`);
     } catch (err) {
-      log.push(`❌ ${source}: ${err.message}`);
+      log.push(`❌ ${source}: ${err && err.name === 'TimeoutError' ? 'süre doldu (5 dk). Kaynak başına gönderi sayısını azaltın' : `bağlantı hatası: ${err.message}`}`);
       continue;
     }
     let srcCandidates = 0;
@@ -2421,7 +2449,7 @@ ${text}`;
   const errors = log.filter(l => l.startsWith('❌')).length;
   if (trigger !== 'otomatik' || run.added || errors) {
     const extra = s.settings.notifyEach !== false && run.added > FBBOT_NOTIFY_MAX ? `\n➕ ${run.added - FBBOT_NOTIFY_MAX} ilan daha var, yönetim panelinden bakın.` : '';
-    sendTelegram(`🤖 <b>İlan botu bitti</b> · ${trigger === 'otomatik' ? '⏰ otomatik' : '👆 elle'}\n📖 ${run.read} gönderi okundu · ✅ ${run.added} ilan eklendi${publish === 'pending' && run.added ? ' (onay bekliyor)' : ''}${run.ai && run.ai.checked ? `\n🤖 Yapay zeka ${run.ai.rejected} gönderiyi eledi (~$${run.ai.costUsd})` : ''}${run.ai && run.ai.error ? '\n⚠️ Yapay zeka kontrolü yapılamadı' : ''}${errors ? `\n⚠️ ${errors} kaynak okunamadı` : ''}${extra}`).catch(() => {});
+    sendTelegram(`🤖 <b>İlan botu bitti</b> · ${trigger === 'otomatik' ? '⏰ otomatik' : '👆 elle'}\n📖 ${run.read} gönderi okundu · ✅ ${run.added} ilan eklendi${publish === 'pending' && run.added ? ' (onay bekliyor)' : ''}${run.ai && run.ai.checked ? `\n🤖 Yapay zeka ${run.ai.rejected} gönderiyi eledi (~$${run.ai.costUsd})` : ''}${run.ai && run.ai.error ? '\n⚠️ Yapay zeka kontrolü yapılamadı' : ''}${errors ? `\n⚠️ ${errors} kaynak okunamadı:\n${log.filter(l => l.startsWith('❌')).slice(0, 3).map(l => tgEsc(l)).join('\n')}` : ''}${extra}`).catch(() => {});
   }
 }
 
