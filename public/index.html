@@ -117,16 +117,24 @@
         </div>
       </a>
       <nav class="nav">
-        <a class="apk-dl nav-apk" href="/indir/NewHal.apk" download="NewHal.apk" onclick="appPromoLog('Menüdeki İndir düğmesiyle APK indirdi')" hidden aria-label="NewHal Android uygulamasını indir">⬇️ Uygulamayı İndir</a>
-        <button class="btn-ghost" onclick="scrollToMap()">Harita</button>
-        <button class="btn-ghost" onclick="showPinList()">İşletmeler</button>
-        <button class="btn-ghost ads-nav-link" onclick="showAds()" hidden>İlanlar</button>
-        <button class="btn-ghost notification-nav" onclick="openNotifications()" aria-label="Bildirimler">🔔 <span class="notification-unread-badge" id="notificationUnreadBadge" hidden></span></button>
-        <button class="btn-outline" id="authBtn" onclick="openAuthModal(); setAuthTab('login')">Giriş / Kayıt</button>
-        <button class="btn-primary" id="btnAddPin" onclick="openAddPinModal()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          İğne Ekle
-        </button>
+        <div class="nav-links">
+          <button class="btn-ghost" onclick="scrollToMap()">🗺 Harita</button>
+          <button class="btn-ghost" onclick="showPinList()">🏪 İşletmeler</button>
+          <button class="btn-ghost ads-nav-link" onclick="showAds()" hidden>📢 İlanlar</button>
+        </div>
+        <span class="nav-sep" aria-hidden="true"></span>
+        <div class="nav-actions">
+          <a class="apk-dl nav-apk" href="/indir/NewHal.apk" download="NewHal.apk" onclick="appPromoLog('Menüdeki İndir düğmesiyle APK indirdi')" hidden aria-label="NewHal Android uygulamasını indir" title="Android uygulamasını indir">⬇️ <span class="nav-txt">İndir</span></a>
+          <button type="button" class="nav-chip install-nav-link" onclick="installFromMenu()" title="NewHal'i uygulama olarak yükle">📲 <span class="nav-txt">Yükle</span></button>
+          <a class="nav-chip nav-wa ads-wa-btn" href="https://chat.whatsapp.com/LmYOXYNJ6cMKMEE8LM6WPP?s=cl&amp;p=a&amp;mlu=4&amp;ilr=4&amp;iam=2" target="_blank" rel="noopener" title="Hal'deki ilanlar, fiyatlar ve duyurular anında telefonunuzda"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.1-.2.3-.8.9-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.6-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.6 0-3.1-.4-4.4-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg><span class="nav-txt">Gruba Katıl</span></a>
+          <button class="btn-ghost notification-nav" onclick="openNotifications()" aria-label="Bildirimler" title="Bildirimler">🔔 <span class="notification-unread-badge" id="notificationUnreadBadge" hidden></span></button>
+          <button class="btn-outline" id="authBtn" onclick="openAuthModal(); setAuthTab('login')">Giriş / Kayıt</button>
+          <button class="btn-primary nav-post-btn" onclick="openUserAdModal()">📢 İlan Ver</button>
+          <button class="btn-primary nav-pin-btn" id="btnAddPin" onclick="openAddPinModal()" title="Haritaya işletme ekle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span class="nav-txt">İğne Ekle</span>
+          </button>
+        </div>
       </nav>
       <a class="apk-dl nav-apk-mobile" href="/indir/NewHal.apk" download="NewHal.apk" onclick="appPromoLog('Menüdeki İndir düğmesiyle APK indirdi')" hidden aria-label="NewHal Android uygulamasını indir">⬇️ İndir</a>
       <button type="button" class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Açık temaya geç" title="Tema değiştir">
@@ -156,6 +164,11 @@
 
   <!-- ── İLANLAR ────────────────────────────────────────────────────────── -->
   <section class="ads-section ads-top" id="adsSection">
+    <div class="top-actions" role="group" aria-label="Hızlı işlemler">
+      <button type="button" class="top-act install-nav-link" onclick="installFromMenu()">📲 Yükle</button>
+      <a class="top-act top-act-wa" href="https://chat.whatsapp.com/LmYOXYNJ6cMKMEE8LM6WPP?s=cl&amp;p=a&amp;mlu=4&amp;ilr=4&amp;iam=2" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.1-.2.3-.8.9-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.6-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.6 0-3.1-.4-4.4-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg><span>Gruba Katıl</span></a>
+      <button type="button" class="top-act top-act-post" onclick="openUserAdModal()">📢 İlan Ver</button>
+    </div>
     <!-- Kayan ilan şeridi ve vitrin, sayfa açılır açılmaz görünür. -->
     <div class="ads-ticker" id="adsTicker" hidden>
       <span class="ads-ticker-label">📢 Son ilanlar</span>
@@ -201,14 +214,6 @@
         <p>Hal Kompleksi'nden duyurular ve ilanlar</p>
       </div>
       <div class="ads-head-actions">
-      <div class="ads-btn-row">
-        <button type="button" class="btn-primary install-nav-link ads-install-btn" onclick="installFromMenu()" title="NewHal'i uygulama olarak yükle">📲 Yükle</button>
-        <a class="ads-wa-btn" href="https://chat.whatsapp.com/LmYOXYNJ6cMKMEE8LM6WPP?s=cl&amp;p=a&amp;mlu=4&amp;ilr=4&amp;iam=2" target="_blank" rel="noopener" title="Hal'deki ilanlar, fiyatlar ve duyurular anında telefonunuzda">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.1-.2.3-.8.9-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.6-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.6 0-3.1-.4-4.4-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg>
-          <span>Gruba Katıl</span>
-        </a>
-        <button type="button" class="btn-primary ads-post-btn" onclick="openUserAdModal()">📢 İlan Ver</button>
-      </div>
       <div class="ads-search" role="search">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="search" id="adsSearch" placeholder="İlanlarda ara: ürün, şehir, telefon..." autocomplete="off" enterkeyhint="search" aria-label="İlanlarda ara" />
