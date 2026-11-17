@@ -6069,3 +6069,21 @@ document.addEventListener('click', e => {
     if (n.tagName === 'IMG') fix(n.parentElement || document); else fix(n);
   }))).observe(document.body, { childList: true, subtree: true });
 })();
+
+// Telefonda site açıkken ekran kararmasın (destekleyen tarayıcılarda; sekme arka plana geçince bırakılır)
+(() => {
+  if (!('wakeLock' in navigator)) return;
+  const isPhone = () => window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
+  let lock = null;
+  const keepAwake = async () => {
+    if (!isPhone() || document.visibilityState !== 'visible' || lock) return;
+    try {
+      lock = await navigator.wakeLock.request('screen');
+      lock.addEventListener('release', () => { lock = null; });
+    } catch {}
+  };
+  keepAwake();
+  // Bazı tarayıcılar ilk dokunuştan önce izin vermez
+  ['pointerdown', 'touchstart', 'scroll'].forEach(ev => window.addEventListener(ev, keepAwake, { passive: true }));
+  document.addEventListener('visibilitychange', keepAwake);
+})();
