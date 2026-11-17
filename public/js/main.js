@@ -3251,7 +3251,10 @@ function renderAdsTools() {
   bar.className = 'ads-tools';
   bar.innerHTML = `<button type="button" class="ads-tool" onclick="openFavorites()">❤️ Favorilerim<span id="favCount"></span></button>
     <button type="button" class="ads-tool" onclick="openAdAlerts()">🔔 İlan Takibi</button>`;
-  document.getElementById('adsGrid').insertAdjacentElement('beforebegin', bar);
+  // İlanlar başlığı ile arama kutusunun arasında durur
+  const search = document.querySelector('.ads-head .ads-search');
+  if (search) search.insertAdjacentElement('beforebegin', bar);
+  else document.getElementById('adsGrid').insertAdjacentElement('beforebegin', bar);
   updateFavCount();
 }
 

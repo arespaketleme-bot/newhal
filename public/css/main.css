@@ -3107,3 +3107,7 @@ body.profile-page-open { overflow: hidden; }
 
 /* Sağ üstteki tema tuşuyla çakışmasın */
 @media (max-width: 768px) { .top-actions { padding-right: 46px; } .top-act { font-size: 12.5px; padding: 0 4px; gap: 4px; } }
+
+/* Favorilerim ve İlan Takibi: başlık ile arama arasında */
+.ads-head-actions .ads-tools { margin: 0; flex: 0 0 auto; }
+@media (max-width: 768px) { .ads-head-actions .ads-tools { flex: 1 1 100%; } .ads-head-actions .ads-tools .ads-tool { flex: 1 1 0; justify-content: center; } }
