@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         NewHal: Facebook ilan toplayıcı
 // @namespace    https://newhal.com/
-// @version      2.0.1
+// @version      2.1.0
 // @description  Facebook'ta gezerken hal ilanlarını Apify'sız toplar: gönderilere "NewHal'e Gönder" düğmesi ekler, toplama modu açıkken gruplarda ekrandan geçen uygun gönderileri NewHal ilan ajanına yollar.
 // @author       NewHal
 // @match        https://facebook.com/*
@@ -11,6 +11,7 @@
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        GM_setClipboard
 // @connect      newhal.com
 // @run-at       document-idle
 // @downloadURL  https://newhal.com/newhal-facebook.user.js
@@ -31,7 +32,7 @@
 
   const SITE = 'https://newhal.com';
   const POST_RX = /\/(posts|permalink|videos|reel|photo|photos)\/|\/(permalink|story|photo)\.php|story_fbid=|[?&]fbid=|multi_permalinks=|\/share\/(p|v|r)\//i;
-  const SEE_MORE_RX = /^(daha fazla gör|devamını gör|see more|…\s*daha fazla gör)$/i;
+  const SEE_MORE_RX = /^…?\s*(daha fazla(sını)? gör|devamını gör|see more)$/i;
   const FLUSH_MS = 4000;
   const BATCH = 10;
 
@@ -41,7 +42,7 @@
     config: null,             // { keywords, photoPosts, sources }
     queue: [],
     sentKeys: new Set(GM_getValue('newhalSent', [])),
-    stats: { seen: 0, sent: 0, added: 0 },
+    stats: { found: 0, seen: 0, sent: 0, added: 0 },
     lastError: '',
   };
 
@@ -86,11 +87,65 @@
     return !!state.key;
   }
 
-  // ── Gönderiyi ekrandan okuma ─────────────────────────────
-  const topArticles = () => [...document.querySelectorAll('div[role="article"]')]
-    .filter(a => !(a.parentElement && a.parentElement.closest('[role="article"]')));   // yorumlar hariç
+  // ── Gönderiyi ekrandan bulma ─────────────────────────────
+  // Facebook sayfa yapısını sık değiştirir; gönderi birkaç yoldan aranır, hangisi tutarsa:
+  //  1) gönderi metni kutusu (data-ad-...="message") yukarı doğru izlenir,
+  //  2) akıştaki sıra işareti (aria-posinset) ya da akışın (role="feed") doğrudan parçaları,
+  //  3) eski yapı: en dıştaki role="article".
+  const MSG_SEL = '[data-ad-rendering-role="story_message"], [data-ad-comet-preview="message"], [data-ad-preview="message"]';
+  const UNIT_SEL = '[aria-posinset], [data-pagelet^="FeedUnit"], [data-pagelet^="GroupsFeedUnit"]';
 
-  const own = (el, article) => el.closest('[role="article"]') === article;
+  function feedChild(el) {
+    for (let n = el; n && n.parentElement; n = n.parentElement) {
+      if (n.parentElement.getAttribute('role') === 'feed') return n;
+    }
+    return null;
+  }
+  function outermostArticle(el) {
+    let a = el.closest('[role="article"]');
+    while (a && a.parentElement && a.parentElement.closest('[role="article"]')) a = a.parentElement.closest('[role="article"]');
+    return a;
+  }
+  const postOf = el => el.closest(UNIT_SEL) || feedChild(el) || outermostArticle(el);
+
+  // Gönderinin kendi gövdesi olan role="article" (yoksa null). Yorumlar da role="article" olduğu için
+  // metin kutusunu içermeyen dış article yorum sayılır.
+  const bodyCache = new WeakMap();
+  function postBody(post) {
+    if (bodyCache.has(post)) return bodyCache.get(post);
+    let body = post.matches('[role="article"]') ? post : null;
+    if (!body) {
+      const outer = [...post.querySelectorAll('[role="article"]')].filter(a => {
+        const up = a.parentElement && a.parentElement.closest('[role="article"]');
+        return !up || !post.contains(up);
+      });
+      const msg = post.querySelector(MSG_SEL);
+      body = outer.find(a => msg && a.contains(msg)) || null;
+    }
+    bodyCache.set(post, body);
+    return body;
+  }
+
+  // Öğe gönderinin kendisine mi ait (yorumların içindekiler hariç)?
+  function own(el, post) {
+    if (!post.contains(el)) return false;
+    const art = el.closest('[role="article"]');
+    if (!art || art.contains(post)) return true;
+    return art === postBody(post);
+  }
+
+  const looksLikePost = p => p.offsetHeight > 60 && (
+    p.querySelector(MSG_SEL) || [...p.querySelectorAll('img')].some(i => (i.naturalWidth || i.width) >= 200 && /fbcdn\.net/.test(i.src)) ||
+    [...p.querySelectorAll('a[href]')].some(a => POST_RX.test(a.getAttribute('href') || '')));
+
+  function topArticles() {
+    const set = new Set();
+    for (const m of document.querySelectorAll(MSG_SEL)) { const p = postOf(m); if (p) set.add(p); }
+    for (const el of document.querySelectorAll(`${UNIT_SEL}, div[role="feed"] > div`)) set.add(el);
+    for (const a of document.querySelectorAll('div[role="article"]')) { const p = postOf(a); if (p) set.add(p); }
+    const list = [...set].filter(p => p && p !== document.body && looksLikePost(p));
+    return list.filter(p => !list.some(o => o !== p && o.contains(p)));   // en dıştaki kalır
+  }
 
   function cleanLink(href) {
     let u;
@@ -130,8 +185,7 @@
   }
 
   function messageEl(article) {
-    const sel = '[data-ad-rendering-role="story_message"], [data-ad-comet-preview="message"], [data-ad-preview="message"]';
-    return [...article.querySelectorAll(sel)].find(el => own(el, article)) || null;
+    return [...article.querySelectorAll(MSG_SEL)].find(el => own(el, article)) || null;
   }
 
   // "Daha fazla gör" açılır, yoksa metnin yalnızca başı okunur
@@ -293,9 +347,9 @@
     else if (state.lastError) text = `⚠️ NewHal: ${state.lastError}`;
     else if (!on) text = '⏸ NewHal toplama kapalı';
     else if (!pageAllowed()) text = '🟢 NewHal açık · bir gruba girin';
-    else text = `🟢 NewHal topluyor · 👀 ${state.stats.seen} · 📤 ${state.stats.sent} · ✅ ${state.stats.added}`;
+    else text = `🟢 NewHal topluyor · 📄 ${state.stats.found} · 👀 ${state.stats.seen} · 📤 ${state.stats.sent} · ✅ ${state.stats.added}`;
     pill.textContent = text;
-    pill.title = 'Tıklayınca toplama açılır/kapanır. 👀 okunan, 📤 NewHal\'e giden, ✅ ilan olan gönderi sayısı.';
+    pill.title = 'Tıklayınca toplama açılır/kapanır. 📄 sayfada bulunan, 👀 okunan, 📤 NewHal\'e giden, ✅ ilan olan gönderi sayısı. Sorun olursa Tampermonkey menüsünden "tanılama raporu"nu kullanın.';
     Object.assign(pill.style, on && !state.lastError
       ? { background: 'linear-gradient(135deg,#34d399,#10b981)', color: '#04130b' }
       : { background: '#0b1220', color: '#fff' });
@@ -336,7 +390,9 @@
   }
 
   function scan() {
-    for (const article of topArticles()) {
+    const posts = topArticles();
+    state.stats.found = posts.length;
+    for (const article of posts) {
       if (!article.dataset.newhal) {
         article.dataset.newhal = '1';
         if (getComputedStyle(article).position === 'static') article.style.position = 'relative';
@@ -347,7 +403,40 @@
     renderPill();
   }
 
+  // Tanılama: gönderi bulunamazsa sayfanın İSKELETİNİ (etiket, rol ve öznitelik adları, sayılar) kopyalar.
+  // Gönderi yazısı, isim, link ya da fotoğraf adresi rapora girmez.
+  function diagnose() {
+    const count = sel => { try { return document.querySelectorAll(sel).length; } catch { return -1; } };
+    const shape = (el, depth) => {
+      if (!el || depth > 4) return null;
+      const attrs = [...el.attributes].map(a => a.name).filter(n => /^(role|aria-|data-)/.test(n));
+      const role = el.getAttribute('role');
+      return { tag: el.tagName.toLowerCase(), role: role || undefined, attrs, kids: el.children.length,
+        first: [...el.children].slice(0, 2).map(c => shape(c, depth + 1)).filter(Boolean) };
+    };
+    const feed = document.querySelector('div[role="feed"]');
+    const posts = topArticles();
+    const report = {
+      surum: GM_info && GM_info.script && GM_info.script.version, sayfa: location.pathname.split('/').slice(0, 3).join('/'),
+      sayilar: {
+        feed: count('div[role="feed"]'), feedCocuk: count('div[role="feed"] > div'), posinset: count('[aria-posinset]'),
+        feedUnitPagelet: count('[data-pagelet^="FeedUnit"]'), article: count('div[role="article"]'),
+        mesajKutusu: count(MSG_SEL), dataAdRoller: [...new Set([...document.querySelectorAll('[data-ad-rendering-role]')].map(e => e.getAttribute('data-ad-rendering-role')))].slice(0, 15),
+        dirAuto: count('div[dir="auto"]'), bulunanGonderi: posts.length,
+      },
+      gonderiler: posts.slice(0, 3).map(p => ({
+        mesaj: !!messageEl(p), govdeArticle: !!postBody(p), buyukResim: readImages(p).length,
+        link: !!findPostLink(p), yaziUzunlugu: readText(p).length, yazar: !!readAuthor(p),
+      })),
+      akisIlkParca: feed ? shape(feed.firstElementChild, 0) : null,
+    };
+    const text = JSON.stringify(report);
+    try { GM_setClipboard(text); toast('📋 Tanılama raporu kopyalandı. NewHal sohbetine yapıştırın.'); }
+    catch { prompt('Bu metni kopyalayın:', text); }
+  }
+
   if (typeof GM_registerMenuCommand === 'function') {
+    GM_registerMenuCommand('NewHal: tanılama raporu (sorun varsa)', diagnose);
     GM_registerMenuCommand('NewHal: toplamayı aç / kapat', () => setCollecting(!state.collecting));
     GM_registerMenuCommand('NewHal: betik anahtarını gir', askKey);
   }
