@@ -3058,3 +3058,14 @@ body.profile-page-open { overflow: hidden; }
 .today-chips::-webkit-scrollbar { display: none; }
 .today-chip { flex: 0 0 auto; min-height: 34px; padding: 5px 12px; font-size: 13px; }
 @media (max-width: 600px) { .today-box { padding: 12px 12px 14px; } .today-stats, .today-tabs, .today-chips { margin-left: -12px; margin-right: -12px; padding-left: 12px; padding-right: 12px; } }
+
+/* Telefonda parmakla rahat basılsın */
+@media (max-width: 768px) {
+  .ad-phone, .ad-link, .wa-group-footer { display: inline-flex; align-items: center; min-height: 40px; }
+  .layer-btn { min-height: 38px; padding-left: 12px; padding-right: 12px; }
+  .sponsor-close, .join-nudge-close { min-width: 38px; min-height: 38px; }
+  .today-stat { min-height: 40px; }
+  .vitrin-dot { position: relative; }
+  .vitrin-dot::after { content: ''; position: absolute; inset: -14px -6px; }
+}
+.pins-more-btn { margin-top: 14px; }

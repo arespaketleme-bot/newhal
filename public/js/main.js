@@ -497,7 +497,7 @@ function renderPins(pins) {
         <div style="font-size:12px;color:#fbbf24;margin-bottom:5px;">⭐ Seviye ${Math.max(1, Number(pin.level) || 1)} · ${Number(pin.like_count) || 0} beğeni · ${(pin.comments || []).length} yorum</div>
         <div style="font-size:12px;color:#6b7280;margin-bottom:4px;">📍 ${escHtml(pin.address)}</div>
         ${showContactInfo && pin.phone ? `<div style="font-size:12px;color:#86efac;">📞 <a href="tel:${escHtml(pin.phone)}" style="color:#4ade80;">${escHtml(pin.phone)}</a></div>` : ''}
-        ${(pin.images || []).length ? `<img class="popup-photo" src="${escHtml(pin.images[0])}" alt="" loading="lazy" />` : ''}
+        ${(pin.images || []).length ? `<img class="popup-photo" src="${escHtml(pin.images[0])}" alt="${escHtml(pin.title)}" loading="lazy" />` : ''}
         ${popupProducts('🛒 Satıyor', pin.sells)}
         ${popupProducts('🔎 Arıyor', pin.seeks)}
         <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
@@ -519,7 +519,9 @@ function renderPins(pins) {
     empty.style.display = 'flex';
   } else {
     empty.style.display = 'none';
-    filtered.forEach(pin => {
+    const listKey = `${activeFilter}|${searchQuery}|${showSpecialPlaces}`;
+    if (listKey !== pinsListKey) { pinsListKey = listKey; pinsShown = PINS_PAGE; }
+    filtered.slice(0, pinsShown).forEach(pin => {
       const emoji = CATEGORY_ICONS[pin.category] || '📦';
       const card = document.createElement('div');
       card.className = 'pin-card';
@@ -530,7 +532,7 @@ function renderPins(pins) {
           <div class="pin-card-icon">${escHtml(emoji)}</div>
           <div class="pin-card-cat">${escHtml(pin.category)}</div>
         </div>
-        ${(pin.images || []).length ? `<img class="pin-card-photo" src="${escHtml(pin.images[0])}" alt="" loading="lazy" />` : ''}
+        ${(pin.images || []).length ? `<img class="pin-card-photo" src="${escHtml(pin.images[0])}" alt="${escHtml(pin.title)}" loading="lazy" />` : ''}
         <div class="pin-card-title">${escHtml(pin.title)}${verifiedBadge(pin)}</div>
         <div class="pin-card-level">⭐ Seviye ${Math.max(1, Number(pin.level) || 1)} · ${Number(pin.like_count) || 0} beğeni</div>
         <div class="pin-card-addr">📍 ${escHtml(pin.address)}</div>
@@ -546,6 +548,30 @@ function renderPins(pins) {
       grid.appendChild(card);
     });
   }
+  renderPinsMoreButton(filtered.length - Math.min(filtered.length, pinsShown));
+}
+
+const PINS_PAGE = 20;
+let pinsShown = PINS_PAGE;
+let pinsListKey = '';
+function renderPinsMoreButton(remaining) {
+  const grid = document.getElementById('pinsGrid');
+  let btn = document.getElementById('pinsMoreBtn');
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'pinsMoreBtn';
+    btn.className = 'ads-more-btn pins-more-btn';
+    btn.addEventListener('click', () => {
+      const y = window.scrollY;
+      pinsShown += PINS_PAGE;
+      renderPins(allPins);
+      window.scrollTo(0, y);
+    });
+    grid.insertAdjacentElement('afterend', btn);
+  }
+  btn.hidden = remaining <= 0;
+  btn.textContent = `Daha fazla işletme göster (${remaining} işletme daha)`;
 }
 
 // ── İşletme Arama ─────────────────────────────────────────────
@@ -945,7 +971,8 @@ function renderSponsorStrip() {
     strip.classList.add('closable');
     strip.appendChild(sponsorCloseButton('strip', () => { strip.remove(); closeSponsorPlace('strip', renderSponsorStrip); }));
   }
-  vitrin.insertAdjacentElement('afterend', strip);
+  const after = document.getElementById('todayBox');
+  if (after) after.insertAdjacentElement('beforebegin', strip); else vitrin.insertAdjacentElement('afterend', strip);
 }
 
 function renderSponsorDetail() {
@@ -2979,8 +3006,8 @@ function renderAdsGrid() {
     ? regularAds.filter(ad => adMatchesSearch(ad, adsQuery)).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
     : regularAds.filter(ad => !ad.featured);
   // Telefonda liste sayfanın akışında 6'şar 6'şar açılır (iç kaydırma kutusu parmağı tuzağa düşürüyordu)
-  if (adsShownQuery !== adsQuery) { adsShownQuery = adsQuery; adsMobileShown = ADS_MOBILE_PAGE; }
-  const shown = isAdsMobile() ? list.slice(0, adsMobileShown) : list;
+  if (adsShownQuery !== adsQuery) { adsShownQuery = adsQuery; adsMobileShown = ADS_MOBILE_PAGE; adsDesktopShown = ADS_DESKTOP_PAGE; }
+  const shown = list.slice(0, isAdsMobile() ? adsMobileShown : adsDesktopShown);
   adsFeedList = adsQuery ? list : [...featured, ...list];
   renderAdsTools();
   renderAdsFeedButton(adsFeedList.length);
@@ -2988,9 +3015,12 @@ function renderAdsGrid() {
   shown.forEach(ad => grid.appendChild(buildAdCard(ad)));
   // Sponsorlu kartlar 6., 12. … sıraya (daha az ilan varsa ilki sona) girer
   insertGridSponsors(grid, shown.length);
-  grid.scrollTop = 0;
+  const keepTop = adsKeepScroll ? grid.scrollTop : 0;
   fitAdsGridRows();
-  renderAdsMoreButton(list.length - shown.length);
+  grid.scrollTop = keepTop;
+  adsKeepScroll = false;
+  adsRemaining = list.length - shown.length;
+  renderAdsMoreButton(isAdsMobile() ? adsRemaining : 0);
   info.hidden = !adsQuery;
   info.textContent = list.length
     ? `"${adsQuery}" için ${list.length} ilan bulundu`
@@ -3207,8 +3237,9 @@ function renderJoinNudge() {
     card.remove();
     try { localStorage.setItem('joinNudgeClosedAt', String(Date.now())); } catch {}
   };
-  const grid = document.getElementById('adsGrid');
-  (document.getElementById('adsTools') || grid).insertAdjacentElement('beforebegin', card);
+  const below = document.getElementById('sponsorStrip') || document.getElementById('todayBox');
+  if (below) below.insertAdjacentElement('beforebegin', card);
+  else (document.getElementById('adsTools') || document.getElementById('adsGrid')).insertAdjacentElement('beforebegin', card);
 }
 
 function renderAdsTools() {
@@ -3413,10 +3444,31 @@ function renderAdsFeedButton(count) {
 
 // Telefonda sayfalama: iç kaydırma yok, "Daha fazla ilan göster" ile 6'şar ilan açılır
 const ADS_MOBILE_PAGE = 6;
+const ADS_DESKTOP_PAGE = 30;
+let adsDesktopShown = ADS_DESKTOP_PAGE;
+let adsKeepScroll = false;
 let adsMobileShown = ADS_MOBILE_PAGE;
 let adsShownQuery = null;
 const isAdsMobile = () => window.matchMedia('(max-width: 768px)').matches;
 
+let adsRemaining = 0;
+// Masaüstü: ilan kutusunun sonuna yaklaşınca sonraki 30 ilan eklenir
+(() => {
+  const grid = document.getElementById('adsGrid');
+  if (!grid) return;
+  let busy = false;
+  grid.addEventListener('scroll', () => {
+    if (busy || isAdsMobile() || adsRemaining <= 0) return;
+    if (grid.scrollTop + grid.clientHeight < grid.scrollHeight - 600) return;
+    busy = true;
+    adsDesktopShown += ADS_DESKTOP_PAGE;
+    adsKeepScroll = true;
+    const top = grid.scrollTop;
+    renderAdsGrid();
+    grid.scrollTop = top;
+    setTimeout(() => { busy = false; }, 300);
+  }, { passive: true });
+})();
 function renderAdsMoreButton(remaining) {
   let btn = document.getElementById('adsMoreBtn');
   if (!btn) {
@@ -4210,8 +4262,9 @@ function renderInviteNudge() {
     card.remove();
     try { localStorage.setItem('inviteNudgeClosedAt', String(Date.now())); } catch {}
   };
-  const grid = document.getElementById('adsGrid');
-  (document.getElementById('adsTools') || grid).insertAdjacentElement('beforebegin', card);
+  const below = document.getElementById('sponsorStrip') || document.getElementById('todayBox');
+  if (below) below.insertAdjacentElement('beforebegin', card);
+  else (document.getElementById('adsTools') || document.getElementById('adsGrid')).insertAdjacentElement('beforebegin', card);
   loadInviteStats();
 }
 
@@ -5960,4 +6013,23 @@ document.addEventListener('click', e => {
   window.addEventListener('popstate', () => {
     if (modal.classList.contains('open') && !(history.state && history.state.profilePage)) closeProfileModal(true);
   });
+})();
+
+// Açıklaması boş kalan resimlere bulunduğu kartın başlığı yazılır (Google ve ekran okuyucular için)
+(() => {
+  const label = img => {
+    const box = img.closest('.ad-card, .vitrin-slide, .pin-card, .story-chip, .sponsor-card, article, li');
+    const t = box && box.querySelector('h3, h4, strong, .ad-title, .pin-card-title');
+    const text = (t && t.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+    return text || 'NewHal Mersin Hal ilan görseli';
+  };
+  const fix = root => (root.querySelectorAll ? root.querySelectorAll('img:not([alt]), img[alt=""]') : []).forEach(img => {
+    if (img.closest('.leaflet-tile-pane') || img.getAttribute('aria-hidden') === 'true') return;
+    img.alt = label(img);
+  });
+  fix(document);
+  new MutationObserver(recs => recs.forEach(r => r.addedNodes.forEach(n => {
+    if (n.nodeType !== 1) return;
+    if (n.tagName === 'IMG') fix(n.parentElement || document); else fix(n);
+  }))).observe(document.body, { childList: true, subtree: true });
 })();
