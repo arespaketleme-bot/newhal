@@ -3104,3 +3104,6 @@ body.profile-page-open { overflow: hidden; }
   .top-act-wa { background: #25D366; color: #053b1d; border-color: transparent; }
   .top-act-post { background: linear-gradient(135deg, #f59e0b, #f97316); color: #1a0f00; border-color: transparent; }
 }
+
+/* Sağ üstteki tema tuşuyla çakışmasın */
+@media (max-width: 768px) { .top-actions { padding-right: 46px; } .top-act { font-size: 12.5px; padding: 0 4px; gap: 4px; } }
