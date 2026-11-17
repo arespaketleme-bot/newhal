@@ -3111,3 +3111,7 @@ body.profile-page-open { overflow: hidden; }
 /* Favorilerim ve İlan Takibi: başlık ile arama arasında */
 .ads-head-actions .ads-tools { margin: 0; flex: 0 0 auto; }
 @media (max-width: 768px) { .ads-head-actions .ads-tools { flex: 1 1 100%; } .ads-head-actions .ads-tools .ads-tool { flex: 1 1 0; justify-content: center; } }
+
+/* Sayfa ekrandan bir kaç piksel taşınca telefon görünümü yeniden ölçekliyor, alt menü oynuyordu */
+html { overflow-x: hidden; overflow-x: clip; max-width: 100%; }
+body { overflow-x: clip; max-width: 100%; }
