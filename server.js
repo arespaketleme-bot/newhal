@@ -70,7 +70,7 @@ app.use((req, res, next) => {
 });
 // Fotoğraf yükleme kendi (daha büyük) sınırıyla ayrıca okunur
 const jsonSmall = express.json();
-app.use((req, res, next) => (req.path === '/api/uploads' ? next() : jsonSmall(req, res, next)));
+app.use((req, res, next) => (req.path === '/api/uploads' || req.path === '/api/collector/posts' ? next() : jsonSmall(req, res, next)));
 // "/?ilan=<kimlik>" bağlantısı paylaşılınca Facebook/WhatsApp önizlemesi ilanın kendi resmi ve başlığıyla çıksın
 const INDEX_HTML = path.join(__dirname, 'public', 'index.html');
 const escAttr = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -2179,9 +2179,12 @@ let fbBotRunning = false;
 async function getFbBot() {
   if (!fbBotState) {
     const saved = (await db.getPrivateJson(FBBOT_FILE)) || {};
-    fbBotState = { settings: { ...FBBOT_DEFAULT, ...(saved.settings || {}) }, seen: saved.seen || [], lastRun: saved.lastRun || null, history: saved.history || [], cronKey: saved.cronKey || '' };
-    // Dış zamanlayıcının çağıracağı gizli adres anahtarı (bir kez üretilir)
-    if (!fbBotState.cronKey) { fbBotState.cronKey = crypto.randomBytes(18).toString('base64url'); await saveFbBot(); }
+    fbBotState = { settings: { ...FBBOT_DEFAULT, ...(saved.settings || {}) }, seen: saved.seen || [], lastRun: saved.lastRun || null, history: saved.history || [], cronKey: saved.cronKey || '', collectorKey: saved.collectorKey || '', lastCollect: saved.lastCollect || null };
+    // Dış zamanlayıcının ve tarayıcı betiğinin gizli anahtarları (bir kez üretilir)
+    let changed = false;
+    if (!fbBotState.cronKey) { fbBotState.cronKey = crypto.randomBytes(18).toString('base64url'); changed = true; }
+    if (!fbBotState.collectorKey) { fbBotState.collectorKey = 'nh_' + crypto.randomBytes(18).toString('base64url'); changed = true; }
+    if (changed) await saveFbBot();
   }
   return fbBotState;
 }
@@ -2203,7 +2206,7 @@ async function startFbBot(trigger) {
   if (!s.settings.sources.length) return 'Önce en az bir Facebook sayfa ya da grup linki ekleyin';
   if (!(await getApifyToken())) return 'Önce Apify anahtarını kaydedin (İlanlar → Facebook kutusu)';
   fbBotRunning = true;
-  runFbBot(trigger).catch(err => {
+  withFbBotLock(() => runFbBot(trigger)).catch(err => {
     console.error('İlan botu hatası:', err.message);
     sendTelegram(`❌ <b>İlan botu hata verdi</b>\n${tgEsc(err.message)}`).catch(() => {});
   }).finally(() => { fbBotRunning = false; });
@@ -2237,6 +2240,7 @@ app.get('/api/admin/fb-bot', requireAdmin, async (req, res) => {
   const next = fbBotNextRunAt(s);
   res.json({ settings: s.settings, lastRun: s.lastRun, history: s.history || [], running: fbBotRunning, apify: !!(await getApifyToken()),
     cronUrl: fbBotCronUrl(s), nextRunAt: next ? new Date(next).toISOString() : null,
+    collectorKey: s.collectorKey, lastCollect: s.lastCollect || null, scriptUrl: `${SITE_URL}/newhal-facebook.user.js`,
     ai: !!(await getAnthropicKey()), aiModels: Object.fromEntries(Object.entries(aiIlan.AI_MODELS).map(([k, v]) => [k, v.label])), telegram: !!(await getTelegramConfig().catch(() => null))?.bot_token });
 });
 app.put('/api/admin/fb-bot', requireAdmin, async (req, res) => {
@@ -2270,6 +2274,12 @@ app.post('/api/admin/fb-bot/run', requireAdmin, async (req, res) => {
   const error = await startFbBot('elle');
   if (error) return res.status(fbBotRunning ? 409 : 400).json({ error });
   res.status(202).json({ started: true });
+});
+app.post('/api/admin/fb-bot/collector-key', requireAdmin, async (req, res) => {
+  const s = await getFbBot();
+  s.collectorKey = 'nh_' + crypto.randomBytes(18).toString('base64url');
+  if (!(await saveFbBot())) return res.status(500).json({ error: 'Kaydedilemedi' });
+  res.json({ collectorKey: s.collectorKey });
 });
 // Gizli adres sızdıysa yenisi üretilir (eski adres çalışmaz olur)
 app.post('/api/admin/fb-bot/cron-key', requireAdmin, async (req, res) => {
@@ -2305,81 +2315,70 @@ function fbBotCleanText(text) {
     .join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-async function runFbBot(trigger = 'elle') {
-  const s = await getFbBot();
-  const { sources, keywords, perSource, publish, photoPosts } = s.settings;
-  const maxAgeHours = s.settings.maxAgeHours ?? FBBOT_DEFAULT.maxAgeHours;
-  const minTime = maxAgeHours > 0 ? Date.now() - maxAgeHours * 3600000 : 0;
-  const token = await getApifyToken();
-  const log = [];
-  const run = { at: new Date().toISOString(), status: 'running', trigger, read: 0, matched: 0, added: 0, skipped: 0, log };
-  s.lastRun = run;
-  const seen = new Set(s.seen);
-  const ads = await db.getAds();
-  const known = new Set(ads.map(a => a.source && a.source.url).filter(Boolean));
-  const newAds = [];
-  const candidates = [];
-  for (const source of sources) {
-    const isGroup = /\/groups\//i.test(source);
-    const actor = isGroup ? 'apify~facebook-groups-scraper' : 'apify~facebook-posts-scraper';
-    let items = [];
-    try {
-      const r = await fetch(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=280`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ startUrls: [{ url: source }], resultsLimit: perSource, viewOption: 'CHRONOLOGICAL',
-          ...(minTime ? { onlyPostsNewerThan: new Date(minTime - 86400000).toISOString().slice(0, 10) } : {}) }),
-        signal: AbortSignal.timeout(300000),
-      });
-      const body = await r.json().catch(() => null);
-      if (!r.ok || !Array.isArray(body)) { log.push(`❌ ${source}: ${fbSourceProblem(r.status, body)}`); continue; }
-      items = body;
-      // Apify bazen 200 döner ama gönderi yerine hata kaydı verir (kapalı grup, giriş isteyen sayfa vb.)
-      const failed = items.filter(it => it && it.error);
-      if (items.length && failed.length === items.length) {
-        const why = String(failed[0].errorDescription || failed[0].error || '').slice(0, 160);
-        log.push(`❌ ${source}: hiç gönderi alınamadı${isGroup ? ' — grup kapalı (gizli) olabilir; yalnızca herkese açık gruplar okunabilir' : ' — sayfa herkese açık olmayabilir'}${why ? ` (Apify: ${why})` : ''}`);
-        continue;
-      }
-      if (!items.length) log.push(`⚠️ ${source}: 0 gönderi döndü — ${isGroup ? 'grup kapalı olabilir ya da' : 'sayfa herkese açık olmayabilir ya da'} seçilen süre içinde gönderi yok`);
-    } catch (err) {
-      log.push(`❌ ${source}: ${err && err.name === 'TimeoutError' ? 'süre doldu (5 dk). Kaynak başına gönderi sayısını azaltın' : `bağlantı hatası: ${err.message}`}`);
-      continue;
-    }
-    let srcCandidates = 0;
-    for (const item of items) {
-      if (!item || item.error) continue;
-      run.read++;
-      const url = String(item.url || item.facebookUrl || '').split('?')[0];
-      const key = item.postId || url;
-      let text = fbBotCleanText(item.text || item.message || '');
-      if (!key || seen.has(key) || known.has(url)) { run.skipped++; continue; }
-      const postTime = Date.parse(item.time || item.timestamp || item.date || '') || (Number(item.timestamp) > 1e9 ? Number(item.timestamp) * 1000 : 0);
-      if (minTime && postTime && postTime < minTime) { run.skipped++; run.old = (run.old || 0) + 1; continue; }
-      seen.add(key);
-      const low = trLower(text);
-      const photos = fbPostImages(item);
-      const hasPhone = (text.replace(/\D/g, '').match(/0?5\d{9}/) || []).length > 0;
-      const keywordHit = text.length >= 15 && keywords.some(k => low.includes(k));
-      // Grupta çoğu ilan sadece fotoğraf + telefon: ayar açıksa bunlar da alınır
-      const photoHit = photoPosts && photos.length > 0 && hasPhone;
-      if (!keywordHit && !photoHit) { run.skipped++; continue; }
-      if (!keywordHit) {
-        const who = (item.user && item.user.name) || '';
-        text = `📸 Hal ilanı${who ? ` · ${who}` : ''}
-${text}`;
-      }
-      run.matched++;
-      candidates.push({ text, photos, keywordHit, url, author: (item.user && item.user.name) || '' });
-      srcCandidates++;
-    }
-    log.push(`✅ ${source}: ${items.length} gönderi okundu, ${srcCandidates} aday`);
+// İlan ajanının ortak adımları: Apify turu da, tarayıcı betiği de buradan geçer.
+// Aynı anda tek iş çalışır (görülen gönderi listesi ve ilanlar birbirini ezmesin).
+let fbBotQueue = Promise.resolve();
+function withFbBotLock(fn) {
+  const p = fbBotQueue.then(fn, fn);
+  fbBotQueue = p.catch(() => {});
+  return p;
+}
+
+const fbPostKey = (url, text) => url || `txt:${crypto.createHash('sha1').update(String(text || '')).digest('hex').slice(0, 20)}`;
+
+// Bir gönderiyi kurallardan geçirir; aday değilse null döner (sayaçlar run üzerinde tutulur)
+function fbBotCandidate(post, ctx) {
+  const { s, run, seen, known, minTime } = ctx;
+  const { keywords, photoPosts } = s.settings;
+  run.read++;
+  const url = String(post.url || '').split('?')[0];
+  let text = fbBotCleanText(post.text || '');
+  const key = post.key || fbPostKey(url, text);
+  if (!key || seen.has(key) || (url && known.has(url))) { run.skipped++; run.duplicates = (run.duplicates || 0) + 1; return null; }
+  if (minTime && post.time && post.time < minTime) { run.skipped++; run.old = (run.old || 0) + 1; return null; }
+  seen.add(key);
+  const photos = post.photos || [];
+  if (post.force) {   // yönetici gönderiyi kendisi seçti: kelime ve yapay zeka elemesi yok
+    run.matched++;
+    return { text, photos, keywordHit: true, forced: true, url, author: post.author || '' };
   }
+  const low = trLower(text);
+  const hasPhone = (text.replace(/\D/g, '').match(/0?5\d{9}/) || []).length > 0;
+  const keywordHit = text.length >= 15 && keywords.some(k => low.includes(k));
+  // Grupta çoğu ilan sadece fotoğraf + telefon: ayar açıksa bunlar da alınır
+  const photoHit = photoPosts && photos.length > 0 && hasPhone;
+  if (!keywordHit && !photoHit) { run.skipped++; return null; }
+  if (!keywordHit) {
+    const who = post.author || '';
+    text = `📸 Hal ilanı${who ? ` · ${who}` : ''}
+${text}`;
+  }
+  run.matched++;
+  return { text, photos, keywordHit, url, author: post.author || '' };
+}
+
+async function fbBotContext(s) {
+  const maxAgeHours = s.settings.maxAgeHours ?? FBBOT_DEFAULT.maxAgeHours;
+  const ads = await db.getAds();
+  return {
+    s, seen: new Set(s.seen),
+    known: new Set(ads.map(a => a.source && a.source.url).filter(Boolean)),
+    minTime: maxAgeHours > 0 ? Date.now() - maxAgeHours * 3600000 : 0,
+  };
+}
+
+// Adaylar: yapay zeka elemesi → fotoğraflar → ilan kaydı → bildirimler
+async function fbBotFinish(ctx, candidates, { notifySummary }) {
+  const { s, run, seen } = ctx;
+  const log = run.log;
+  const publish = s.settings.publish;
+  const newAds = [];
 
   // Yapay zeka elemesi: yazısı olan adaylar tek istekte değerlendirilir.
   // Yalnızca fotoğraf + telefon olan gönderilerde değerlendirilecek yazı olmadığı için eleme yapılmaz.
-  const aiKey = s.settings.aiFilter !== false && candidates.some(c => c.keywordHit) ? await getAnthropicKey() : '';
+  const aiKey = s.settings.aiFilter !== false && candidates.some(c => c.keywordHit && !c.forced) ? await getAnthropicKey() : '';
   if (aiKey) {
-    const textual = candidates.map((c, i) => ({ c, i })).filter(x => x.c.keywordHit);
+    const textual = candidates.map((c, i) => ({ c, i })).filter(x => x.c.keywordHit && !x.c.forced);
     try {
       const { results, costUsd, model } = await aiIlan.classifyPosts({
         apiKey: aiKey, model: s.settings.aiModel,
@@ -2417,10 +2416,10 @@ ${text}`;
     if (!ad.title) { run.skipped++; continue; }
     newAds.push({
       id: crypto.randomUUID(), ...ad, featured: false, active: true,
-      ...(publish === 'pending' ? { pending: true } : {}),
+      ...(publish === 'pending' || c.forced ? { pending: true } : {}),
       created_at: new Date().toISOString(),
       source: {
-        type: 'facebook', url: c.url, author: c.author, bot: true,
+        type: 'facebook', url: c.url, author: c.author, bot: true, via: run.trigger === 'betik' || run.trigger === 'betik-elle' ? 'tarayici' : 'apify',
         ...(c.ai ? { ai: { kind: c.ai.kind, product: c.ai.product, quantity: c.ai.quantity, price: c.ai.price, location: c.ai.location } } : {}),
       },
     });
@@ -2430,28 +2429,148 @@ ${text}`;
     if (!(await db.saveAds([...newAds, ...fresh]))) {
       log.push('❌ İlanlar kaydedilemedi');
       run.status = 'error';
-    } else if (publish === 'live') {
-      newAds.forEach(ad => { void notifyAdAlerts(ad); });
+    } else {
+      newAds.filter(ad => !ad.pending).forEach(ad => { void notifyAdAlerts(ad); });
     }
   }
   run.added = newAds.length;
   if (run.status === 'running') run.status = 'done';
   run.finishedAt = new Date().toISOString();
   s.seen = [...seen].slice(-3000);
-  s.history = [run, ...(s.history || [])].slice(0, 50);
+  // Betikten gelen boş turlar geçmişi doldurmasın
+  if (!run.trigger.startsWith('betik') || run.matched) s.history = [run, ...(s.history || [])].slice(0, 50);
   await saveFbBot();
   // Bulunan her ilan için ayrı mesaj (fotoğraflı), en fazla FBBOT_NOTIFY_MAX tane
   const saved = run.status !== 'error';
   if (saved && s.settings.notifyEach !== false) {
-    for (const ad of newAds.slice(0, FBBOT_NOTIFY_MAX)) await notifyFbBotAd(ad, publish).catch(err => console.error('İlan bildirimi gönderilemedi:', err.message));
+    for (const ad of newAds.slice(0, FBBOT_NOTIFY_MAX)) await notifyFbBotAd(ad, ad.pending ? 'pending' : 'live').catch(err => console.error('İlan bildirimi gönderilemedi:', err.message));
+  }
+  const errors = log.filter(l => l.startsWith('❌')).length;
+  if (notifySummary(run, errors)) {
+    const label = { otomatik: '⏰ otomatik', elle: '👆 elle', betik: '🧭 tarayıcı', 'betik-elle': '🧭 tarayıcı' }[run.trigger] || run.trigger;
+    const extra = s.settings.notifyEach !== false && run.added > FBBOT_NOTIFY_MAX ? `\n➕ ${run.added - FBBOT_NOTIFY_MAX} ilan daha var, yönetim panelinden bakın.` : '';
+    sendTelegram(`🤖 <b>İlan botu bitti</b> · ${label}\n📖 ${run.read} gönderi okundu · ✅ ${run.added} ilan eklendi${publish === 'pending' && run.added ? ' (onay bekliyor)' : ''}${run.ai && run.ai.checked ? `\n🤖 Yapay zeka ${run.ai.rejected} gönderiyi eledi (~$${run.ai.costUsd})` : ''}${run.ai && run.ai.error ? '\n⚠️ Yapay zeka kontrolü yapılamadı' : ''}${errors ? `\n⚠️ ${errors} kaynak okunamadı:\n${log.filter(l => l.startsWith('❌')).slice(0, 3).map(l => tgEsc(l)).join('\n')}` : ''}${extra}`).catch(() => {});
+  }
+  return newAds;
+}
+
+async function runFbBot(trigger = 'elle') {
+  const s = await getFbBot();
+  const { sources, perSource } = s.settings;
+  const ctx = await fbBotContext(s);
+  const token = await getApifyToken();
+  const log = [];
+  const run = { at: new Date().toISOString(), status: 'running', trigger, read: 0, matched: 0, added: 0, skipped: 0, log };
+  ctx.run = run;
+  s.lastRun = run;
+  const candidates = [];
+  for (const source of sources) {
+    const isGroup = /\/groups\//i.test(source);
+    const actor = isGroup ? 'apify~facebook-groups-scraper' : 'apify~facebook-posts-scraper';
+    let items = [];
+    try {
+      const r = await fetch(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=280`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startUrls: [{ url: source }], resultsLimit: perSource, viewOption: 'CHRONOLOGICAL',
+          ...(ctx.minTime ? { onlyPostsNewerThan: new Date(ctx.minTime - 86400000).toISOString().slice(0, 10) } : {}) }),
+        signal: AbortSignal.timeout(300000),
+      });
+      const body = await r.json().catch(() => null);
+      if (!r.ok || !Array.isArray(body)) { log.push(`❌ ${source}: ${fbSourceProblem(r.status, body)}`); continue; }
+      items = body;
+      // Apify bazen 200 döner ama gönderi yerine hata kaydı verir (kapalı grup, giriş isteyen sayfa vb.)
+      const failed = items.filter(it => it && it.error);
+      if (items.length && failed.length === items.length) {
+        const why = String(failed[0].errorDescription || failed[0].error || '').slice(0, 160);
+        log.push(`❌ ${source}: hiç gönderi alınamadı${isGroup ? ' — grup kapalı (gizli) olabilir; yalnızca herkese açık gruplar okunabilir' : ' — sayfa herkese açık olmayabilir'}${why ? ` (Apify: ${why})` : ''}`);
+        continue;
+      }
+      if (!items.length) log.push(`⚠️ ${source}: 0 gönderi döndü — ${isGroup ? 'grup kapalı olabilir ya da' : 'sayfa herkese açık olmayabilir ya da'} seçilen süre içinde gönderi yok`);
+    } catch (err) {
+      log.push(`❌ ${source}: ${err && err.name === 'TimeoutError' ? 'süre doldu (5 dk). Kaynak başına gönderi sayısını azaltın' : `bağlantı hatası: ${err.message}`}`);
+      continue;
+    }
+    let srcCandidates = 0;
+    for (const item of items) {
+      if (!item || item.error) continue;
+      const url = String(item.url || item.facebookUrl || '').split('?')[0];
+      const postTime = Date.parse(item.time || item.timestamp || item.date || '') || (Number(item.timestamp) > 1e9 ? Number(item.timestamp) * 1000 : 0);
+      const c = fbBotCandidate({
+        key: item.postId || url, url, text: item.text || item.message || '', photos: fbPostImages(item),
+        author: (item.user && item.user.name) || '', time: postTime,
+      }, ctx);
+      if (c) { candidates.push(c); srcCandidates++; }
+    }
+    log.push(`✅ ${source}: ${items.length} gönderi okundu, ${srcCandidates} aday`);
   }
   // Özet: elle çalıştırmada her zaman; otomatikte yalnızca ilan bulunduysa ya da hata varsa (boş turlar rahatsız etmesin)
-  const errors = log.filter(l => l.startsWith('❌')).length;
-  if (trigger !== 'otomatik' || run.added || errors) {
-    const extra = s.settings.notifyEach !== false && run.added > FBBOT_NOTIFY_MAX ? `\n➕ ${run.added - FBBOT_NOTIFY_MAX} ilan daha var, yönetim panelinden bakın.` : '';
-    sendTelegram(`🤖 <b>İlan botu bitti</b> · ${trigger === 'otomatik' ? '⏰ otomatik' : '👆 elle'}\n📖 ${run.read} gönderi okundu · ✅ ${run.added} ilan eklendi${publish === 'pending' && run.added ? ' (onay bekliyor)' : ''}${run.ai && run.ai.checked ? `\n🤖 Yapay zeka ${run.ai.rejected} gönderiyi eledi (~$${run.ai.costUsd})` : ''}${run.ai && run.ai.error ? '\n⚠️ Yapay zeka kontrolü yapılamadı' : ''}${errors ? `\n⚠️ ${errors} kaynak okunamadı:\n${log.filter(l => l.startsWith('❌')).slice(0, 3).map(l => tgEsc(l)).join('\n')}` : ''}${extra}`).catch(() => {});
-  }
+  await fbBotFinish(ctx, candidates, { notifySummary: (r, errors) => trigger !== 'otomatik' || r.added || errors });
 }
+
+// ── Tarayıcı betiği (Apify'sız): Facebook'ta gezerken ekrandaki gönderiler buraya gelir ──
+// Betik, yöneticinin kendi tarayıcısında çalışır; gizli bir anahtarla kimlik doğrular.
+const COLLECTOR_MAX_POSTS = 30;
+const FB_CDN_URL = /^https:\/\/[^/]*(fbcdn\.net|fbsbx\.com)\//i;
+const FB_URL = /^https:\/\/([^/]+\.)?facebook\.com\//i;
+
+async function collectorAuth(req, res) {
+  const s = await getFbBot();
+  const given = Buffer.from(String(req.get('x-newhal-key') || ''));
+  const expected = Buffer.from(s.collectorKey || '');
+  if (!expected.length || given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) {
+    res.status(403).json({ error: 'NewHal anahtarı geçersiz. Yönetim panelinden betik anahtarını kopyalayın.' });
+    return null;
+  }
+  return s;
+}
+
+// Betiğin süzgeç ayarları: yalnızca uyan gönderiler sunucuya gönderilir
+app.get('/api/collector/config', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const s = await collectorAuth(req, res);
+  if (!s) return;
+  res.json({ keywords: s.settings.keywords, photoPosts: s.settings.photoPosts !== false, sources: s.settings.sources });
+});
+
+app.post('/api/collector/posts', express.json({ limit: '300kb' }), async (req, res) => {
+  const s = await collectorAuth(req, res);
+  if (!s) return;
+  const b = req.body || {};
+  const manual = b.mode === 'manual';
+  const posts = (Array.isArray(b.posts) ? b.posts : []).slice(0, manual ? 1 : COLLECTOR_MAX_POSTS).map(p => ({
+    url: FB_URL.test(String(p && p.url || '')) ? String(p.url).slice(0, 500) : '',
+    text: String(p && p.text || '').slice(0, 5000),
+    author: String(p && p.author || '').slice(0, 120),
+    photos: (Array.isArray(p && p.images) ? p.images : []).filter(u => typeof u === 'string' && FB_CDN_URL.test(u)).slice(0, 6),
+    force: manual,
+  })).filter(p => p.text.trim() || p.photos.length);
+  if (!posts.length) return res.status(400).json({ error: 'Gönderide okunacak yazı ya da fotoğraf bulunamadı' });
+  try {
+    const result = await withFbBotLock(async () => {
+      const ctx = await fbBotContext(s);
+      const run = { at: new Date().toISOString(), status: 'running', trigger: manual ? 'betik-elle' : 'betik', read: 0, matched: 0, added: 0, skipped: 0, log: [] };
+      ctx.run = run;
+      if (manual) ctx.minTime = 0;    // elle gönderilen eski gönderi de alınır
+      const candidates = posts.map(p => fbBotCandidate(p, ctx)).filter(Boolean);
+      run.log.push(`🧭 Tarayıcıdan ${posts.length} gönderi geldi${b.pageUrl && FB_URL.test(String(b.pageUrl)) ? ` (${String(b.pageUrl).split('?')[0].slice(0, 120)})` : ''}, ${candidates.length} aday`);
+      const ads = await fbBotFinish(ctx, candidates, { notifySummary: () => false });
+      s.lastCollect = { at: run.at, read: run.read, added: run.added };
+      await saveFbBot();
+      return { run, ads };
+    });
+    const { run, ads } = result;
+    res.json({
+      added: run.added, duplicates: run.duplicates || 0, rejected: run.ai && run.ai.rejected || 0,
+      ads: ads.map(a => ({ id: a.id, title: a.title })),
+      message: manual
+        ? (run.added ? '✅ NewHal\'e eklendi (onay bekliyor)' : (run.duplicates ? 'Bu gönderi zaten eklenmiş' : 'Gönderi eklenemedi'))
+        : `${run.added} ilan eklendi`,
+    });
+  } catch (err) {
+    console.error('Tarayıcı betiği gönderisi işlenemedi:', err.message);
+    res.status(500).json({ error: 'Gönderi işlenemedi' });
+  }
+});
 
 // Telegram: tek ilan bildirimi (fotoğraf varsa fotoğraflı)
 async function notifyFbBotAd(ad, publish) {

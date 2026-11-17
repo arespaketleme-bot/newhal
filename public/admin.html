@@ -812,6 +812,23 @@
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
           <form onsubmit="saveFbBot(event)" style="display:flex;flex-direction:column;gap:14px;flex:1 1 360px;max-width:560px">
+            <fieldset style="display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:12px;border:1px solid rgba(52,211,153,.55);background:rgba(16,185,129,.06)">
+              <legend style="padding:0 6px;font-weight:800">🧭 Tarayıcıyla topla (Apify'sız, ücretsiz)</legend>
+              <small style="opacity:.85">Facebook'ta kendi hesabınızla gezerken ilanları toplar. Kapalı gruplar da okunur (üyesi olduğunuz için). Aşağıdaki süzgeçler, yapay zeka elemesi ve Telegram bildirimleri aynen çalışır. Yalnızca bilgisayarda (Chrome, Edge, Firefox) çalışır.</small>
+              <ol style="margin:0;padding-left:20px;font-size:13px;display:flex;flex-direction:column;gap:6px">
+                <li>Tarayıcınıza <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener">Tampermonkey</a> eklentisini kurun.</li>
+                <li><a id="fbScriptLink" href="/newhal-facebook.user.js" target="_blank" rel="noopener"><b>NewHal betiğini kurun</b></a> (açılan sayfada "Yükle"ye basın).</li>
+                <li>Facebook'u açın; sol alttaki <b>🔑 NewHal</b> düğmesine basıp şu anahtarı yapıştırın:
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+                    <input id="fbCollectorKey" readonly style="flex:1 1 220px;padding:8px 10px;border-radius:10px;font:inherit;font-size:12px" />
+                    <button type="button" class="btn-sm" onclick="copyFbCollectorKey()">📋 Kopyala</button>
+                    <button type="button" class="btn-sm" onclick="resetFbCollectorKey()" title="Anahtar başkasının eline geçtiyse yenileyin">🔄 Yenile</button>
+                  </div>
+                </li>
+                <li>Bir hal grubuna girin, sol alttaki düğmeye basıp <b>toplamayı açın</b> ve akışı aşağı kaydırın. Her gönderide ayrıca <b>🟢 NewHal'e Gönder</b> düğmesi de olur.</li>
+              </ol>
+              <div id="fbCollectStatus" style="font-size:13px;opacity:.85"></div>
+            </fieldset>
             <div style="display:flex;flex-direction:column;gap:6px"><b>Grup ve sayfa listesi</b>
               <small style="opacity:.75">Tiklediğiniz alttaki link kutusuna eklenir. Yıldıza basarak kalitesini puanlayın.</small>
               <div id="fbBotCatalog" style="display:flex;flex-direction:column;gap:6px"></div>

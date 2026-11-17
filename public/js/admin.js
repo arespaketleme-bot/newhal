@@ -920,7 +920,7 @@ function renderFbBotStatus(d) {
   if (past.length) {
     html += `<details style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">📜 Eski çalışmalar (${past.length})</summary>` +
       past.map(h => `<details style="margin-top:8px;padding:10px 12px;border-radius:10px;border:1px solid rgba(148,163,184,.25)">
-        <summary style="cursor:pointer">${esc(new Date(h.at).toLocaleString('tr-TR'))}${h.trigger === 'otomatik' ? ' ⏰' : ''} · 📖 ${h.read} · ✅ ${h.added} ilan · ⏭ ${h.skipped}${h.status === 'error' ? ' · ❌' : ''}</summary>
+        <summary style="cursor:pointer">${esc(new Date(h.at).toLocaleString('tr-TR'))}${h.trigger === 'otomatik' ? ' ⏰' : String(h.trigger || '').startsWith('betik') ? ' 🧭 tarayıcı' : ''} · 📖 ${h.read} · ✅ ${h.added} ilan · ⏭ ${h.skipped}${h.status === 'error' ? ' · ❌' : ''}</summary>
         ${(h.log || []).length ? h.log.map(l => `<div style="font-size:13px;margin-top:6px">${esc(l)}</div>`).join('') : '<div style="font-size:13px;margin-top:6px;opacity:.7">Not yok.</div>'}
       </details>`).join('') + '</details>';
   }
@@ -950,6 +950,11 @@ async function loadFbBot() {
     renderFbCatalog();
   }
   document.getElementById('fbBotCronUrl').value = d.cronUrl || '';
+  document.getElementById('fbCollectorKey').value = d.collectorKey || '';
+  if (d.scriptUrl) document.getElementById('fbScriptLink').href = d.scriptUrl;
+  document.getElementById('fbCollectStatus').textContent = d.lastCollect
+    ? `Son tarayıcı toplaması: ${new Date(d.lastCollect.at).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })} · ${d.lastCollect.read} gönderi geldi · ${d.lastCollect.added} ilan eklendi`
+    : 'Tarayıcıdan henüz gönderi gelmedi.';
   loadAiKeyStatus();
   updateFbBotCost();
   renderFbBotStatus(d);
@@ -992,6 +997,19 @@ async function saveAiKey() {
   input.value = '';
   showToast('Anahtar kaydedildi', 'success');
   loadAiKeyStatus();
+}
+async function copyFbCollectorKey() {
+  const v = document.getElementById('fbCollectorKey').value;
+  try { await navigator.clipboard.writeText(v); showToast('Anahtar kopyalandı', 'success'); }
+  catch { document.getElementById('fbCollectorKey').select(); showToast('Anahtarı seçip kopyalayın', 'error'); }
+}
+async function resetFbCollectorKey() {
+  if (!confirm('Yeni anahtar üretilsin mi? Eski anahtarla çalışan betikler durur; yenisini Facebook\'taki betiğe girmeniz gerekir.')) return;
+  const res = await api('/api/admin/fb-bot/collector-key', { method: 'POST' });
+  if (!res || !res.ok) { showToast('Yenilenemedi', 'error'); return; }
+  const d = await res.json();
+  document.getElementById('fbCollectorKey').value = d.collectorKey;
+  showToast('Yeni anahtar üretildi', 'success');
 }
 async function copyFbBotCronUrl() {
   const v = document.getElementById('fbBotCronUrl').value;
