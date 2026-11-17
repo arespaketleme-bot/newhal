@@ -77,6 +77,17 @@ function showAdminPanel() {
   document.getElementById('adminLayout').style.display = 'flex';
   loadAll();
   handleFbLinkParam();
+  handleSectionParam();
+}
+
+// Telegram'dan gelen "?bolum=ads" gibi bağlantılar ilgili bölümü açar
+function handleSectionParam() {
+  const params = new URLSearchParams(location.search);
+  const name = params.get('bolum');
+  if (!name || !Object.prototype.hasOwnProperty.call(sectionTitles, name)) return;
+  params.delete('bolum');
+  history.replaceState(null, '', location.pathname + (params.toString() ? `?${params}` : '') + location.hash);
+  setTimeout(() => showSection(name), 0);
 }
 
 // Chrome eklentisinden gelen "?fbLink=..." : İlanlar açılır, link yazılır, sorgu kendiliğinden başlar
@@ -540,7 +551,7 @@ const sectionTitles = {
   appPromo:  'Uygulama İndirme',
   trends:    'Gündem Şeridi',
   survey:    'Memnuniyet Anketi',
-  fbBot:     'İlan Botu',
+  fbBot:     'İlan Ajanı',
   promo:    'WhatsApp Reklam',
   engage:    'Kalma Süresi',
   audit:     'Raporlar',
@@ -891,10 +902,14 @@ function renderFbBotStatus(d) {
   btn.disabled = !!d.running;
   btn.textContent = d.running ? '⏳ Çalışıyor...' : '▶ Çalıştır';
   let html = d.apify ? '' : '<p style="color:#fbbf24">⚠️ Apify anahtarı kayıtlı değil. İlanlar → Facebook kutusundan kaydedin.</p>';
+  if (!d.telegram) html += '<p style="color:#fbbf24">⚠️ Telegram botu ayarlı değil; bildirim gönderilemez.</p>';
+  html += d.settings.auto
+    ? `<p>⏰ <b>Otomatik çalışma açık</b> · ${d.settings.intervalHours} saatte bir.${d.nextRunAt && !d.running ? ` Sıradaki tur: <b>${esc(new Date(d.nextRunAt) <= new Date() ? 'şimdi (site uyanınca)' : new Date(d.nextRunAt).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }))}</b>` : ''}</p>`
+    : '<p style="opacity:.75">⏸ Otomatik çalışma kapalı; ajan yalnızca "Çalıştır"a basınca çalışır.</p>';
   if (d.running) html += '<p><b>⏳ Bot çalışıyor.</b> Gönderiler okunuyor, birkaç dakika sürebilir. Bu sayfa kendiliğinden yenilenir.</p>';
   if (r) {
     html += `<div style="padding:14px;border-radius:12px;border:1px solid rgba(148,163,184,.3)">
-      <b>Son çalışma:</b> ${esc(new Date(r.at).toLocaleString('tr-TR'))}<br>
+      <b>Son çalışma:</b> ${esc(new Date(r.at).toLocaleString('tr-TR'))}${r.trigger === 'otomatik' ? ' · ⏰ otomatik' : r.trigger === 'elle' ? ' · 👆 elle' : ''}<br>
       📖 ${r.read} gönderi okundu · 🥬 ${r.matched} uygun · ✅ <b>${r.added} ilan eklendi</b> · ⏭ ${r.skipped} atlandı
       ${(r.log || []).map(l => `<div style="font-size:13px;margin-top:6px">${esc(l)}</div>`).join('')}
     </div>`;
@@ -904,7 +919,7 @@ function renderFbBotStatus(d) {
   if (past.length) {
     html += `<details style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">📜 Eski çalışmalar (${past.length})</summary>` +
       past.map(h => `<details style="margin-top:8px;padding:10px 12px;border-radius:10px;border:1px solid rgba(148,163,184,.25)">
-        <summary style="cursor:pointer">${esc(new Date(h.at).toLocaleString('tr-TR'))} · 📖 ${h.read} · ✅ ${h.added} ilan · ⏭ ${h.skipped}${h.status === 'error' ? ' · ❌' : ''}</summary>
+        <summary style="cursor:pointer">${esc(new Date(h.at).toLocaleString('tr-TR'))}${h.trigger === 'otomatik' ? ' ⏰' : ''} · 📖 ${h.read} · ✅ ${h.added} ilan · ⏭ ${h.skipped}${h.status === 'error' ? ' · ❌' : ''}</summary>
         ${(h.log || []).length ? h.log.map(l => `<div style="font-size:13px;margin-top:6px">${esc(l)}</div>`).join('') : '<div style="font-size:13px;margin-top:6px;opacity:.7">Not yok.</div>'}
       </details>`).join('') + '</details>';
   }
@@ -923,10 +938,45 @@ async function loadFbBot() {
     document.getElementById('fbBotPublish').value = d.settings.publish;
     document.getElementById('fbBotMaxAge').value = String(d.settings.maxAgeHours ?? 24);
     document.getElementById('fbBotPhotoPosts').checked = d.settings.photoPosts !== false;
+    document.getElementById('fbBotAuto').checked = d.settings.auto === true;
+    document.getElementById('fbBotInterval').value = String(d.settings.intervalHours || 6);
+    document.getElementById('fbBotNotifyEach').checked = d.settings.notifyEach !== false;
     fbCatalog = d.settings.catalog || [];
     renderFbCatalog();
   }
+  document.getElementById('fbBotCronUrl').value = d.cronUrl || '';
+  updateFbBotCost();
   renderFbBotStatus(d);
+}
+
+// Apify gönderi başına ücret aldığı için otomatik çalışmanın tahmini aylık maliyeti gösterilir
+const FB_BOT_TL_PER_POST = 0.25;
+function updateFbBotCost() {
+  const box = document.getElementById('fbBotCost');
+  if (!box) return;
+  const sources = fbSourceLines().length;
+  const per = Number(document.getElementById('fbBotPerSource').value) || 0;
+  const hours = Number(document.getElementById('fbBotInterval').value) || 6;
+  const auto = document.getElementById('fbBotAuto').checked;
+  const perRun = sources * per;
+  const runsPerDay = 24 / hours;
+  const monthly = perRun * runsPerDay * 30 * FB_BOT_TL_PER_POST;
+  const tl = n => n.toLocaleString('tr-TR', { maximumFractionDigits: 0 });
+  box.innerHTML = `💰 <b>Tahmini maliyet${auto ? '' : ' (açarsanız)'}:</b> tur başına ${perRun} gönderi × günde ${tl(runsPerDay)} tur ≈ <b>ayda ${tl(monthly)} TL</b> (Apify, gönderi başına ~25 kuruş).` +
+    (monthly > 500 ? '<br>⚠️ Yüksek. Aralığı uzatın ya da kaynak başına gönderi sayısını azaltın.' : '');
+}
+async function copyFbBotCronUrl() {
+  const v = document.getElementById('fbBotCronUrl').value;
+  try { await navigator.clipboard.writeText(v); showToast('Adres kopyalandı', 'success'); }
+  catch { document.getElementById('fbBotCronUrl').select(); showToast('Adresi seçip kopyalayın', 'error'); }
+}
+async function resetFbBotCronKey() {
+  if (!confirm('Yeni adres üretilsin mi? Eski adres çalışmaz olur, cron-job.org görevini de güncellemeniz gerekir.')) return;
+  const res = await api('/api/admin/fb-bot/cron-key', { method: 'POST' });
+  if (!res || !res.ok) { showToast('Yenilenemedi', 'error'); return; }
+  const d = await res.json();
+  document.getElementById('fbBotCronUrl').value = d.cronUrl;
+  showToast('Yeni adres üretildi', 'success');
 }
 let fbCatalog = [];
 const fbNorm = u => String(u || '').trim().replace(/\/+$/, '').toLowerCase();
@@ -945,6 +995,7 @@ function renderFbCatalog() {
       <span style="white-space:nowrap;flex-shrink:0">${[1, 2, 3, 4, 5].map(n => `<span onclick="fbCatStar(${i},${n})" title="${n} yıldız" style="cursor:pointer;font-size:18px;color:${n <= (c.stars || 0) ? '#fbbf24' : 'rgba(148,163,184,.45)'}">★</span>`).join('')}</span>
       <button type="button" onclick="fbCatRemove(${i})" title="Listeden çıkar" style="background:none;border:0;color:inherit;opacity:.6;cursor:pointer;font-size:16px">✕</button>
     </div>`).join('') : '<small style="opacity:.7">Liste boş.</small>';
+  updateFbBotCost();
 }
 function fbCatToggle(i, on) {
   const c = fbCatalog[i]; if (!c) return;
@@ -986,6 +1037,9 @@ async function saveFbBot(event) {
     publish: document.getElementById('fbBotPublish').value,
     maxAgeHours: Number(document.getElementById('fbBotMaxAge').value),
     photoPosts: document.getElementById('fbBotPhotoPosts').checked,
+    auto: document.getElementById('fbBotAuto').checked,
+    intervalHours: Number(document.getElementById('fbBotInterval').value),
+    notifyEach: document.getElementById('fbBotNotifyEach').checked,
     catalog: fbCatalog,
   };
   const res = await api('/api/admin/fb-bot', { method: 'PUT', body: JSON.stringify(body) });
