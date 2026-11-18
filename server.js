@@ -1177,6 +1177,26 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
 });
 
 // ── PUBLIC: Dinamik Kategoriler ──────────────────────────────
+const MAP_START_FILE = 'map-start.json';
+let mapStartCache = null;
+async function getMapStart() {
+  if (mapStartCache) return mapStartCache;
+  const saved = await db.getPrivateJson(MAP_START_FILE).catch(() => null);
+  mapStartCache = { cats: Array.isArray(saved && saved.cats) ? saved.cats : ['Komisyoncu'] };
+  return mapStartCache;
+}
+app.get('/api/map-start', async (req, res) => {
+  res.set('Cache-Control', 'no-store').json(await getMapStart());
+});
+app.put('/api/admin/map-start', requireAdmin, async (req, res) => {
+  const cats = (Array.isArray(req.body && req.body.cats) ? req.body.cats : [])
+    .map(c => String(c).trim().slice(0, 40)).filter(Boolean).slice(0, 60);
+  const next = { cats: [...new Set(cats)] };
+  if (!(await db.savePrivateJson(MAP_START_FILE, next))) return res.status(500).json({ error: 'Kaydedilemedi' });
+  mapStartCache = next;
+  res.json(next);
+});
+
 app.get('/api/categories', async (req, res) => {
   res.json(await db.getCategories());
 });

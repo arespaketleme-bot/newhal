@@ -1674,6 +1674,35 @@ async function loadCategories() {
   const categories = await res.json();
   renderCategoriesTable(categories);
   populateEditCategoryDropdown(categories);
+  loadMapStart(categories);
+}
+
+// Sayfa açılınca seçili gelecek kategoriler
+let mapStartSel = new Set();
+let mapStartCatList = [];
+async function loadMapStart(categories) {
+  mapStartCatList = categories || mapStartCatList;
+  try {
+    const r = await fetch('/api/map-start', { cache: 'no-store' });
+    mapStartSel = new Set(((await r.json()).cats) || []);
+  } catch {}
+  renderMapStart();
+}
+function renderMapStart() {
+  const box = document.getElementById('mapStartCats');
+  if (!box) return;
+  box.innerHTML = mapStartCatList.map(c => {
+    const on = mapStartSel.has(c.name);
+    return `<label style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;cursor:pointer;border:1px solid ${on ? '#22c55e' : 'rgba(148,163,184,.3)'};background:${on ? 'rgba(34,197,94,.15)' : 'transparent'};font-weight:600">
+      <input type="checkbox" ${on ? 'checked' : ''} data-name="${esc(c.name)}" onchange="mapStartToggle(this.dataset.name, this.checked)" /> ${esc(c.icon || '📦')} ${esc(c.name)}</label>`;
+  }).join('');
+}
+function mapStartToggle(name, on) { if (on) mapStartSel.add(name); else mapStartSel.delete(name); renderMapStart(); }
+function mapStartAll(on) { mapStartSel = new Set(on ? mapStartCatList.map(c => c.name) : []); renderMapStart(); }
+async function saveMapStart() {
+  const res = await api('/api/admin/map-start', { method: 'PUT', body: JSON.stringify({ cats: [...mapStartSel] }) });
+  if (!res || !res.ok) { showToast('Kaydedilemedi', 'error'); return; }
+  showToast(mapStartSel.size ? `Açılışta ${mapStartSel.size} kategori seçili gelecek` : 'Açılışta tüm işletmeler görünecek', 'success');
 }
 
 function renderCategoriesTable(categories) {

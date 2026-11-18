@@ -60,6 +60,17 @@ let map, allPins = [], tempMarker = null, pendingLat = null, pendingLng = null;
 // Sayfa açılınca sadece komisyoncular gösterilir; ziyaretçi başka kategori seçince o geçerli olur
 let activeFilter = 'Komisyoncu';
 let filterIsDefault = true;
+// Yönetimin seçtiği açılış kategorileri (birden çok olabilir; boşsa Tümü). Ziyaretçi bir kategoriye basınca normal seçime döner.
+let startCats = ['Komisyoncu'];
+const startMulti = () => filterIsDefault && startCats.length !== 1;
+function pinInFilter(p) {
+  if (filterIsDefault) return !startCats.length || startCats.includes(p.category);
+  return activeFilter === 'all' || p.category === activeFilter;
+}
+function catChipActive(cat) {
+  if (filterIsDefault) return startCats.length ? startCats.includes(cat) : cat === 'all';
+  return activeFilter === cat;
+}
 
 // Layer and option toggles
 let currentLayer = null;
@@ -468,7 +479,7 @@ function renderPins(pins) {
   const empty = document.getElementById('emptyState');
 
   // Filter by category
-  let filtered = activeFilter === 'all' ? pins : pins.filter(p => p.category === activeFilter);
+  let filtered = pins.filter(pinInFilter);
 
   // Filter by Special Places (our seeded public places are id <= 6)
   if (!showSpecialPlaces) {
@@ -519,7 +530,7 @@ function renderPins(pins) {
     empty.style.display = 'flex';
   } else {
     empty.style.display = 'none';
-    const listKey = `${activeFilter}|${searchQuery}|${showSpecialPlaces}`;
+    const listKey = `${filterIsDefault ? startCats.join(',') : activeFilter}|${searchQuery}|${showSpecialPlaces}`;
     if (listKey !== pinsListKey) { pinsListKey = listKey; pinsShown = PINS_PAGE; }
     filtered.slice(0, pinsShown).forEach(pin => {
       const emoji = CATEGORY_ICONS[pin.category] || '📦';
@@ -699,8 +710,9 @@ function focusPin(id) {
   trackSearch('map', searchQuery, true);
   // Açılmak istenen işletme seçili kategoride değilse tüm işletmeler gösterilir
   const target = allPins.find(p => p.id === id);
-  if (target && activeFilter !== 'all' && target.category !== activeFilter) {
+  if (target && !pinInFilter(target)) {
     activeFilter = 'all';
+    filterIsDefault = false;
     document.querySelectorAll('.filter-btn, .map-cat-chip').forEach(b => b.classList.toggle('active', b.dataset.cat === 'all'));
     renderPins(allPins);
   }
@@ -2001,6 +2013,17 @@ async function loadCategories() {
       CATEGORY_ICONS[cat.name] = cat.icon || '📦';
     });
 
+    // Yönetimin seçtiği açılış kategorileri
+    try {
+      const ms = await (await fetch('/api/map-start')).json();
+      if (filterIsDefault && Array.isArray(ms.cats)) {
+        const known = new Set(categories.map(c => c.name));
+        startCats = ms.cats.filter(c => known.has(c));
+        activeFilter = startCats.length === 1 ? startCats[0] : 'all';
+        if (allPins && allPins.length) renderPins(allPins);
+      }
+    } catch {}
+
     // Filtre butonlarını güncelle
     renderFilters(categories);
 
@@ -2016,11 +2039,11 @@ function renderFilters(categories) {
   if (!filterContainer) return;
   
   const prevActive = activeFilter;
-  filterContainer.innerHTML = `<button class="filter-btn ${prevActive === 'all' ? 'active' : ''}" data-cat="all" onclick="filterPins('all', this)">Tümü</button>`;
+  filterContainer.innerHTML = `<button class="filter-btn ${catChipActive('all') ? 'active' : ''}" data-cat="all" onclick="filterPins('all', this)">Tümü</button>`;
   
   categories.forEach(cat => {
     const btn = document.createElement('button');
-    btn.className = `filter-btn ${prevActive === cat.name ? 'active' : ''}`;
+    btn.className = `filter-btn ${catChipActive(cat.name) ? 'active' : ''}`;
     btn.setAttribute('data-cat', cat.name);
     btn.textContent = `${cat.icon || '📦'} ${cat.name}`;
     btn.onclick = () => filterPins(cat.name, btn);
@@ -2037,7 +2060,7 @@ function renderMapCategoryBar(categories) {
   const chip = (cat, label) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = `map-cat-chip${activeFilter === cat ? ' active' : ''}`;
+    b.className = `map-cat-chip${catChipActive(cat) ? ' active' : ''}`;
     b.dataset.cat = cat;
     b.textContent = label;
     b.onclick = () => {
@@ -2054,7 +2077,7 @@ function renderMapCategoryBar(categories) {
     .sort((a, b) => rank(a.name) - rank(b.name) || count(b.name) - count(a.name))
     .forEach(cat => chip(cat.name, `${cat.icon || '📦'} ${cat.name}`));
   // Listedeki eski kategori düğmeleri de aynı seçimi gösterir
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === activeFilter));
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', catChipActive(b.dataset.cat)));
   // Seçili kategori yalnızca şeridin içinde ortalanır; sayfa aşağı kaymaz
   const activeChip = bar.querySelector('.map-cat-chip.active');
   if (activeChip) bar.scrollLeft = activeChip.offsetLeft - (bar.clientWidth - activeChip.offsetWidth) / 2;
