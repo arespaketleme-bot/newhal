@@ -252,7 +252,7 @@ function build(pins) {
   const sides = Math.ceil(list.length / PER_ROW);
   const blocks = Math.ceil(sides / 2);
   GW = MARGIN * 2 + PER_ROW * STALL_W + CROSS;
-  GH = AISLE + blocks * (STALL_D * 2 + AISLE) + 4;   // altta giriş meydanı
+  GH = AISLE + blocks * (STALL_D * 2 + AISLE) + 8;   // altta geniş giriş meydanı   // altta giriş meydanı
   grid = Array.from({ length: GH }, () => new Uint8Array(GW));   // 0 yürünür, 1 dükkan
   for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) if (x === 0 || x === GW - 1 || y === 0) grid[y][x] = 1;
   list.forEach((item, i) => {
@@ -814,10 +814,10 @@ window.__miniOthers = function (k, ox, oy) {
 };
 
 // ── Kahvehane: dama masaları ──
-const DAMA_SPOTS = [[17], [21]];
+const DAMA_SPOTS = [[30], [34]];
 let masalar = [];
 function drawCafe(ox, oy) {
-  const x0 = 15 * T - ox, y0 = (GH - 7.4) * T - oy;
+  const x0 = 28 * T - ox, y0 = (GH - 7.4) * T - oy;
   if (x0 > innerWidth + 40 || y0 > innerHeight + 40 || x0 + T * 9 < -40) return;
   cx.fillStyle = 'rgba(120,53,15,.28)'; roundRect(cx, x0, y0, T * 8.6, T * 2.5, 12); cx.fill();
   cx.strokeStyle = 'rgba(251,191,36,.45)'; cx.lineWidth = 2; cx.stroke();
@@ -955,8 +955,8 @@ function petsInit() {
   const RIGHT_ORDER = ['Elmacı', 'Çilekçi', 'Marulcu', 'Patatesçi', 'Cevizci'];
   pets.filter(p => p.right).sort((a, b) => RIGHT_ORDER.indexOf(a.label) - RIGHT_ORDER.indexOf(b.label)).forEach((p, i) => {
     // narcının üstünde, yukarıdan aşağı tek sıra
-    p.x = Math.floor(GW / 2) + 17; p.y = GH - 7 + i; p.right = false;
-    grid[p.y][p.x] = 1; grid[p.y][p.x + 1] = 1;
+    p.x = Math.floor(GW / 2) + 17; p.y = GH - 10.75 + i * 1.75; p.right = false;
+    const gy = Math.round(p.y); grid[gy][p.x] = 1; grid[gy][p.x + 1] = 1;
   });
   pets.filter(p => p.at).forEach(p => {
     p.x = Math.max(1, Math.min(GW - 3, Math.floor(GW / 2) + p.at[0])); p.y = GH + p.at[1];
