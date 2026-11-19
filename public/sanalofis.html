@@ -57,8 +57,10 @@
   .res small { color: var(--muted); display: block; }
   .res .ic { font-size: 22px; width: 30px; text-align: center; }
   .loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 20; font-weight: 700; color: var(--muted); }
+  .crowd { font-weight: 700; }
   @media (max-width: 640px) {
-    .status { display: none; }
+    .status:not(.crowd) { display: none; }
+    .crowd { font-size: 12px; padding: 7px 10px; }
     .brand span.t { display: none; }
     .hint { display: none; }
     .minimap { width: 96px; height: 122px; top: calc(64px + env(safe-area-inset-top, 0px)); bottom: auto; }
@@ -72,6 +74,7 @@
 <div class="top">
   <a class="brand" href="/" title="NewHal ana sayfa">🥕 <span class="t">New<b>Hal</b> · Sanal Hal</span></a>
   <div class="status"><i></i><span id="statusTxt">Hal açık · Hale girişte sizi bekliyor</span></div>
+  <div class="status crowd" id="crowd">👤 Halde şu an sadece siz varsınız</div>
   <div class="spacer"></div>
   <button class="btn btn-orange" type="button" onclick="openChat()">🙋‍♀️ Hale'ye sor</button>
   <a class="btn btn-dark" href="/">🗺 Harita</a>
@@ -122,6 +125,7 @@ const STALL_W = 3, STALL_D = 2, PER_ROW = 12, AISLE = 3, CROSS = 3, MARGIN = 2;
 let stalls = [], grid, GW, GH, cats = {};
 const me = { x: 0, y: 0, path: [], dir: 1, step: 0 };
 const hale = { x: 0, y: 0 };
+let drawDt = 0;
 let cam = { x: 0, y: 0 }, near = null, dismissed = null, openId = null, keys = {}, lastT = 0;
 const cv = document.getElementById('world'), cx = cv.getContext('2d');
 const mini = document.getElementById('mini'), mx = mini.getContext('2d');
@@ -256,6 +260,7 @@ function draw() {
   drawPerson(hale.x * T - ox + T / 2, hale.y * T - oy + T / 2, '👩‍💼', 'Hale · Bana dokunun', Math.sin(lastT / 300) * 2);
   // hedef işareti
   if (me.path.length) { const t = me.path[me.path.length - 1]; cx.strokeStyle = '#fde047'; cx.lineWidth = 2; cx.beginPath(); cx.arc(t.x * T - ox + T / 2, t.y * T - oy + T / 2, 10 + Math.sin(lastT / 150) * 2, 0, 7); cx.stroke(); }
+  window.__drawOthers && window.__drawOthers(ox, oy, drawDt);
   drawPerson(me.x * T - ox + T / 2, me.y * T - oy + T / 2, me.dir < 0 ? '🚶' : '🚶‍➡️', 'Siz', me.path.length ? Math.abs(Math.sin(me.step)) * 4 : 0);
   drawMini();
 }
@@ -265,6 +270,7 @@ function drawMini() {
   mx.clearRect(0, 0, w, h);
   mx.fillStyle = '#334155'; mx.fillRect(ox, oy, GW * k, GH * k);
   stalls.forEach(s => { mx.fillStyle = s === near ? '#fde047' : s.z.color; mx.fillRect(ox + s.x * k, oy + s.y * k, s.w * k - .6, s.h * k - .6); });
+  window.__miniOthers && window.__miniOthers(k, ox, oy);
   mx.fillStyle = '#fff'; mx.beginPath(); mx.arc(ox + (me.x + .5) * k, oy + (me.y + .5) * k, 3, 0, 7); mx.fill();
 }
 
@@ -305,7 +311,7 @@ function update(dt) {
 }
 function loop(t) {
   const dt = Math.min(.05, (t - lastT) / 1000 || 0); lastT = t;
-  update(dt); draw();
+  drawDt = dt; update(dt); draw();
   if (document.hidden) setTimeout(() => loop(performance.now()), 50); else requestAnimationFrame(loop);
 }
 
@@ -387,10 +393,60 @@ mini.addEventListener('click', e => {
 });
 addEventListener('resize', resize);
 
+// ── Aynı anda gezen diğer ziyaretçiler ──
+const others = new Map();   // id → { x, y, tx, ty, dir, name }
+let sid = '';
+try { sid = sessionStorage.getItem('halSid') || ''; } catch {}
+if (!sid) { sid = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()).slice(0, 36); try { sessionStorage.setItem('halSid', sid); } catch {} }
+function token() { try { return localStorage.getItem('userToken') || ''; } catch { return ''; } }
+let presenceBusy = false;
+async function sendPresence() {
+  if (presenceBusy || document.hidden) return;
+  presenceBusy = true;
+  try {
+    const h = { 'Content-Type': 'application/json' };
+    const t = token(); if (t) h.Authorization = 'Bearer ' + t;
+    const r = await fetch('/api/sanal/konum', { method: 'POST', headers: h, body: JSON.stringify({ sid, x: me.x, y: me.y, dir: me.dir }) });
+    const d = await r.json();
+    const seen = new Set();
+    (d.others || []).forEach(o => {
+      seen.add(o.id);
+      const cur = others.get(o.id);
+      if (cur) { cur.tx = o.x; cur.ty = o.y; cur.dir = o.dir; cur.name = o.name; }
+      else others.set(o.id, { x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir, name: o.name, look: PEOPLE[hashStr(o.id) % PEOPLE.length] });
+    });
+    for (const k of others.keys()) if (!seen.has(k)) others.delete(k);
+    const n = Math.max(1, d.count || 1);
+    document.getElementById('crowd').textContent = n === 1 ? '👤 Halde şu an sadece siz varsınız' : `👥 Halde şu an ${n} kişi var`;
+  } catch {}
+  presenceBusy = false;
+}
+const PEOPLE = ['🧍', '🧍‍♂️', '🧍‍♀️', '👨‍🌾', '👩‍🌾', '🧑‍🍳', '👷'];
+function hashStr(s) { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); }
+function startPresence() {
+  sendPresence();
+  setInterval(sendPresence, 1000);
+  const bye = () => { try { navigator.sendBeacon('/api/sanal/cikis', new Blob([JSON.stringify({ sid })], { type: 'application/json' })); } catch {} };
+  addEventListener('pagehide', bye);
+}
+window.__drawOthers = function (ox, oy, dt) {
+  others.forEach(o => {
+    const k = Math.min(1, dt * 5);
+    o.x += (o.tx - o.x) * k; o.y += (o.ty - o.y) * k;
+    const moving = Math.hypot(o.tx - o.x, o.ty - o.y) > .05;
+    drawPerson(o.x * T - ox + T / 2, o.y * T - oy + T / 2, moving ? (o.dir < 0 ? '🚶' : '🚶‍➡️') : o.look, o.name, moving ? Math.abs(Math.sin(lastT / 90)) * 3 : 0);
+  });
+};
+window.__miniOthers = function (k, ox, oy) {
+  mx.fillStyle = '#38bdf8';
+  others.forEach(o => { mx.beginPath(); mx.arc(ox + (o.x + .5) * k, oy + (o.y + .5) * k, 2.2, 0, 7); mx.fill(); });
+};
+
 // ── Başlat ──
 fetch('/api/pins').then(r => r.json()).then(d => {
   const pins = (d.pins || d).filter(p => p.lat > HAL.lat[0] && p.lat < HAL.lat[1] && p.lng > HAL.lng[0] && p.lng < HAL.lng[1]);
   build(pins);
+  startPresence();
   window.__hal = { me, stalls };
   resize();
   document.getElementById('loading').remove();

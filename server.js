@@ -3875,6 +3875,36 @@ app.get('/hesap-silme', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'hesap-silme.html'));
 });
 
+// ── Sanal Hal: aynı anda gezen ziyaretçiler (bellekte, kalıcı değil) ──
+const halVisitors = new Map();   // oturum → { x, y, dir, name, at }
+const HAL_TTL = 8000, HAL_MAX = 300;
+app.post('/api/sanal/konum', (req, res) => {
+  const sid = String((req.body && req.body.sid) || '').slice(0, 40);
+  const x = Number(req.body && req.body.x), y = Number(req.body && req.body.y);
+  const now = Date.now();
+  for (const [k, v] of halVisitors) if (now - v.at > HAL_TTL) halVisitors.delete(k);
+  if (/^[a-z0-9-]{8,40}$/i.test(sid) && Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < 500 && y < 500) {
+    if (halVisitors.has(sid) || halVisitors.size < HAL_MAX) {
+      let name = 'Misafir';
+      const header = req.headers.authorization;
+      if (header) {
+        try {
+          const u = jwt.verify(header.split(' ')[1], JWT_SECRET);
+          if (u.role === 'user' && u.name) name = String(u.name).trim().split(/\s+/)[0].slice(0, 16) || 'Üye';
+        } catch {}
+      }
+      halVisitors.set(sid, { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, dir: req.body.dir < 0 ? -1 : 1, name, at: now });
+    }
+  }
+  const others = [];
+  for (const [k, v] of halVisitors) if (k !== sid) others.push({ id: k.slice(0, 8), x: v.x, y: v.y, dir: v.dir, name: v.name });
+  res.set('Cache-Control', 'no-store').json({ count: halVisitors.size, others });
+});
+app.post('/api/sanal/cikis', (req, res) => {
+  halVisitors.delete(String((req.body && req.body.sid) || ''));
+  res.json({ ok: true });
+});
+
 for (const sayfa of ['hakkimizda', 'iletisim', 'kullanim-sartlari', 'sanalofis']) {
   app.get(`/${sayfa}`, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', `${sayfa}.html`));
