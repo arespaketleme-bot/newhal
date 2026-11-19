@@ -2944,7 +2944,7 @@ function renderAdList(ads) {
     card.querySelector('[data-act="featured"]').onclick = () => setAdFeatured(ad.id, !ad.featured);
     const extendBtn = card.querySelector('[data-act="extend"]');
     if (extendBtn) extendBtn.onclick = () => setAdFeatured(ad.id, true, true);
-    card.querySelector('[data-act="toggle"]').onclick = () => toggleAd(ad.id, ad.active === false);
+    card.querySelector('[data-act="toggle"]').onclick = () => toggleAd(ad.id, ad.pending || ad.active === false, ad.pending);
     card.querySelector('[data-act="delete"]').onclick = () => deleteAd(ad.id, ad.title || 'Başlıksız');
     list.appendChild(card);
   });
@@ -2976,10 +2976,10 @@ function featuredRemainingText(until) {
   return `${left} kaldı · bitiş ${end}`;
 }
 
-async function toggleAd(id, active) {
+async function toggleAd(id, active, approving = false) {
   const res = await api(`/api/admin/ads/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ active }) });
   if (!res || !res.ok) return showToast('İlan güncellenemedi', 'error');
-  showToast(active ? 'İlan yeniden yayında' : 'İlan gizlendi', 'success');
+  showToast(approving ? '✅ İlan onaylandı, yayında' : active ? 'İlan yeniden yayında' : 'İlan gizlendi', 'success');
   loadAds();
 }
 
