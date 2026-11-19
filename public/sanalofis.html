@@ -80,6 +80,26 @@
   <a class="btn btn-dark" href="/">🗺 Harita</a>
 </div>
 <canvas class="minimap" id="mini" aria-hidden="true"></canvas>
+<div class="hal-chat" id="halChat">
+  <div class="hal-log" id="halLog"></div>
+  <form class="hal-send" id="halChatForm" autocomplete="off">
+    <input id="halMsg" maxlength="140" placeholder="Haldekilere yazın…" aria-label="Sanal hal sohbeti" />
+    <button type="submit" aria-label="Gönder">➤</button>
+  </form>
+</div>
+<style>
+  .hal-chat { position: fixed; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: min(320px, calc(100% - 130px)); z-index: 6; display: flex; flex-direction: column; gap: 6px; }
+  .hal-log { max-height: 150px; overflow-y: auto; display: none; flex-direction: column; gap: 3px; padding: 8px 10px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); font-size: 13px; }
+  .hal-chat.has .hal-log { display: flex; }
+  .log-row b { color: #86efac; margin-right: 4px; }
+  .log-row.mine b { color: #fde047; }
+  .hal-send { display: flex; gap: 6px; }
+  .hal-send input { flex: 1; min-width: 0; min-height: 42px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-size: 14px; outline: none; }
+  .hal-send button { width: 46px; border: 0; border-radius: 12px; background: var(--green); color: #052e16; font-size: 18px; font-weight: 900; cursor: pointer; }
+  .hint { display: none !important; }
+  .card { z-index: 9; }
+  @media (max-width: 640px) { .hal-log { max-height: 84px; } }
+</style>
 <div class="hint">🖱 Tıklayarak yürüyün · ⌨️ WASD / ok tuşları · Dükkanın önüne gelince bilgisi açılır</div>
 
 <div class="card" id="card" role="dialog" aria-live="polite">
@@ -262,8 +282,10 @@ function draw() {
   if (me.path.length) { const t = me.path[me.path.length - 1]; cx.strokeStyle = '#fde047'; cx.lineWidth = 2; cx.beginPath(); cx.arc(t.x * T - ox + T / 2, t.y * T - oy + T / 2, 10 + Math.sin(lastT / 150) * 2, 0, 7); cx.stroke(); }
   window.__drawOthers && window.__drawOthers(ox, oy, drawDt);
   drawPerson(me.x * T - ox + T / 2, me.y * T - oy + T / 2, me.dir < 0 ? '🚶' : '🚶‍➡️', 'Siz', me.path.length ? Math.abs(Math.sin(me.step)) * 4 : 0);
+  window.__bubbleFor && window.__bubbleFor(sid8(), me.x * T - ox + T / 2, me.y * T - oy + T / 2);
   drawMini();
 }
+function sid8() { try { return (sessionStorage.getItem('halSid') || '').slice(0, 8); } catch { return ''; } }
 function drawMini() {
   const w = mini.clientWidth, h = mini.clientHeight, k = Math.min((w - 10) / GW, (h - 10) / GH);
   const ox = (w - GW * k) / 2, oy = (h - GH * k) / 2;
@@ -371,6 +393,8 @@ q.addEventListener('keydown', e => { if (e.key === 'Enter') { const f = results.
 // ── Girdiler ──
 addEventListener('keydown', e => {
   if (chat.classList.contains('open')) { if (e.key === 'Escape') closeChat(); return; }
+  if (e.target && e.target.id === 'halMsg') return;
+  if (e.key === 'Enter') { document.getElementById('halMsg').focus(); e.preventDefault(); return; }
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(k)) { keys[k] = true; e.preventDefault(); }
   if (k === 'Escape') closeCard();
@@ -406,8 +430,9 @@ async function sendPresence() {
   try {
     const h = { 'Content-Type': 'application/json' };
     const t = token(); if (t) h.Authorization = 'Bearer ' + t;
-    const r = await fetch('/api/sanal/konum', { method: 'POST', headers: h, body: JSON.stringify({ sid, x: me.x, y: me.y, dir: me.dir }) });
+    const r = await fetch('/api/sanal/konum', { method: 'POST', headers: h, body: JSON.stringify({ sid, x: me.x, y: me.y, dir: me.dir, after: lastMsgId }) });
     const d = await r.json();
+    (d.msgs || []).forEach(addMsg);
     const seen = new Set();
     (d.others || []).forEach(o => {
       seen.add(o.id);
@@ -429,12 +454,64 @@ function startPresence() {
   const bye = () => { try { navigator.sendBeacon('/api/sanal/cikis', new Blob([JSON.stringify({ sid })], { type: 'application/json' })); } catch {} };
   addEventListener('pagehide', bye);
 }
+// ── Sohbet ──
+let lastMsgId = 0;
+const bubbles = new Map();   // kişi (ilk 8 harf) → { text, until }
+const logEl = () => document.getElementById('halLog');
+function addMsg(m) {
+  if (m.id <= lastMsgId) return;
+  lastMsgId = m.id;
+  bubbles.set(m.from, { text: m.text, until: Date.now() + 7000 });
+  const row = document.createElement('div');
+  row.className = 'log-row' + (m.from === sid.slice(0, 8) ? ' mine' : '');
+  row.innerHTML = `<b>${esc(m.name)}</b> ${esc(m.text)}`;
+  const box = logEl();
+  box.appendChild(row);
+  while (box.children.length > 40) box.firstChild.remove();
+  box.scrollTop = box.scrollHeight;
+  document.getElementById('halChat').classList.add('has');
+}
+function drawBubble(px, py, text) {
+  const t = text.length > 46 ? text.slice(0, 45) + '…' : text;
+  cx.font = '600 12.5px system-ui,sans-serif';
+  const w = Math.min(240, cx.measureText(t).width + 18), x = px - w / 2, y = py - 66;
+  cx.fillStyle = '#fff'; roundRect(cx, x, y, w, 24, 12); cx.fill();
+  cx.beginPath(); cx.moveTo(px - 6, y + 23); cx.lineTo(px, y + 31); cx.lineTo(px + 6, y + 23); cx.fill();
+  cx.fillStyle = '#0f172a'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(t, px, y + 12, 228);
+}
+window.__bubbleFor = function (key, px, py) {
+  const b = bubbles.get(key);
+  if (b && b.until > Date.now()) drawBubble(px, py, b.text);
+};
+async function sendHalMsg(e) {
+  e.preventDefault();
+  const inp = document.getElementById('halMsg');
+  const text = inp.value.trim();
+  if (!text) return;
+  const t = token();
+  if (!t) { alert('Sohbet etmek için NewHal üyesi olun. Ana sayfadan ücretsiz üye olabilirsiniz.'); return; }
+  inp.disabled = true;
+  try {
+    const r = await fetch('/api/sanal/mesaj', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify({ text, sid }) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) { inp.value = ''; addMsg(d); }
+    else if (r.status === 401) alert('Oturumunuz kapanmış. Ana sayfadan yeniden giriş yapın.');
+    else alert(d.error || 'Mesaj gönderilemedi');
+  } catch { alert('Mesaj gönderilemedi'); }
+  inp.disabled = false; inp.focus();
+}
+document.getElementById('halChatForm').addEventListener('submit', sendHalMsg);
+document.getElementById('halMsg').addEventListener('keydown', e => e.stopPropagation());
+document.getElementById('halMsg').addEventListener('focus', () => { Object.keys(keys).forEach(k => { if (k[0] !== '_') keys[k] = false; }); });
+if (!token()) document.getElementById('halMsg').placeholder = 'Sohbet için üye girişi yapın';
+
 window.__drawOthers = function (ox, oy, dt) {
   others.forEach(o => {
     const k = Math.min(1, dt * 5);
     o.x += (o.tx - o.x) * k; o.y += (o.ty - o.y) * k;
     const moving = Math.hypot(o.tx - o.x, o.ty - o.y) > .05;
     drawPerson(o.x * T - ox + T / 2, o.y * T - oy + T / 2, moving ? (o.dir < 0 ? '🚶' : '🚶‍➡️') : o.look, o.name, moving ? Math.abs(Math.sin(lastT / 90)) * 3 : 0);
+    window.__bubbleFor(o.id, o.x * T - ox + T / 2, o.y * T - oy + T / 2);
   });
 };
 window.__miniOthers = function (k, ox, oy) {

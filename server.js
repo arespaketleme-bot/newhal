@@ -3898,8 +3898,30 @@ app.post('/api/sanal/konum', (req, res) => {
   }
   const others = [];
   for (const [k, v] of halVisitors) if (k !== sid) others.push({ id: k.slice(0, 8), x: v.x, y: v.y, dir: v.dir, name: v.name });
-  res.set('Cache-Control', 'no-store').json({ count: halVisitors.size, others });
+  const after = Number(req.body && req.body.after) || 0;
+  const msgs = halMsgs.filter(m => m.id > after && now - m.at < 10 * 60 * 1000).slice(-30);
+  res.set('Cache-Control', 'no-store').json({ count: halVisitors.size, others, msgs, me: sid.slice(0, 8) });
 });
+// Sanal Hal sohbeti: yalnız üyeler yazar, son 60 mesaj bellekte tutulur
+const halMsgs = [];
+let halMsgSeq = 0;
+const halMsgLast = new Map();   // üye → son mesaj zamanı
+app.post('/api/sanal/mesaj', requireAuth, (req, res) => {
+  const text = String((req.body && req.body.text) || '').replace(/[\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 140);
+  if (!text) return res.status(400).json({ error: 'Mesaj boş' });
+  if (/https?:\/\/|www\./i.test(text)) return res.status(400).json({ error: 'Sanal halde bağlantı paylaşılamaz' });
+  const uid = String(req.user.id);
+  const now = Date.now();
+  if (now - (halMsgLast.get(uid) || 0) < 2500) return res.status(429).json({ error: 'Biraz yavaş yazın' });
+  halMsgLast.set(uid, now);
+  const sid = String((req.body && req.body.sid) || '').slice(0, 8);
+  const name = String(req.user.name || 'Üye').trim().split(/\s+/)[0].slice(0, 16) || 'Üye';
+  const msg = { id: ++halMsgSeq, from: sid, name, text, at: now };
+  halMsgs.push(msg);
+  if (halMsgs.length > 60) halMsgs.shift();
+  res.json(msg);
+});
+
 app.post('/api/sanal/cikis', (req, res) => {
   halVisitors.delete(String((req.body && req.body.sid) || ''));
   res.json({ ok: true });
