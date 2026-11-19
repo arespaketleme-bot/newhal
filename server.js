@@ -4073,61 +4073,72 @@ async function getPano() {
   const cut = Date.now() - PANO_DAYS * DAY_MS;
   return (Array.isArray(list) ? list : []).filter(p => Date.parse(p.at) > cut);
 }
-const panoPublic = (list, uid) => list.map(p => ({ id: p.id, name: p.name, text: p.text, at: p.at, mine: !!uid && p.uid === uid,
-  replies: (p.replies || []).map(r => ({ name: r.name, text: r.text, at: r.at, mine: !!uid && r.uid === uid })) }));
+const panoPublic = (list, who) => list.map(p => ({ id: p.id, name: p.name, text: p.text, at: p.at, mine: !!who && p.who === who,
+  replies: (p.replies || []).map(r => ({ name: r.name, text: r.text, at: r.at, mine: !!who && r.who === who })) }));
+// Panoda yazan: üye (u12) ya da misafir oturumu (s...)
+function panoWho(req) {
+  try { const h = req.headers.authorization; if (h) { const u = jwt.verify(h.split(' ')[1], JWT_SECRET); if (u.role === 'user' && u.id) return { who: 'u' + u.id, uid: u.id, name: String(u.name || 'Üye').trim().split(/\s+/)[0].slice(0, 16) || 'Üye' }; if (u.role === 'admin') return { who: 'admin', admin: true, name: 'Yönetim' }; } } catch {}
+  const sid = String((req.body && req.body.sid) || req.query.sid || '');
+  return /^[a-z0-9-]{8,40}$/i.test(sid) ? { who: 's' + sid, uid: null, name: 'Misafir' } : null;
+}
 function viewerUid(req) {
   try { const h = req.headers.authorization; if (h) { const u = jwt.verify(h.split(' ')[1], JWT_SECRET); if (u.role === 'user') return u.id; } } catch {}
   return null;
 }
 const panoLast = new Map();
 app.get('/api/sanal/pano', async (req, res) => {
-  res.set('Cache-Control', 'no-store').json(panoPublic(await getPano(), viewerUid(req)));
+  const w = panoWho(req);
+  res.set('Cache-Control', 'no-store').json(panoPublic(await getPano(), w && w.who));
 });
-app.post('/api/sanal/pano', requireAuth, async (req, res) => {
-  if (req.user.role !== 'user') return res.status(403).json({ error: 'Panoya yazmak için üye girişi yapın' });
+app.post('/api/sanal/pano', async (req, res) => {
+  const w = panoWho(req);
+  if (!w) return res.status(400).json({ error: 'Sayfayı yenileyip tekrar deneyin' });
   const text = cleanLine(req.body.text, 200);
   if (text.length < 5) return res.status(400).json({ error: 'Ne aradığınızı yazın' });
   if (/https?:\/\/|www\./i.test(text)) return res.status(400).json({ error: 'Bağlantı paylaşılamaz' });
-  const k = 'p' + req.user.id, now = Date.now();
-  if (now - (panoLast.get(k) || 0) < 60 * 1000) return res.status(429).json({ error: 'Biraz bekleyip tekrar yazın' });
-  panoLast.set(k, now);
+  const now = Date.now(), keys = ['p' + w.who, 'pip' + getIp(req)];
+  if (keys.some(k => now - (panoLast.get(k) || 0) < 60 * 1000)) return res.status(429).json({ error: 'Biraz bekleyip tekrar yazın' });
+  keys.forEach(k => panoLast.set(k, now));
+  if (panoLast.size > 5000) panoLast.clear();
   const list = await getPano();
-  const name = String(req.user.name || 'Üye').trim().split(/\s+/)[0].slice(0, 16) || 'Üye';
-  list.unshift({ id: crypto.randomUUID(), uid: req.user.id, name, text, at: new Date().toISOString(), replies: [] });
+  const name = w.name;
+  list.unshift({ id: crypto.randomUUID(), who: w.who, uid: w.uid, name, text, at: new Date().toISOString(), replies: [] });
   if (!(await db.savePrivateJson(PANO_FILE, list.slice(0, PANO_MAX)))) return res.status(500).json({ error: 'Kaydedilemedi' });
   const msg = { id: ++halMsgSeq, from: String(req.body.sid || '').slice(0, 8), name, text: `📌 Panoya yazdı: ${text}`.slice(0, 200), at: now, pano: true };
   halMsgs.push(msg); if (halMsgs.length > 60) halMsgs.shift();
-  res.json(panoPublic(list.slice(0, PANO_MAX), req.user.id));
+  res.json(panoPublic(list.slice(0, PANO_MAX), w.who));
 });
-app.post('/api/sanal/pano/:id/cevap', requireAuth, async (req, res) => {
-  if (req.user.role !== 'user') return res.status(403).json({ error: 'Cevap yazmak için üye girişi yapın' });
+app.post('/api/sanal/pano/:id/cevap', async (req, res) => {
+  const w = panoWho(req);
+  if (!w) return res.status(400).json({ error: 'Sayfayı yenileyip tekrar deneyin' });
   const text = cleanLine(req.body.text, 200);
   if (text.length < 2) return res.status(400).json({ error: 'Cevap boş' });
   if (/https?:\/\/|www\./i.test(text)) return res.status(400).json({ error: 'Bağlantı paylaşılamaz' });
-  const k = 'c' + req.user.id, now = Date.now();
-  if (now - (panoLast.get(k) || 0) < 15 * 1000) return res.status(429).json({ error: 'Biraz bekleyip tekrar yazın' });
-  panoLast.set(k, now);
+  const now = Date.now(), keys = ['c' + w.who, 'cip' + getIp(req)];
+  if (keys.some(k => now - (panoLast.get(k) || 0) < 15 * 1000)) return res.status(429).json({ error: 'Biraz bekleyip tekrar yazın' });
+  keys.forEach(k => panoLast.set(k, now));
   const list = await getPano();
   const post = list.find(p => p.id === req.params.id);
   if (!post) return res.status(404).json({ error: 'İlan bulunamadı' });
   post.replies = (post.replies || []).slice(-29);
-  const name = String(req.user.name || 'Üye').trim().split(/\s+/)[0].slice(0, 16) || 'Üye';
-  post.replies.push({ uid: req.user.id, name, text, at: new Date().toISOString() });
+  const name = w.name;
+  post.replies.push({ who: w.who, uid: w.uid, name, text, at: new Date().toISOString() });
   if (!(await db.savePrivateJson(PANO_FILE, list))) return res.status(500).json({ error: 'Kaydedilemedi' });
-  if (post.uid && post.uid !== req.user.id) {
-    db.supabase.from('user_notifications').insert({ recipient_id: post.uid, actor_id: req.user.id, type: 'announcement',
+  if (post.uid && post.uid !== w.uid) {
+    db.supabase.from('user_notifications').insert({ recipient_id: post.uid, actor_id: w.uid || null, type: 'announcement',
       title: '📌 Sanal Hal panosundaki ilanınıza cevap geldi', body: `${name}: ${text}`.slice(0, 300) }).then(() => {}, () => {});
   }
-  res.json(panoPublic(list, req.user.id));
+  res.json(panoPublic(list, w.who));
 });
-app.post('/api/sanal/pano/:id/sil', requireAuth, async (req, res) => {
+app.post('/api/sanal/pano/:id/sil', async (req, res) => {
+  const w = panoWho(req);
   const list = await getPano();
   const post = list.find(p => p.id === req.params.id);
   if (!post) return res.status(404).json({ error: 'İlan bulunamadı' });
-  if (post.uid !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ error: 'Yalnız kendi ilanınızı silebilirsiniz' });
+  if (!w || (post.who !== w.who && !w.admin)) return res.status(403).json({ error: 'Yalnız kendi ilanınızı silebilirsiniz' });
   const next = list.filter(p => p !== post);
   if (!(await db.savePrivateJson(PANO_FILE, next))) return res.status(500).json({ error: 'Silinemedi' });
-  res.json(panoPublic(next, req.user.id));
+  res.json(panoPublic(next, w.who));
 });
 
 app.post('/api/sanal/cikis', (req, res) => {
