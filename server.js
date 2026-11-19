@@ -3933,6 +3933,10 @@ app.post('/api/sanal/mesaj', (req, res) => {
 const KATIP_FILE = 'sanal-katip.json';
 app.get('/api/sanal/katip', async (req, res) => {
   const saved = await db.getPrivateJson(KATIP_FILE).catch(() => null);
+  // Yönetim ilan yerine doğrudan bir resim (örn. günlük fiyat listesi) koyabilir
+  if (saved && saved.image) {
+    return res.set('Cache-Control', 'no-store').json({ ad: { id: null, title: saved.title || 'Günün hikayesi', body: saved.body || '', images: [saved.image] }, chosen: true, adId: null, image: true, at: saved.at });
+  }
   const id = saved && saved.adId;
   const ads = await db.getAds();
   let ad = id && ads.find(a => a.id === id && a.active !== false && !a.pending);

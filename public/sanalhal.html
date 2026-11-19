@@ -131,7 +131,7 @@
   .story.open { display: flex; }
   .story-box { position: relative; width: min(440px, 100%); max-height: 92vh; overflow: auto; background: #0f172a; border: 1px solid var(--line); border-radius: 20px; }
   .story-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px 10px 16px; font-weight: 800; }
-  .story-media { background: #000; aspect-ratio: 4 / 5; display: grid; place-items: center; }
+  .story-media { background: #000; aspect-ratio: 9 / 14; display: grid; place-items: center; }
   .story-media img, .story-media video, .story-media iframe { width: 100%; height: 100%; object-fit: contain; border: 0; display: block; }
   .story-empty { font-size: 60px; }
   .story-nav { position: absolute; top: 45%; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; font-size: 24px; cursor: pointer; }
@@ -456,6 +456,7 @@ function draw() {
   stalls.forEach(s => drawStall(s, ox, oy));
   drawYard(ox, oy);
   drawKatip(ox, oy);
+  petsDraw(ox, oy);
   drawPerson(hale.x * T - ox + T / 2, hale.y * T - oy + T / 2, '👩‍💼', 'Hale · Bana dokunun', Math.sin(lastT / 300) * 2);
   // hedef işareti
   if (me.path.length) { const t = me.path[me.path.length - 1]; cx.strokeStyle = '#fde047'; cx.lineWidth = 2; cx.beginPath(); cx.arc(t.x * T - ox + T / 2, t.y * T - oy + T / 2, 10 + Math.sin(lastT / 150) * 2, 0, 7); cx.stroke(); }
@@ -512,7 +513,7 @@ function update(dt) {
 }
 function loop(t) {
   const dt = Math.min(.05, (t - lastT) / 1000 || 0); lastT = t;
-  drawDt = dt; update(dt); draw();
+  drawDt = dt; update(dt); petsUpdate(dt); draw();
   if (document.hidden) setTimeout(() => loop(performance.now()), 50); else requestAnimationFrame(loop);
 }
 
@@ -583,6 +584,8 @@ addEventListener('blur', () => { Object.keys(keys).forEach(k => { if (k[0] !== '
 cv.addEventListener('click', e => {
   const ox = cam.x - innerWidth / 2 + T / 2, oy = cam.y - innerHeight / 2 + T / 2;
   const tx = Math.floor((e.clientX + ox) / T), ty = Math.floor((e.clientY + oy) / T);
+  const pet = petAt((e.clientX + ox) / T, (e.clientY + oy) / T);
+  if (pet) { petSpeak(pet); return; }
   if (Math.abs(tx - hale.x) <= 1 && Math.abs(ty - hale.y) <= 1) { openChat(); return; }
   if (tx >= 11 && tx <= 13 && ty >= GH - 7 && ty <= GH - 6) { openKatip(); return; }
   const s = stalls.find(s => tx >= s.x && tx < s.x + s.w && ty >= s.y && ty < s.y + s.h);
@@ -712,6 +715,54 @@ window.__miniOthers = function (k, ox, oy) {
   others.forEach(o => { mx.beginPath(); mx.arc(ox + (o.x + .5) * k, oy + (o.y + .5) * k, 2.2, 0, 7); mx.fill(); });
 };
 
+// ── Halde gezen kedi ve köpek: dokununca ses çıkarır ──
+const pets = [
+  { e: '🐈', say: 'Miyav! 🐾', voice: 'miyav', x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 1.6 },
+  { e: '🐕', say: 'Hav hav! 🐶', voice: 'hav hav', x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 2.4 },
+];
+function petsInit() {
+  pets.forEach((p, i) => { p.x = Math.floor(GW / 2) - 4 + i * 8; p.y = GH - 2; });
+}
+function petsUpdate(dt) {
+  pets.forEach(p => {
+    if (p.talk > Date.now()) return;            // konuşurken durur
+    if (!p.path.length) {
+      if ((p.wait -= dt) > 0) return;
+      for (let tries = 0; tries < 8 && !p.path.length; tries++) {
+        const tx = Math.max(1, Math.min(GW - 2, Math.round(p.x + (Math.random() - .5) * 16)));
+        const ty = Math.max(1, Math.min(GH - 1, Math.round(p.y + (Math.random() - .5) * 16)));
+        p.path = findPath(Math.round(p.x), Math.round(p.y), tx, ty) || [];
+      }
+      p.wait = 1 + Math.random() * 3;
+      return;
+    }
+    const t = p.path[0], dx = t.x - p.x, dy = t.y - p.y, d = Math.hypot(dx, dy), sp = p.sp * dt;
+    if (d <= sp) { p.x = t.x; p.y = t.y; p.path.shift(); } else { p.x += dx / d * sp; p.y += dy / d * sp; }
+    if (Math.abs(dx) > .01) p.dir = Math.sign(dx);
+  });
+}
+function petsDraw(ox, oy) {
+  pets.forEach(p => {
+    const px = p.x * T - ox + T / 2, py = p.y * T - oy + T / 2;
+    if (px < -40 || py < -40 || px > innerWidth + 40 || py > innerHeight + 40) return;
+    cx.fillStyle = 'rgba(0,0,0,.3)'; cx.beginPath(); cx.ellipse(px, py + 10, 10, 4, 0, 0, 7); cx.fill();
+    cx.save(); cx.translate(px, py); if (p.dir > 0) cx.scale(-1, 1);
+    cx.font = '24px "Segoe UI Emoji","Apple Color Emoji",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText(p.e, 0, p.path.length ? -Math.abs(Math.sin(lastT / 80)) * 2 : 0);
+    cx.restore();
+    if (p.talk > Date.now()) drawBubble(px, py + 24, p.say);
+  });
+}
+function petAt(wx, wy) { return pets.find(p => Math.hypot(p.x + .5 - wx, p.y + .5 - wy) < .8); }
+function petSpeak(p) {
+  p.talk = Date.now() + 2200; p.path = [];
+  try {
+    const u = new SpeechSynthesisUtterance(p.voice);
+    u.lang = 'tr-TR'; u.pitch = p.e === '🐈' ? 1.9 : .6; u.rate = p.e === '🐈' ? 1.1 : 1.3;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  } catch {}
+}
+
 // ── Katibin hikayesi ──
 let katipStory = null, storyIdx = 0;
 fetch('/api/sanal/katip').then(r => r.json()).then(d => { katipStory = d.ad || null; }).catch(() => {});
@@ -739,7 +790,9 @@ window.openKatip = function () {
   storyIdx = 0;
   document.getElementById('storyTitle').innerHTML = maskPhones(a.title || 'Günün hikayesi');
   document.getElementById('storyBody').innerHTML = maskPhones(a.body || '').replace(/\n/g, '<br>');
-  document.getElementById('storyLink').href = `/?ilan=${encodeURIComponent(a.id)}`;
+  const link = document.getElementById('storyLink');
+  link.hidden = !a.id;
+  if (a.id) link.href = `/?ilan=${encodeURIComponent(a.id)}`;
   renderStory();
   document.getElementById('story').classList.add('open');
   try { window.dataLayer.push({ event: 'sanal_hal_katip', ilan: a.id }); } catch {}
@@ -751,6 +804,7 @@ window.storyStep = function (d) { storyIdx += d; renderStory(); };
 fetch('/api/pins').then(r => r.json()).then(d => {
   const pins = (d.pins || d).filter(p => p.lat > HAL.lat[0] && p.lat < HAL.lat[1] && p.lng > HAL.lng[0] && p.lng < HAL.lng[1]);
   build(pins);
+  petsInit();
   startPresence();
   window.__hal = { me, stalls };
   resize();
