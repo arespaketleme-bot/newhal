@@ -252,6 +252,8 @@ function drawStall(s, ox, oy) {
 }
 // ── Sol altta yükleme alanı: hamallar kasaları palete dizer, forklift tıra yükler ──
 const YARD_CYCLE = 16, SLOTS = 5;
+const HAMAL_LINES = ['Acelemiz var, bizi oyalama! 😤', 'Çekil abi, kasa geliyor! 📦', 'Tır bekliyor, oyalama bizi!', 'Yolu kapatma kardeşim! 🙄', 'Şimdi işimiz var, sonra konuşuruz!', 'Mal bozulacak, hadi hadi!'];
+const hamalTalk = [{ n: 0 }, { n: 1 }];
 const lerp = (a, b, k) => a + (b - a) * Math.max(0, Math.min(1, k));
 function drawCrate(x, y, sz, emoji) {
   cx.fillStyle = '#a16207'; cx.fillRect(x - sz / 2, y - sz / 2, sz, sz);
@@ -343,7 +345,13 @@ function drawYard(ox, oy) {
       x = carry ? lerp(pileX, palX + .9, k * 2) : lerp(palX + .9, pileX, (k - .5) * 2);
     }
     const px = W(x), py = H(walkY + idx * .35);
-    drawPerson(px, py, face, idx ? 'Hamal' : 'Hamal', (q >= 0 && q < 8) ? Math.abs(Math.sin(t * 9)) * 3 : 0);
+    drawPerson(px, py, face, 'Hamal', (q >= 0 && q < 8) ? Math.abs(Math.sin(t * 9)) * 3 : 0);
+    // oyuncu yanına gelince söylenir
+    const st = hamalTalk[idx];
+    if (Math.hypot(me.x - x, me.y - (walkY + idx * .35)) < 1.7) {
+      if (!st.until || (st.until < Date.now() && Date.now() - st.until > 3500)) { st.text = HAMAL_LINES[(st.n++ + idx * 3) % HAMAL_LINES.length]; st.until = Date.now() + 3200; }
+    }
+    if (st.until > Date.now()) drawBubble(px, py, st.text);
     if (carry) drawCrate(px + 12, py - 6, T * .42, fruit);
   });
   // forklift
@@ -402,7 +410,7 @@ function draw() {
   window.__bubbleFor && window.__bubbleFor(sid8(), me.x * T - ox + T / 2, me.y * T - oy + T / 2);
   drawMini();
 }
-function sid8() { try { return (sessionStorage.getItem('halSid') || '').slice(0, 8); } catch { return ''; } }
+function sid8() { return typeof sid === 'string' ? sid.slice(0, 8) : ''; }
 function drawMini() {
   const w = mini.clientWidth, h = mini.clientHeight, k = Math.min((w - 10) / GW, (h - 10) / GH);
   const ox = (w - GW * k) / 2, oy = (h - GH * k) / 2;
@@ -537,8 +545,8 @@ addEventListener('resize', resize);
 // ── Aynı anda gezen diğer ziyaretçiler ──
 const others = new Map();   // id → { x, y, tx, ty, dir, name }
 let sid = '';
-try { sid = sessionStorage.getItem('halSid') || ''; } catch {}
-if (!sid) { sid = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()).slice(0, 36); try { sessionStorage.setItem('halSid', sid); } catch {} }
+// Her sekme ayrı ziyaretçidir (kopyalanan sekmeler aynı kimliği paylaşmasın)
+sid = (crypto.randomUUID ? crypto.randomUUID() : 'h' + String(Math.random()).slice(2) + Date.now()).slice(0, 36);
 function token() { try { return localStorage.getItem('userToken') || ''; } catch { return ''; } }
 let presenceBusy = false;
 async function sendPresence() {
@@ -578,7 +586,7 @@ const logEl = () => document.getElementById('halLog');
 function addMsg(m) {
   if (m.id <= lastMsgId) return;
   lastMsgId = m.id;
-  bubbles.set(m.from, { text: m.text, until: Date.now() + 7000 });
+  bubbles.set(m.from, { text: m.text, until: Date.now() + 8000 });
   const row = document.createElement('div');
   row.className = 'log-row' + (m.from === sid.slice(0, 8) ? ' mine' : '');
   row.innerHTML = `<b>${esc(m.name)}</b> ${esc(m.text)}`;
