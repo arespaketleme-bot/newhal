@@ -255,7 +255,8 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
   const phoneNumbers = await accounts.getAdminPhones(users.map(user => user.id));
   res.json(users.map(user => {
     const pointsBalance = balances.get(user.id) || 0;
-    return { ...user, phone_number: phoneNumbers[user.id] || '', points_balance: pointsBalance, level: Math.floor(pointsBalance / 1000) + 1 };
+    const { googleId, google_id, ...rest } = user;
+    return { ...rest, phone_number: phoneNumbers[user.id] || '', points_balance: pointsBalance, level: Math.floor(pointsBalance / 1000) + 1 };
   }));
 });
 
@@ -3057,6 +3058,20 @@ app.put('/api/admin/whatsapp-template', requireAdmin, async (req, res) => {
   const template = String(req.body.template || '').trim().slice(0, WA_TEMPLATE_MAX);
   if (!template) return res.status(400).json({ error: 'Şablon boş olamaz' });
   if (!(await db.savePrivateJson(WA_TEMPLATE_FILE, { template, updated_at: new Date().toISOString() }))) {
+    return res.status(500).json({ error: 'Şablon kaydedilemedi' });
+  }
+  res.json({ template });
+});
+
+const WA_WELCOME_FILE = 'whatsapp_hosgeldin.json';
+app.get('/api/admin/whatsapp-welcome-template', requireAdmin, async (req, res) => {
+  const saved = await db.getPrivateJson(WA_WELCOME_FILE);
+  res.json({ template: saved && saved.template ? saved.template : null });
+});
+app.put('/api/admin/whatsapp-welcome-template', requireAdmin, async (req, res) => {
+  const template = String(req.body.template || '').trim().slice(0, WA_TEMPLATE_MAX);
+  if (!template) return res.status(400).json({ error: 'Şablon boş olamaz' });
+  if (!(await db.savePrivateJson(WA_WELCOME_FILE, { template, updated_at: new Date().toISOString() }))) {
     return res.status(500).json({ error: 'Şablon kaydedilemedi' });
   }
   res.json({ template });
