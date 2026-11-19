@@ -3934,7 +3934,10 @@ app.post('/api/sanal/cikis', (req, res) => {
   res.json({ ok: true });
 });
 
-for (const sayfa of ['hakkimizda', 'iletisim', 'kullanim-sartlari', 'sanalofis']) {
+// Eski adres yeni adrese yönlenir
+app.get('/sanalofis', (req, res) => res.redirect(301, '/sanalhal' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '')));
+
+for (const sayfa of ['hakkimizda', 'iletisim', 'kullanim-sartlari', 'sanalhal']) {
   app.get(`/${sayfa}`, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', `${sayfa}.html`));
   });
