@@ -953,7 +953,8 @@ function petsInit() {
   const pil = pets.find(p => p.label === 'Nohut Pilavcı'); pil.at = [7, -2];
   // sabit tezgahlar: girişin iki yanına dizilir, tezgah karoları yürünmez
   // en sağ kenar: yukarıdan aşağı, her biri bir koridorun ağzında
-  pets.filter(p => p.right).forEach((p, i) => {
+  const RIGHT_ORDER = ['Elmacı', 'Çilekçi', 'Marulcu', 'Patatesçi', 'Cevizci'];
+  pets.filter(p => p.right).sort((a, b) => RIGHT_ORDER.indexOf(a.label) - RIGHT_ORDER.indexOf(b.label)).forEach((p, i) => {
     p.x = GW - 2; p.y = AISLE + i * (STALL_D * 2 + AISLE) + STALL_D * 2 + 1;
     if (p.y >= GH - 1) p.y = GH - 3 - i;
     grid[p.y][p.x] = 1; grid[p.y][p.x - 1] = 1;
