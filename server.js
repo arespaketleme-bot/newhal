@@ -3875,7 +3875,7 @@ app.get('/hesap-silme', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'hesap-silme.html'));
 });
 
-for (const sayfa of ['hakkimizda', 'iletisim', 'kullanim-sartlari']) {
+for (const sayfa of ['hakkimizda', 'iletisim', 'kullanim-sartlari', 'sanalofis']) {
   app.get(`/${sayfa}`, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', `${sayfa}.html`));
   });

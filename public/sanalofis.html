@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Sanal Hal: Mersin Hal'i Gezin | NewHal</title>
+<meta name="description" content="Mersin Hal Kompleksi'ni sanal olarak gezin. Komisyoncu ve tüccar dükkanlarının önünden geçin, aradığınız işletmeyi karşılama görevlimiz Hale'ye sorun." />
+<link rel="canonical" href="https://newhal.com/sanalofis" />
+<meta property="og:title" content="Sanal Hal | NewHal" />
+<meta property="og:description" content="Mersin Hal'i ekrandan gezin, dükkanlara uğrayın, tek dokunuşla arayın." />
+<meta name="theme-color" content="#0b1220" />
+<link rel="icon" href="/favicon.ico" />
+<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-NQ84M4R9"></script>
+<script>window.dataLayer = window.dataLayer || []; window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });</script>
+<style>
+  :root { --bg: #0b1220; --panel: rgba(15, 23, 42, .92); --line: rgba(148, 163, 184, .25); --text: #e5e7eb; --muted: #94a3b8; --green: #22c55e; --orange: #f97316; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: pointer; }
+  .top { position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); left: 10px; right: 10px; display: flex; gap: 8px; align-items: center; z-index: 5; pointer-events: none; }
+  .top > * { pointer-events: auto; }
+  .brand { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); text-decoration: none; color: var(--text); font-weight: 800; }
+  .brand b { color: #86efac; }
+  .status { padding: 8px 12px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); font-size: 13px; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .status i { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); flex-shrink: 0; }
+  .spacer { flex: 1; }
+  .btn { border: 0; border-radius: 12px; padding: 10px 14px; font-weight: 800; font-size: 14px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; min-height: 42px; }
+  .btn-orange { background: linear-gradient(135deg, #f59e0b, #f97316); color: #1a0f00; }
+  .btn-dark { background: var(--panel); color: var(--text); border: 1px solid var(--line); }
+  .btn-green { background: var(--green); color: #052e16; }
+  .btn-wa { background: #25D366; color: #053b1d; }
+  .hint { position: fixed; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); font-size: 12.5px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); padding: 7px 11px; border-radius: 10px; z-index: 4; }
+  .minimap { position: fixed; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: 150px; height: 190px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); z-index: 4; }
+  .card { position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 140%); width: min(440px, calc(100% - 24px)); background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 16px; z-index: 8; transition: transform .25s ease; backdrop-filter: blur(10px); box-shadow: 0 20px 50px rgba(0,0,0,.45); }
+  .card.open { transform: translate(-50%, 0); }
+  .card h3 { margin: 0 0 4px; font-size: 18px; padding-right: 30px; }
+  .card .meta { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+  .card .sells { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .card .sells span { font-size: 12.5px; padding: 4px 9px; border-radius: 999px; background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.3); }
+  .card .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .card .acts .btn { flex: 1; justify-content: center; }
+  .x { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border-radius: 50%; border: 0; background: rgba(148,163,184,.15); color: var(--text); font-size: 18px; cursor: pointer; }
+  .chat { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(2,6,23,.6); z-index: 10; padding: 16px; }
+  .chat.open { display: flex; }
+  .chat-box { width: min(460px, 100%); max-height: 86vh; display: flex; flex-direction: column; background: #0f172a; border: 1px solid var(--line); border-radius: 20px; overflow: hidden; }
+  .chat-head { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .chat-head .av { width: 46px; height: 46px; border-radius: 50%; background: linear-gradient(135deg, #22c55e, #0ea5e9); display: grid; place-items: center; font-size: 26px; }
+  .chat-head small { color: var(--muted); display: block; }
+  .bubble { margin: 14px 16px 6px; padding: 12px 14px; background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.25); border-radius: 4px 16px 16px 16px; font-size: 14.5px; line-height: 1.45; }
+  .quick { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 16px; }
+  .quick button { border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--text); padding: 8px 12px; border-radius: 999px; font-size: 13px; cursor: pointer; font-weight: 600; }
+  .search { padding: 8px 16px; }
+  .search input { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: rgba(0,0,0,.25); color: var(--text); font-size: 15px; outline: none; }
+  .results { overflow: auto; padding: 4px 8px 14px; }
+  .res { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; border: 0; background: transparent; color: var(--text); padding: 10px 8px; border-radius: 12px; cursor: pointer; font-size: 14px; }
+  .res:hover { background: rgba(255,255,255,.06); }
+  .res small { color: var(--muted); display: block; }
+  .res .ic { font-size: 22px; width: 30px; text-align: center; }
+  .loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 20; font-weight: 700; color: var(--muted); }
+  @media (max-width: 640px) {
+    .status { display: none; }
+    .brand span.t { display: none; }
+    .hint { display: none; }
+    .minimap { width: 96px; height: 122px; top: calc(64px + env(safe-area-inset-top, 0px)); bottom: auto; }
+    .top .btn { padding: 9px 11px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">🥬 Hal açılıyor…</div>
+<canvas id="world" aria-label="Sanal Mersin Hal haritası"></canvas>
+<div class="top">
+  <a class="brand" href="/" title="NewHal ana sayfa">🥕 <span class="t">New<b>Hal</b> · Sanal Hal</span></a>
+  <div class="status"><i></i><span id="statusTxt">Hal açık · Hale girişte sizi bekliyor</span></div>
+  <div class="spacer"></div>
+  <button class="btn btn-orange" type="button" onclick="openChat()">🙋‍♀️ Hale'ye sor</button>
+  <a class="btn btn-dark" href="/">🗺 Harita</a>
+</div>
+<canvas class="minimap" id="mini" aria-hidden="true"></canvas>
+<div class="hint">🖱 Tıklayarak yürüyün · ⌨️ WASD / ok tuşları · Dükkanın önüne gelince bilgisi açılır</div>
+
+<div class="card" id="card" role="dialog" aria-live="polite">
+  <button class="x" type="button" aria-label="Kapat" onclick="closeCard()">×</button>
+  <h3 id="cTitle"></h3>
+  <div class="meta" id="cMeta"></div>
+  <div class="sells" id="cSells"></div>
+  <div class="acts" id="cActs"></div>
+</div>
+
+<div class="chat" id="chat" onclick="if(event.target===this)closeChat()">
+  <div class="chat-box">
+    <div class="chat-head">
+      <div class="av">👩‍💼</div>
+      <div style="flex:1"><b>Hale</b><small>Karşılama görevlisi · çevrimiçi</small></div>
+      <button class="x" style="position:static" type="button" aria-label="Kapat" onclick="closeChat()">×</button>
+    </div>
+    <div class="bubble" id="haleSay">Hoş geldiniz! 👋 Ben Hale. Mersin Hal'inde kimi ya da ne arıyorsunuz? Yazın, sizi dükkanın önüne götüreyim.</div>
+    <div class="quick" id="quick"></div>
+    <div class="search"><input id="q" type="search" placeholder="Firma adı ya da ürün: domates, limon, Akdeniz…" autocomplete="off" /></div>
+    <div class="results" id="results"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const T = 40;                       // bir karonun piksel boyu
+const HAL = { lat: [36.7, 36.9], lng: [34.5, 34.7] };   // Mersin Hal Kompleksi çevresi
+const ZONES = [
+  { cat: 'Komisyoncu', label: 'Komisyoncular', color: '#16a34a' },
+  { cat: 'Tüccar', label: 'Tüccarlar', color: '#ea580c' },
+  { cat: 'Manav', label: 'Manavlar', color: '#65a30d' },
+  { cat: 'Market', label: 'Marketler', color: '#0284c7' },
+  { cat: 'Ambalaj & Kasa', label: 'Ambalaj & Kasa', color: '#a16207' },
+  { cat: 'Nakliye & Lojistik', label: 'Nakliye', color: '#7c3aed' },
+  { cat: 'Restoran', label: 'Lokantalar', color: '#dc2626' },
+  { cat: 'Banka', label: 'Bankalar', color: '#0f766e' },
+];
+const PRODUCE = ['🍅','🥒','🫑','🍋','🍊','🥔','🧅','🍆','🥬','🍉','🍌','🍇','🍓','🥕','🌶️','🍏','🥦','🍑'];
+const STALL_W = 3, STALL_D = 2, PER_ROW = 12, AISLE = 3, CROSS = 3, MARGIN = 2;
+
+let stalls = [], grid, GW, GH, cats = {};
+const me = { x: 0, y: 0, path: [], dir: 1, step: 0 };
+const hale = { x: 0, y: 0 };
+let cam = { x: 0, y: 0 }, near = null, dismissed = null, openId = null, keys = {}, lastT = 0;
+const cv = document.getElementById('world'), cx = cv.getContext('2d');
+const mini = document.getElementById('mini'), mx = mini.getContext('2d');
+const hash = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function stallX(col) { return MARGIN + col * STALL_W + (col >= PER_ROW / 2 ? CROSS : 0); }
+
+function build(pins) {
+  const list = [];
+  ZONES.forEach(z => {
+    pins.filter(p => p.category === z.cat).sort((a, b) => (b.verified ? 1 : 0) - (a.verified ? 1 : 0) || (b.level || 0) - (a.level || 0) || a.title.localeCompare(b.title, 'tr'))
+      .forEach(p => list.push({ p, z }));
+  });
+  // Bloklar: koridor, üst sıra (yukarı bakar), alt sıra (aşağı bakar), koridor...
+  const sides = Math.ceil(list.length / PER_ROW);
+  const blocks = Math.ceil(sides / 2);
+  GW = MARGIN * 2 + PER_ROW * STALL_W + CROSS;
+  GH = AISLE + blocks * (STALL_D * 2 + AISLE) + 6;   // altta giriş meydanı
+  grid = Array.from({ length: GH }, () => new Uint8Array(GW));   // 0 yürünür, 1 dükkan
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) if (x === 0 || x === GW - 1 || y === 0) grid[y][x] = 1;
+  list.forEach((item, i) => {
+    const side = Math.floor(i / PER_ROW), col = i % PER_ROW;
+    const block = Math.floor(side / 2), up = side % 2 === 0;
+    const top = AISLE + block * (STALL_D * 2 + AISLE) + (up ? 0 : STALL_D);
+    const x = stallX(col);
+    const s = { ...item, x, y: top, w: STALL_W, h: STALL_D, up,
+      // dükkanın önündeki durma noktası (koridorda)
+      fx: x + 1, fy: up ? top - 1 : top + STALL_D,
+      produce: [0, 1, 2].map(k => PRODUCE[hash(item.p.title + k) % PRODUCE.length]) };
+    stalls.push(s);
+    for (let yy = top; yy < top + STALL_D; yy++) for (let xx = x; xx < x + STALL_W; xx++) grid[yy][xx] = 1;
+  });
+  // Bölge başlıkları için ilk dükkanlar
+  stalls.forEach(s => { if (!cats[s.z.cat]) cats[s.z.cat] = s; });
+  hale.x = Math.floor(GW / 2) + 2; hale.y = GH - 3;
+  grid[hale.y][hale.x] = 1;
+  me.x = Math.floor(GW / 2); me.y = GH - 2;
+  cam.x = me.x * T; cam.y = me.y * T;
+}
+
+// ── Yol bulma (karolar üzerinde genişlik öncelikli arama) ──
+function findPath(sx, sy, tx, ty) {
+  if (tx < 0 || ty < 0 || tx >= GW || ty >= GH || grid[ty][tx]) return null;
+  const prev = new Int32Array(GW * GH).fill(-1), q = [sy * GW + sx];
+  prev[q[0]] = q[0];
+  for (let h = 0; h < q.length; h++) {
+    const c = q[h]; if (c === ty * GW + tx) break;
+    const x = c % GW, y = (c / GW) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy, n = ny * GW + nx;
+      if (nx < 0 || ny < 0 || nx >= GW || ny >= GH || grid[ny][nx] || prev[n] !== -1) continue;
+      prev[n] = c; q.push(n);
+    }
+  }
+  const end = ty * GW + tx; if (prev[end] === -1) return null;
+  const out = []; for (let c = end; c !== sy * GW + sx; c = prev[c]) out.unshift({ x: c % GW, y: (c / GW) | 0 });
+  return out;
+}
+function walkTo(tx, ty) {
+  const p = findPath(Math.round(me.x), Math.round(me.y), tx, ty);
+  if (p) { me.path = p; closeCard(); }
+  return !!p;
+}
+function goStall(s) {
+  closeChat();
+  if (walkTo(s.fx, s.fy)) document.getElementById('statusTxt').textContent = `${s.p.title} dükkanına gidiyorsunuz…`;
+}
+
+// ── Çizim ──
+function resize() {
+  const r = devicePixelRatio || 1;
+  cv.width = innerWidth * r; cv.height = innerHeight * r; cx.setTransform(r, 0, 0, r, 0, 0);
+  mini.width = mini.clientWidth * r; mini.height = mini.clientHeight * r; mx.setTransform(r, 0, 0, r, 0, 0);
+}
+function roundRect(c, x, y, w, h, r) { c.beginPath(); c.roundRect ? c.roundRect(x, y, w, h, r) : c.rect(x, y, w, h); }
+function drawStall(s, ox, oy) {
+  const X = s.x * T - ox, Y = s.y * T - oy, W = s.w * T, H = s.h * T;
+  if (X > innerWidth + 10 || Y > innerHeight + 10 || X + W < -10 || Y + H < -10) return;
+  const isNear = near === s;
+  // dükkan gövdesi
+  cx.fillStyle = '#1e293b'; roundRect(cx, X + 3, Y + 3, W - 6, H - 6, 6); cx.fill();
+  // tente (çizgili)
+  const aw = 16, ay = s.up ? Y + 3 : Y + H - 3 - aw;
+  for (let i = 0; i < 6; i++) { cx.fillStyle = i % 2 ? '#f8fafc' : s.z.color; cx.fillRect(X + 3 + i * (W - 6) / 6, ay, (W - 6) / 6 + .5, aw); }
+  // tezgah ve kasalar (koridora bakan tarafta)
+  const ty = s.up ? Y + 3 + aw : Y + H - 3 - aw - 22;
+  cx.fillStyle = '#78350f'; cx.fillRect(X + 8, ty + 2, W - 16, 20);
+  cx.font = '16px "Segoe UI Emoji","Apple Color Emoji",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  s.produce.forEach((e, i) => cx.fillText(e, X + W * (i + 1) / 4, ty + 12));
+  // tabela
+  const name = s.p.title.length > 17 ? s.p.title.slice(0, 16) + '…' : s.p.title;
+  cx.font = '700 11.5px system-ui,sans-serif';
+  const sy = s.up ? Y + H - 16 : Y + 14;
+  cx.fillStyle = isNear ? '#fde047' : '#e2e8f0'; cx.fillText(name, X + W / 2, sy);
+  if (s.p.verified) { cx.font = '12px sans-serif'; cx.fillText('✅', X + W - 12, s.up ? Y + H - 30 : Y + 28); }
+  if (isNear) { cx.strokeStyle = '#fde047'; cx.lineWidth = 3; roundRect(cx, X + 2, Y + 2, W - 4, H - 4, 7); cx.stroke(); }
+}
+function drawPerson(px, py, emoji, label, bob) {
+  cx.fillStyle = 'rgba(0,0,0,.35)'; cx.beginPath(); cx.ellipse(px, py + 14, 13, 5, 0, 0, 7); cx.fill();
+  cx.font = '30px "Segoe UI Emoji","Apple Color Emoji",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  cx.fillText(emoji, px, py - 2 - bob);
+  if (label) {
+    cx.font = '700 11px system-ui,sans-serif';
+    const w = cx.measureText(label).width + 12;
+    cx.fillStyle = 'rgba(15,23,42,.85)'; roundRect(cx, px - w / 2, py - 36, w, 18, 9); cx.fill();
+    cx.fillStyle = '#fff'; cx.fillText(label, px, py - 27);
+  }
+}
+function draw() {
+  const ox = cam.x - innerWidth / 2 + T / 2, oy = cam.y - innerHeight / 2 + T / 2;
+  // zemin
+  cx.fillStyle = '#334155'; cx.fillRect(0, 0, innerWidth, innerHeight);
+  cx.fillStyle = '#3b4a5f';
+  for (let y = Math.max(0, Math.floor(oy / T)); y < Math.min(GH, (oy + innerHeight) / T + 1); y++)
+    for (let x = Math.max(0, Math.floor(ox / T)); x < Math.min(GW, (ox + innerWidth) / T + 1); x++)
+      if ((x + y) % 2) cx.fillRect(x * T - ox, y * T - oy, T, T);
+  // dış duvar
+  cx.strokeStyle = '#0f172a'; cx.lineWidth = 10; cx.strokeRect(-ox + 5, -oy + 5, GW * T - 10, GH * T);
+  // ana koridor yazısı ve bölge başlıkları
+  cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  Object.values(cats).forEach(s => {
+    const X = (MARGIN + 6) * T - ox, Y = (s.up ? s.y - 2 : s.y + s.h + 1) * T - oy + T / 2;
+    cx.font = '800 15px system-ui,sans-serif'; cx.fillStyle = s.z.color;
+    cx.fillText(`▸ ${s.z.label}`, X + 30, Y);
+  });
+  // giriş
+  const gx = (GW / 2) * T - ox, gy = (GH - 1) * T - oy;
+  cx.fillStyle = '#22c55e'; cx.fillRect(gx - 3 * T, gy + T - 8, 6 * T, 8);
+  cx.font = '800 16px system-ui,sans-serif'; cx.fillStyle = '#bbf7d0'; cx.fillText('🚪 GİRİŞ · MERSİN HAL KOMPLEKSİ', gx, gy + T / 2 - 6);
+  stalls.forEach(s => drawStall(s, ox, oy));
+  drawPerson(hale.x * T - ox + T / 2, hale.y * T - oy + T / 2, '👩‍💼', 'Hale · Bana dokunun', Math.sin(lastT / 300) * 2);
+  // hedef işareti
+  if (me.path.length) { const t = me.path[me.path.length - 1]; cx.strokeStyle = '#fde047'; cx.lineWidth = 2; cx.beginPath(); cx.arc(t.x * T - ox + T / 2, t.y * T - oy + T / 2, 10 + Math.sin(lastT / 150) * 2, 0, 7); cx.stroke(); }
+  drawPerson(me.x * T - ox + T / 2, me.y * T - oy + T / 2, me.dir < 0 ? '🚶' : '🚶‍➡️', 'Siz', me.path.length ? Math.abs(Math.sin(me.step)) * 4 : 0);
+  drawMini();
+}
+function drawMini() {
+  const w = mini.clientWidth, h = mini.clientHeight, k = Math.min((w - 10) / GW, (h - 10) / GH);
+  const ox = (w - GW * k) / 2, oy = (h - GH * k) / 2;
+  mx.clearRect(0, 0, w, h);
+  mx.fillStyle = '#334155'; mx.fillRect(ox, oy, GW * k, GH * k);
+  stalls.forEach(s => { mx.fillStyle = s === near ? '#fde047' : s.z.color; mx.fillRect(ox + s.x * k, oy + s.y * k, s.w * k - .6, s.h * k - .6); });
+  mx.fillStyle = '#fff'; mx.beginPath(); mx.arc(ox + (me.x + .5) * k, oy + (me.y + .5) * k, 3, 0, 7); mx.fill();
+}
+
+// ── Hareket ──
+function update(dt) {
+  const sp = 5.2 * dt;   // karo / saniye
+  let kx = (keys.ArrowRight || keys.d ? 1 : 0) - (keys.ArrowLeft || keys.a ? 1 : 0);
+  let ky = (keys.ArrowDown || keys.s ? 1 : 0) - (keys.ArrowUp || keys.w ? 1 : 0);
+  if (kx || ky) {
+    me.path = [];
+    const nx = me.x + kx * sp, ny = me.y + ky * sp;
+    const free = (x, y) => { const gx = Math.round(x), gy = Math.round(y); return gx >= 0 && gy >= 0 && gx < GW && gy < GH && !grid[gy][gx]; };
+    if (free(nx, me.y)) me.x = nx;
+    if (free(me.x, ny)) me.y = ny;
+    if (kx) me.dir = kx;
+    me.step += dt * 12;
+  } else if (me.path.length) {
+    const t = me.path[0], dx = t.x - me.x, dy = t.y - me.y, d = Math.hypot(dx, dy);
+    if (d <= sp) { me.x = t.x; me.y = t.y; me.path.shift(); } else { me.x += dx / d * sp; me.y += dy / d * sp; }
+    if (Math.abs(dx) > .01) me.dir = Math.sign(dx);
+    me.step += dt * 12;
+  }
+  cam.x += (me.x * T - cam.x) * Math.min(1, dt * 6);
+  cam.y += (me.y * T - cam.y) * Math.min(1, dt * 6);
+  // yakındaki dükkan
+  const rx = Math.round(me.x), ry = Math.round(me.y);
+  let best = null, bd = 2.2;
+  stalls.forEach(s => { const d = Math.hypot(s.fx - me.x, s.fy - me.y); if (d < bd) { bd = d; best = s; } });
+  if (best !== near) { near = best; dismissed = null; }
+  if (!me.path.length && near && near !== dismissed && openId !== near.p.id) showCard(near);
+  if (!near && openId && !me.path.length) closeCard();
+  if (Math.hypot(hale.x - rx, hale.y - ry) < 1.6 && !me.path.length && !keys._haleShown) { keys._haleShown = true; openChat(); }
+  if (Math.hypot(hale.x - rx, hale.y - ry) >= 2.5) keys._haleShown = false;
+}
+function loop(t) {
+  const dt = Math.min(.05, (t - lastT) / 1000 || 0); lastT = t;
+  update(dt); draw(); requestAnimationFrame(loop);
+}
+
+// ── Dükkan kartı ──
+function telOf(p) { return String(p.phone || '').replace(/[^\d+]/g, ''); }
+function waOf(p) { let d = telOf(p).replace(/\D/g, ''); if (d.length === 11 && d[0] === '0') d = '9' + d; if (d.length === 10 && d[0] === '5') d = '90' + d; return /^905\d{9}$/.test(d) ? d : ''; }
+function showCard(s) {
+  const p = s.p; openId = p.id;
+  document.getElementById('cTitle').textContent = `${s.z.cat === 'Komisyoncu' ? '🏢' : s.z.cat === 'Tüccar' ? '🏪' : '📍'} ${p.title}${p.verified ? ' ✅' : ''}`;
+  document.getElementById('cMeta').textContent = [s.z.cat, p.address].filter(Boolean).join(' · ');
+  const sells = (p.sells || []).slice(0, 10);
+  document.getElementById('cSells').innerHTML = sells.length ? sells.map(x => `<span>${esc(x)}</span>`).join('') : '';
+  const tel = telOf(p), wa = waOf(p);
+  document.getElementById('cActs').innerHTML = [
+    tel ? `<a class="btn btn-green" href="tel:${esc(tel)}" data-ev="ara">📞 Ara</a>` : '',
+    wa ? `<a class="btn btn-wa" href="https://wa.me/${wa}?text=${encodeURIComponent('Merhaba, NewHal Sanal Hal üzerinden ulaşıyorum.')}" target="_blank" rel="noopener" data-ev="wa">💬 WhatsApp</a>` : '',
+    `<a class="btn btn-dark" href="/?isletme=${encodeURIComponent(p.id)}">🔎 Dükkan sayfası</a>`,
+  ].join('');
+  document.getElementById('card').classList.add('open');
+  document.getElementById('statusTxt').textContent = `${p.title} dükkanının önündesiniz`;
+  try { window.dataLayer.push({ event: 'sanal_hal_dukkan', dukkan: p.title }); } catch {}
+}
+window.closeCard = function () { if (openId && near && near.p.id === openId) dismissed = near; openId = null; document.getElementById('card').classList.remove('open'); };
+
+// ── Hale ile konuşma ──
+const chat = document.getElementById('chat'), q = document.getElementById('q'), results = document.getElementById('results');
+const norm = s => String(s || '').toLocaleLowerCase('tr').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ı/g, 'i');
+function renderResults() {
+  const v = norm(q.value.trim());
+  let hits = stalls;
+  if (v) hits = stalls.filter(s => norm(s.p.title).includes(v) || (s.p.sells || []).some(x => norm(x).includes(v)) || norm(s.z.cat).includes(v));
+  document.getElementById('haleSay').textContent = !v
+    ? `Hoş geldiniz! 👋 Ben Hale. Halimizde ${stalls.length} dükkan var. Kimi ya da ne arıyorsunuz? Yazın, sizi dükkanın önüne götüreyim.`
+    : hits.length ? `"${q.value.trim()}" için ${hits.length} dükkan buldum. Birine dokunun, sizi oraya götüreyim. 🚶‍♀️` : `Üzgünüm, "${q.value.trim()}" ile eşleşen dükkan bulamadım. Başka bir kelime deneyin.`;
+  results.innerHTML = '';
+  hits.slice(0, 40).forEach(s => {
+    const b = document.createElement('button');
+    b.className = 'res'; b.type = 'button';
+    b.innerHTML = `<span class="ic">${s.z.cat === 'Komisyoncu' ? '🏢' : s.z.cat === 'Tüccar' ? '🏪' : '📍'}</span><span><b>${esc(s.p.title)}</b>${s.p.verified ? ' ✅' : ''}<small>${esc(s.z.label)}${(s.p.sells || []).length ? ' · ' + esc(s.p.sells.slice(0, 4).join(', ')) : ''}</small></span>`;
+    b.onclick = () => goStall(s);
+    results.appendChild(b);
+  });
+}
+window.openChat = function () {
+  chat.classList.add('open');
+  q.value = ''; renderResults();
+  if (matchMedia('(pointer:fine)').matches) setTimeout(() => q.focus(), 50);
+};
+window.closeChat = function () { chat.classList.remove('open'); };
+q.addEventListener('input', renderResults);
+q.addEventListener('keydown', e => { if (e.key === 'Enter') { const f = results.querySelector('.res'); if (f) f.click(); } });
+
+// ── Girdiler ──
+addEventListener('keydown', e => {
+  if (chat.classList.contains('open')) { if (e.key === 'Escape') closeChat(); return; }
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(k)) { keys[k] = true; e.preventDefault(); }
+  if (k === 'Escape') closeCard();
+});
+addEventListener('keyup', e => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; keys[k] = false; });
+addEventListener('blur', () => { Object.keys(keys).forEach(k => { if (k[0] !== '_') keys[k] = false; }); });
+cv.addEventListener('click', e => {
+  const ox = cam.x - innerWidth / 2 + T / 2, oy = cam.y - innerHeight / 2 + T / 2;
+  const tx = Math.floor((e.clientX + ox) / T), ty = Math.floor((e.clientY + oy) / T);
+  if (Math.abs(tx - hale.x) <= 1 && Math.abs(ty - hale.y) <= 1) { openChat(); return; }
+  const s = stalls.find(s => tx >= s.x && tx < s.x + s.w && ty >= s.y && ty < s.y + s.h);
+  if (s) { goStall(s); return; }
+  walkTo(tx, ty);
+});
+mini.addEventListener('click', e => {
+  const r = mini.getBoundingClientRect(), k = Math.min((r.width - 10) / GW, (r.height - 10) / GH);
+  const tx = Math.floor((e.clientX - r.left - (r.width - GW * k) / 2) / k), ty = Math.floor((e.clientY - r.top - (r.height - GH * k) / 2) / k);
+  const s = stalls.find(s => tx >= s.x - 1 && tx <= s.x + s.w && ty >= s.y - 1 && ty <= s.y + s.h);
+  if (s) goStall(s); else walkTo(tx, ty);
+});
+addEventListener('resize', resize);
+
+// ── Başlat ──
+fetch('/api/pins').then(r => r.json()).then(d => {
+  const pins = (d.pins || d).filter(p => p.lat > HAL.lat[0] && p.lat < HAL.lat[1] && p.lng > HAL.lng[0] && p.lng < HAL.lng[1]);
+  build(pins);
+  resize();
+  document.getElementById('loading').remove();
+  requestAnimationFrame(loop);
+  // ?dukkan=ID ile doğrudan dükkana git
+  const want = new URLSearchParams(location.search).get('dukkan');
+  const s = want && stalls.find(s => String(s.p.id) === want);
+  if (s) setTimeout(() => goStall(s), 400); else setTimeout(openChat, 700);
+}).catch(() => { document.getElementById('loading').textContent = 'Hal yüklenemedi, sayfayı yenileyin.'; });
+})();
+</script>
+</body>
+</html>
