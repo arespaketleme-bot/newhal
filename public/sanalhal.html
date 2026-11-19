@@ -733,13 +733,22 @@ window.__miniOthers = function (k, ox, oy) {
 const pets = [
   { e: '🐈', say: 'Miyav! 🐾', voice: 'miyav', x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 1.6 },
   { e: '🐕', say: 'Hav hav! 🐶', voice: 'hav hav', x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 2.4 },
+  // satıcılar: simitçi gezer ve ara ara bağırır, nohut pilavcı tezgahında durur
+  { e: '🧔', person: true, label: 'Simitçi', tray: '🥯', say: 'Sıcak simitler! Taze simit! 🥯', voice: 'sıcak simitler, taze simit', shoutEvery: 9, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 1.3 },
+  { e: '🧑‍🍳', person: true, fixed: true, cart: true, label: 'Nohut Pilavcı', tray: '🍛', say: 'Nohutlu pilav! Tavuklu, sıcacık! 🍛', voice: 'nohutlu pilav, tavuklu, sıcacık', shoutEvery: 12, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0 },
 ];
 function petsInit() {
-  pets.forEach((p, i) => { p.x = Math.floor(GW / 2) - 4 + i * 8; p.y = GH - 2; });
+  pets.forEach((p, i) => { p.x = Math.floor(GW / 2) - 4 + i * 8; p.y = GH - 2; p.nextShout = Date.now() + 3000 + i * 2500; });
+  const sim = pets.find(p => p.label === 'Simitçi'); sim.x = Math.floor(GW / 2) - 2; sim.y = GH - 4;
+  const pil = pets.find(p => p.cart); pil.x = Math.floor(GW / 2) + 7; pil.y = GH - 2;
+  grid[pil.y][pil.x] = 1; grid[pil.y][pil.x + 1] = 1;   // pilav tezgahı
 }
 function petsUpdate(dt) {
   pets.forEach(p => {
-    if (p.talk > Date.now()) return;            // konuşurken durur
+    if (p.shoutEvery && Date.now() > p.nextShout) {   // satıcı ara ara bağırır
+      p.talk = Date.now() + 2600; p.nextShout = Date.now() + p.shoutEvery * (800 + Math.random() * 400);
+    }
+    if (p.fixed || p.talk > Date.now()) return;            // konuşurken durur
     if (!p.path.length) {
       if ((p.wait -= dt) > 0) return;
       for (let tries = 0; tries < 8 && !p.path.length; tries++) {
@@ -759,6 +768,21 @@ function petsDraw(ox, oy) {
   pets.forEach(p => {
     const px = p.x * T - ox + T / 2, py = p.y * T - oy + T / 2;
     if (px < -40 || py < -40 || px > innerWidth + 40 || py > innerHeight + 40) return;
+    if (p.person) {
+      if (p.cart) {   // pilav arabası
+        cx.fillStyle = 'rgba(0,0,0,.3)'; cx.fillRect(px + 10, py - 2, T * 1.2, T * .7);
+        cx.fillStyle = '#b91c1c'; roundRect(cx, px + 6, py - 8, T * 1.2, T * .62, 6); cx.fill();
+        cx.fillStyle = '#e5e7eb'; cx.fillRect(px + 10, py - 6, T * 1.2 - 8, 9);
+        cx.font = '16px "Segoe UI Emoji","Apple Color Emoji",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+        cx.fillText('🍛', px + 6 + T * .35, py + 8); cx.fillText('🍗', px + 6 + T * .85, py + 8);
+        cx.font = '800 9px system-ui,sans-serif'; cx.fillStyle = '#7f1d1d'; cx.fillText('NOHUT PİLAV', px + 6 + T * .6, py - 2);
+      }
+      drawPerson(px, py, p.e, p.label, p.path.length ? Math.abs(Math.sin(lastT / 110)) * 3 : 0);
+      cx.font = '18px "Segoe UI Emoji","Apple Color Emoji",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      if (!p.cart) cx.fillText(p.tray, px + 13, py - 14);
+      if (p.talk > Date.now()) drawBubble(px, py - 6, p.say);
+      return;
+    }
     cx.fillStyle = 'rgba(0,0,0,.3)'; cx.beginPath(); cx.ellipse(px, py + 10, 10, 4, 0, 0, 7); cx.fill();
     cx.save(); cx.translate(px, py); if (p.dir > 0) cx.scale(-1, 1);
     cx.font = '24px "Segoe UI Emoji","Apple Color Emoji",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
@@ -767,12 +791,12 @@ function petsDraw(ox, oy) {
     if (p.talk > Date.now()) drawBubble(px, py + 24, p.say);
   });
 }
-function petAt(wx, wy) { return pets.find(p => Math.hypot(p.x + .5 - wx, p.y + .5 - wy) < .8); }
+function petAt(wx, wy) { return pets.find(p => Math.hypot(p.x + .5 - wx, p.y + .5 - wy) < .8 || (p.cart && wx >= p.x && wx <= p.x + 2 && Math.abs(p.y + .5 - wy) < .8)); }
 function petSpeak(p) {
   p.talk = Date.now() + 2200; p.path = [];
   try {
     const u = new SpeechSynthesisUtterance(p.voice);
-    u.lang = 'tr-TR'; u.pitch = p.e === '🐈' ? 1.9 : .6; u.rate = p.e === '🐈' ? 1.1 : 1.3;
+    u.lang = 'tr-TR'; u.pitch = p.person ? 1 : p.e === '🐈' ? 1.9 : .6; u.rate = p.person ? 1 : p.e === '🐈' ? 1.1 : 1.3;
     speechSynthesis.cancel(); speechSynthesis.speak(u);
   } catch {}
 }
