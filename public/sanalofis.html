@@ -344,7 +344,7 @@ function drawYard(ox, oy) {
     }
     const px = W(x), py = H(walkY + idx * .35);
     drawPerson(px, py, face, idx ? 'Hamal' : 'Hamal', (q >= 0 && q < 8) ? Math.abs(Math.sin(t * 9)) * 3 : 0);
-    if (carry) drawCrate(px, py - 30, T * .45, fruit);
+    if (carry) drawCrate(px + 12, py - 6, T * .42, fruit);
   });
   // forklift
   const home = [8.8, GH - 1.6], appr = [palX + 1.25, palY];
@@ -380,7 +380,7 @@ function draw() {
     for (let x = Math.max(0, Math.floor(ox / T)); x < Math.min(GW, (ox + innerWidth) / T + 1); x++)
       if ((x + y) % 2) cx.fillRect(x * T - ox, y * T - oy, T, T);
   // dış duvar
-  cx.strokeStyle = '#0f172a'; cx.lineWidth = 10; cx.strokeRect(-ox + 5, -oy + 5, GW * T - 10, GH * T + T);
+  cx.strokeStyle = '#0f172a'; cx.lineWidth = 10; cx.strokeRect(-ox + 5, -oy + 5, GW * T - 10, GH * T + T * 4);
   // ana koridor yazısı ve bölge başlıkları
   cx.textAlign = 'center'; cx.textBaseline = 'middle';
   Object.values(cats).forEach(s => {
@@ -435,7 +435,7 @@ function update(dt) {
   // kamera oyuncuyu izler ama halin dışına taşmaz
   const clamp = (v, lo, hi) => lo > hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, v));
   const tcx = clamp(me.x * T, innerWidth / 2 - T, GW * T - innerWidth / 2);
-  const tcy = clamp(me.y * T, innerHeight / 2 - T, (GH + 1.5) * T - innerHeight / 2);
+  const tcy = clamp(me.y * T, innerHeight / 2 - T, (GH + 4.5) * T - innerHeight / 2);
   cam.x += (tcx - cam.x) * Math.min(1, dt * 6);
   cam.y += (tcy - cam.y) * Math.min(1, dt * 6);
   // yakındaki dükkan
