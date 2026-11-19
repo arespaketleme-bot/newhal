@@ -115,6 +115,20 @@
   <div class="acts" id="cActs"></div>
 </div>
 
+<div class="zoom" id="zoom" onclick="if(event.target===this)closeZoom()">
+  <button class="x zoom-x" type="button" aria-label="Kapat" onclick="closeZoom()">×</button>
+  <img id="zoomImg" alt="Büyütülmüş resim" />
+  <div class="zoom-hint">Yakınlaştırmak için resme dokunun</div>
+</div>
+<style>
+  .zoom { position: fixed; inset: 0; z-index: 15; display: none; background: rgba(0,0,0,.94); overflow: auto; text-align: center; -webkit-overflow-scrolling: touch; }
+  .zoom.open { display: block; }
+  .zoom img { max-width: 100%; max-height: 100vh; width: auto; height: auto; margin: 0 auto; display: block; cursor: zoom-in; object-fit: contain; min-height: 60vh; }
+  .zoom img.big { max-width: none; max-height: none; width: 260%; cursor: zoom-out; }
+  @media (min-width: 700px) { .zoom img.big { width: auto; height: 250vh; } }
+  .zoom-x { position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); right: 12px; z-index: 2; width: 44px; height: 44px; font-size: 24px; background: rgba(255,255,255,.18); color: #fff; }
+  .zoom-hint { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); background: rgba(15,23,42,.8); color: #e5e7eb; padding: 6px 12px; border-radius: 999px; font-size: 12.5px; pointer-events: none; }
+</style>
 <div class="story" id="story" onclick="if(event.target===this)closeKatip()">
   <div class="story-box">
     <div class="story-head"><span>🧑‍💼 Katibin günün hikayesi</span><button class="x" style="position:static" type="button" aria-label="Kapat" onclick="closeKatip()">×</button></div>
@@ -577,7 +591,7 @@ addEventListener('keydown', e => {
   if (e.key === 'Enter') { document.getElementById('halMsg').focus(); e.preventDefault(); return; }
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(k)) { keys[k] = true; e.preventDefault(); }
-  if (k === 'Escape') { closeCard(); closeKatip(); }
+  if (k === 'Escape') { if (document.getElementById('zoom').classList.contains('open')) { closeZoom(); return; } closeCard(); closeKatip(); }
 });
 addEventListener('keyup', e => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; keys[k] = false; });
 addEventListener('blur', () => { Object.keys(keys).forEach(k => { if (k[0] !== '_') keys[k] = false; }); });
@@ -778,7 +792,7 @@ function renderStory() {
   storyIdx = (storyIdx + items.length) % Math.max(1, items.length);
   const it = items[storyIdx];
   box.innerHTML = !it ? '<div class="story-empty">📜</div>'
-    : it.img ? `<img src="${esc(it.img)}" alt="${esc(a.title || 'Günün hikayesi')}" />`
+    : it.img ? `<img src="${esc(it.img)}" alt="${esc(a.title || 'Günün hikayesi')}" title="Büyütmek için dokunun" style="cursor:zoom-in" onclick="openZoom(this.src)" />`
     : it.yt ? `<iframe src="https://www.youtube.com/embed/${esc(it.yt)}?autoplay=1&playsinline=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`
     : `<video src="${esc(it.vid)}" controls autoplay playsinline></video>`;
   document.getElementById('storyDots').innerHTML = items.length > 1 ? items.map((_, i) => `<i class="${i === storyIdx ? 'on' : ''}"></i>`).join('') : '';
@@ -799,6 +813,20 @@ window.openKatip = function () {
 };
 window.closeKatip = function () { document.getElementById('story').classList.remove('open'); document.getElementById('storyMedia').innerHTML = ''; };
 window.storyStep = function (d) { storyIdx += d; renderStory(); };
+
+// Resme dokununca tam ekran büyür; tekrar dokununca daha da yakınlaşır
+window.openZoom = function (src) {
+  const z = document.getElementById('zoom'), img = document.getElementById('zoomImg');
+  img.src = src; img.classList.remove('big'); z.classList.add('open'); z.scrollTo(0, 0);
+};
+window.closeZoom = function () { document.getElementById('zoom').classList.remove('open'); };
+document.getElementById('zoomImg').addEventListener('click', e => {
+  e.stopPropagation();
+  const img = e.currentTarget, z = document.getElementById('zoom');
+  const r = img.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height;
+  img.classList.toggle('big');
+  requestAnimationFrame(() => { z.scrollLeft = img.offsetWidth * fx - innerWidth / 2; z.scrollTop = img.offsetHeight * fy - innerHeight / 2; });
+});
 
 // ── Başlat ──
 fetch('/api/pins').then(r => r.json()).then(d => {
