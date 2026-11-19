@@ -186,6 +186,7 @@ function build(pins) {
   });
   // Bölge başlıkları için ilk dükkanlar
   stalls.forEach(s => { if (!cats[s.z.cat]) cats[s.z.cat] = s; });
+  for (let y = GH - 7; y < GH; y++) for (let x = 1; x <= 2; x++) grid[y][x] = 1;   // tır
   hale.x = Math.floor(GW / 2) + 2; hale.y = GH - 2;
   grid[hale.y][hale.x] = 1;
   me.x = Math.floor(GW / 2); me.y = GH - 1;
@@ -249,6 +250,116 @@ function drawStall(s, ox, oy) {
   if (s.p.verified) { cx.font = '12px sans-serif'; cx.fillText('✅', X + W - 12, s.up ? Y + H - 30 : Y + 28); }
   if (isNear) { cx.strokeStyle = '#fde047'; cx.lineWidth = 3; roundRect(cx, X + 2, Y + 2, W - 4, H - 4, 7); cx.stroke(); }
 }
+// ── Sol altta yükleme alanı: hamallar kasaları palete dizer, forklift tıra yükler ──
+const YARD_CYCLE = 16, SLOTS = 5;
+const lerp = (a, b, k) => a + (b - a) * Math.max(0, Math.min(1, k));
+function drawCrate(x, y, sz, emoji) {
+  cx.fillStyle = '#a16207'; cx.fillRect(x - sz / 2, y - sz / 2, sz, sz);
+  cx.strokeStyle = '#713f12'; cx.lineWidth = 1.5; cx.strokeRect(x - sz / 2 + .5, y - sz / 2 + .5, sz - 1, sz - 1);
+  cx.beginPath(); cx.moveTo(x - sz / 2, y); cx.lineTo(x + sz / 2, y); cx.stroke();
+  if (emoji) { cx.font = `${Math.round(sz * .62)}px "Segoe UI Emoji","Apple Color Emoji",sans-serif`; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(emoji, x, y + 1); }
+}
+function drawPallet(x, y, n, fruit) {
+  const w = T * .92;
+  cx.fillStyle = '#d6a76b'; cx.fillRect(x - w / 2, y - w / 2, w, w);
+  cx.fillStyle = '#b7834a'; for (let i = 0; i < 4; i++) cx.fillRect(x - w / 2, y - w / 2 + i * w / 3.6, w, 3);
+  const pos = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+  for (let i = 0; i < n; i++) drawCrate(x + pos[i][0] * w / 4.2, y + pos[i][1] * w / 4.2, w / 2.25, fruit);
+}
+function drawForklift(x, y, carrying, fruit, lift) {
+  // gövde sağda, çatallar sola bakar
+  const bw = T * .95, bh = T * .78;
+  cx.fillStyle = 'rgba(0,0,0,.3)'; cx.fillRect(x - bw / 2 + 3, y - bh / 2 + 4, bw, bh);
+  cx.fillStyle = '#1f2937'; [[-.36, -.48], [.3, -.48], [-.36, .4], [.3, .4]].forEach(([a, b]) => cx.fillRect(x + a * bw - 4, y + b * bh, 10, 6));
+  cx.fillStyle = '#f59e0b'; roundRect(cx, x - bw / 2, y - bh / 2, bw, bh, 6); cx.fill();
+  cx.fillStyle = '#b45309'; cx.fillRect(x + bw * .22, y - bh / 2, bw * .28, bh);          // karşı ağırlık
+  cx.fillStyle = '#111827'; cx.fillRect(x - bw / 2 - 3, y - bh / 2 + 2, 5, bh - 4);       // direk
+  cx.fillStyle = '#9ca3af'; cx.fillRect(x - bw / 2 - T * .85, y - bh * .3, T * .85, 4); cx.fillRect(x - bw / 2 - T * .85, y + bh * .3 - 4, T * .85, 4);   // çatallar
+  cx.font = '20px "Segoe UI Emoji","Apple Color Emoji",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  cx.fillText('👷', x - 2, y - 2);
+  if (carrying) drawPallet(x - bw / 2 - T * .45, y - lift, carrying, fruit);
+}
+function drawTruck(x, y, loaded, fruits, full) {
+  // dikey duran tır: dorse yukarıda, çekici aşağıda (yüzü aşağı)
+  const w = T * 1.4, L = T * 5.7;
+  cx.fillStyle = 'rgba(0,0,0,.3)'; cx.fillRect(x - w / 2 + 5, y + 6, w, L + T * 1.35);
+  cx.fillStyle = '#e5e7eb'; roundRect(cx, x - w / 2, y, w, L, 6); cx.fill();
+  cx.strokeStyle = '#64748b'; cx.lineWidth = 2; cx.strokeRect(x - w / 2 + 3, y + 3, w - 6, L - 6);
+  cx.fillStyle = '#1f2937';
+  [.12, .25, .75, .88].forEach(k => { cx.fillRect(x - w / 2 - 4, y + L * k, 5, 12); cx.fillRect(x + w / 2 - 1, y + L * k, 5, 12); });
+  for (let i = 0; i < loaded; i++) drawPallet(x, y + T * .55 + i * T * 1.06, 4, fruits[i % fruits.length]);
+  // çekici
+  const cy = y + L + 2;
+  cx.fillStyle = '#1d4ed8'; roundRect(cx, x - w / 2 + 2, cy, w - 4, T * 1.25, 8); cx.fill();
+  cx.fillStyle = '#93c5fd'; cx.fillRect(x - w / 2 + 8, cy + T * .78, w - 16, T * .3);
+  cx.fillStyle = '#fde047'; cx.fillRect(x - w / 2 + 5, cy + T * 1.15, 7, 5); cx.fillRect(x + w / 2 - 12, cy + T * 1.15, 7, 5);
+  cx.save(); cx.translate(x, y + L / 2); cx.rotate(-Math.PI / 2);
+  cx.font = '800 11px system-ui,sans-serif'; cx.fillStyle = 'rgba(15,23,42,.55)'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  if (!loaded) cx.fillText('NewHal Lojistik', 0, 0);
+  cx.restore();
+  if (full) {
+    cx.font = '800 12px system-ui,sans-serif';
+    const t = '✅ Tır doldu, yola çıkıyor';
+    const tw = cx.measureText(t).width + 14;
+    cx.fillStyle = 'rgba(22,163,74,.92)'; roundRect(cx, x - w / 2, y - 26, tw, 20, 10); cx.fill();
+    cx.fillStyle = '#fff'; cx.textAlign = 'left'; cx.fillText(t, x - w / 2 + 7, y - 16);
+  }
+}
+function drawYard(ox, oy) {
+  const t = performance.now() / 1000, c = Math.floor(t / YARD_CYCLE), p = t % YARD_CYCLE;
+  const W = v => v * T - ox, H = v => v * T - oy;
+  if (W(14) < -40 || H(GH - 8) > innerHeight + 40) return;
+  const fruits = ['🍅', '🍋', '🍊', '🥔', '🍆', '🫑'];
+  const fruit = fruits[c % fruits.length];
+  const slot = c % SLOTS;
+  const isFullRun = slot === SLOTS - 1;
+  let loaded = slot + (p >= 13 ? 1 : 0);
+  // tır doldu: yola çıkar, sonraki turda boş gelir
+  let drive = 0;
+  if (isFullRun && p >= 14) drive = (p - 14) / 2;
+  const truckX = 1.7, truckY = GH - 6.5 + drive * 9;
+  const palX = 5.6, palY = GH - 3, pileX = 11.4, walkY = GH - 4;
+  // zemin çizgileri (yükleme alanı)
+  cx.strokeStyle = 'rgba(250,204,21,.55)'; cx.lineWidth = 2; cx.setLineDash([8, 6]);
+  cx.strokeRect(W(.7), H(GH - 7.2), T * 13, T * 7.2);
+  cx.setLineDash([]);
+  cx.font = '800 12px system-ui,sans-serif'; cx.fillStyle = '#fde047'; cx.textAlign = 'left'; cx.textBaseline = 'middle';
+  cx.fillText('🚛 YÜKLEME ALANI', W(3.2), H(GH - 6.8));
+  // kasa yığını
+  for (let i = 0; i < 6; i++) drawCrate(W(pileX + (i % 3) * .55), H(walkY + .9 + Math.floor(i / 3) * .55), T * .5, fruits[(c + i) % fruits.length]);
+  // tır
+  drawTruck(W(truckX), H(truckY), drive ? SLOTS : loaded, fruits.slice(c - slot >= 0 ? (c - slot) % fruits.length : 0).concat(fruits), isFullRun && p >= 13);
+  // yerdeki palet
+  const n = (p >= 2) + (p >= 4) + (p >= 6) + (p >= 8);
+  const picked = p >= 10.2 && p < 14.5;
+  if (!picked) drawPallet(W(palX), H(palY), p >= 14.5 ? 0 : n, fruit);
+  // hamallar
+  [[0, '🧍‍♂️'], [2, '👨‍🦱']].forEach(([off, face], idx) => {
+    const q = p - off;
+    let x = pileX, carry = false;
+    if (q >= 0 && q < 8) {
+      const k = (q % 4) / 4;
+      carry = k < .5;
+      x = carry ? lerp(pileX, palX + .9, k * 2) : lerp(palX + .9, pileX, (k - .5) * 2);
+    }
+    const px = W(x), py = H(walkY + idx * .35);
+    drawPerson(px, py, face, idx ? 'Hamal' : 'Hamal', (q >= 0 && q < 8) ? Math.abs(Math.sin(t * 9)) * 3 : 0);
+    if (carry) drawCrate(px, py - 30, T * .45, fruit);
+  });
+  // forklift
+  const home = [8.8, GH - 1.6], appr = [palX + 1.25, palY];
+  const dropY = GH - 6.5 + .55 + slot * 1.06 + .45;   // yük yuvasının ortası (karo cinsinden)
+  const drop = [truckX + 1.25, dropY];
+  let fx = home[0], fy = home[1], carry = 0, lift = 0;
+  if (p >= 9 && p < 10.2) { const k = (p - 9) / 1.2; fx = lerp(home[0], appr[0], k); fy = lerp(home[1], appr[1], k); }
+  else if (p >= 10.2 && p < 10.6) { fx = appr[0]; fy = appr[1]; carry = 4; lift = (p - 10.2) / .4 * 4; }
+  else if (p >= 10.6 && p < 11.8) { const k = (p - 10.6) / 1.2; fx = appr[0]; fy = lerp(appr[1], drop[1], k); carry = 4; lift = 4; }
+  else if (p >= 11.8 && p < 13) { const k = (p - 11.8) / 1.2; fx = lerp(appr[0], drop[0], k); fy = drop[1]; carry = 4; lift = 4; }
+  else if (p >= 13 && p < 15) { const k = (p - 13) / 2; fx = lerp(drop[0], home[0], k); fy = lerp(drop[1], home[1], k); }
+  if (drive) { fx = home[0]; fy = home[1]; }
+  drawForklift(W(fx), H(fy), carry, fruit, lift);
+}
+
 function drawPerson(px, py, emoji, label, bob) {
   cx.fillStyle = 'rgba(0,0,0,.35)'; cx.beginPath(); cx.ellipse(px, py + 14, 13, 5, 0, 0, 7); cx.fill();
   cx.font = '30px "Segoe UI Emoji","Apple Color Emoji",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
@@ -282,6 +393,7 @@ function draw() {
   cx.fillStyle = '#22c55e'; cx.fillRect(gx - 3 * T, gy + T - 8, 6 * T, 8);
   cx.font = '800 16px system-ui,sans-serif'; cx.fillStyle = '#bbf7d0'; cx.fillText('🚪 GİRİŞ · MERSİN HAL KOMPLEKSİ', gx, gy + T / 2 - 6);
   stalls.forEach(s => drawStall(s, ox, oy));
+  drawYard(ox, oy);
   drawPerson(hale.x * T - ox + T / 2, hale.y * T - oy + T / 2, '👩‍💼', 'Hale · Bana dokunun', Math.sin(lastT / 300) * 2);
   // hedef işareti
   if (me.path.length) { const t = me.path[me.path.length - 1]; cx.strokeStyle = '#fde047'; cx.lineWidth = 2; cx.beginPath(); cx.arc(t.x * T - ox + T / 2, t.y * T - oy + T / 2, 10 + Math.sin(lastT / 150) * 2, 0, 7); cx.stroke(); }
