@@ -89,6 +89,7 @@
   <form class="hal-send" id="halChatForm" autocomplete="off">
     <input id="halMsg" maxlength="140" placeholder="Haldekilere yazın…" aria-label="Sanal hal sohbeti" />
     <button type="submit" aria-label="Gönder">➤</button>
+    <button type="button" id="voiceBtn" class="voice-btn" onclick="toggleVoice()" aria-label="Sesli okuma">🔊</button>
   </form>
 </div>
 <style>
@@ -101,6 +102,7 @@
   .hal-send input { flex: 1; min-width: 0; min-height: 42px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-size: 14px; outline: none; }
   .hal-send button { width: 46px; border: 0; border-radius: 12px; background: var(--green); color: #052e16; font-size: 18px; font-weight: 900; cursor: pointer; }
   .hint { display: none !important; }
+  .hal-send .voice-btn { background: var(--panel); border: 1px solid var(--line); color: var(--text); font-size: 17px; }
   .hal-quick { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
   .hal-quick::-webkit-scrollbar { display: none; }
   .hal-quick button { flex-shrink: 0; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 7px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap; }
@@ -713,6 +715,7 @@ async function sendPresence() {
     const r = await fetch('/api/sanal/konum', { method: 'POST', headers: h, body: JSON.stringify({ sid, x: me.x, y: me.y, dir: me.dir, after: lastMsgId }) });
     const d = await r.json();
     (d.msgs || []).forEach(addMsg);
+    firstBatch = false;
     if (Array.isArray(d.masalar)) masalar = d.masalar;
     const seen = new Set();
     (d.others || []).forEach(o => {
@@ -740,9 +743,28 @@ let lastMsgId = 0;
 const bubbles = new Map();   // kişi (ilk 8 harf) → { text, until }
 const logEl = () => document.getElementById('halLog');
 window.__halDbg = () => ({ bubbles: [...bubbles], others: [...others.entries()].map(([k, o]) => [k, o.x, o.y]), me: [me.x, me.y], sid: sid.slice(0, 8) });
+// Gelen mesajlar sesli okunur (yandaki hoparlör tuşuyla kapatılır)
+let voiceOn = true, firstBatch = true;
+try { voiceOn = localStorage.getItem('halVoice') !== '0'; } catch {}
+function speakMsg(m) {
+  if (!voiceOn || firstBatch || m.from === sid.slice(0, 8) || !('speechSynthesis' in window)) return;
+  try {
+    const u = new SpeechSynthesisUtterance(`${m.name} diyor ki: ${m.text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')}`);
+    u.lang = 'tr-TR'; u.rate = 1.05;
+    speechSynthesis.speak(u);
+  } catch {}
+}
+window.toggleVoice = function () {
+  voiceOn = !voiceOn;
+  try { localStorage.setItem('halVoice', voiceOn ? '1' : '0'); } catch {}
+  if (!voiceOn) try { speechSynthesis.cancel(); } catch {}
+  paintVoice();
+};
+function paintVoice() { const b = document.getElementById('voiceBtn'); if (b) { b.textContent = voiceOn ? '🔊' : '🔇'; b.title = voiceOn ? 'Mesajlar sesli okunuyor · kapat' : 'Mesajları sesli oku'; } }
 function addMsg(m) {
   if (m.id <= lastMsgId) return;
   lastMsgId = m.id;
+  speakMsg(m);
   bubbles.set(m.from, { text: m.text, until: Date.now() + 8000 });
   const row = document.createElement('div');
   row.className = 'log-row' + (m.from === sid.slice(0, 8) ? ' mine' : '');
@@ -796,6 +818,7 @@ QUICK_MSGS.forEach(m => {
   qb.appendChild(b);
 });
 document.getElementById('halChatForm').addEventListener('submit', sendHalMsg);
+paintVoice();
 document.getElementById('halMsg').addEventListener('keydown', e => e.stopPropagation());
 document.getElementById('halMsg').addEventListener('focus', () => { Object.keys(keys).forEach(k => { if (k[0] !== '_') keys[k] = false; }); });
 
