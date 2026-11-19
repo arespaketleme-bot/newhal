@@ -56,6 +56,9 @@
   .res:hover { background: rgba(255,255,255,.06); }
   .res small { color: var(--muted); display: block; }
   .res .ic { font-size: 22px; width: 30px; text-align: center; }
+  .chat.finder .search, .chat.finder .quick { display: none; }
+  a.res { text-decoration: none; }
+  .res .ic img { display: block; }
   .loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 20; font-weight: 700; color: var(--muted); }
   .crowd { font-weight: 700; }
   @media (max-width: 640px) {
@@ -576,11 +579,48 @@ function renderResults() {
   });
 }
 window.openChat = function () {
-  chat.classList.add('open');
+  chat.classList.add('open'); chat.classList.remove('finder');
+  document.querySelector('.chat-head b').textContent = 'Hale';
+  document.querySelector('.chat-head .av').textContent = '👩‍💼';
   q.value = ''; renderResults();
   if (matchMedia('(pointer:fine)').matches) setTimeout(() => q.focus(), 50);
 };
 window.closeChat = function () { chat.classList.remove('open'); };
+// Satıcı: NewHal'deki ilgili ilanları ve işletmeleri listeler
+let allPinsList = [], adsCache = null;
+async function openFinder(v) {
+  chat.classList.add('open', 'finder');
+  document.querySelector('.chat-head b').textContent = v.label;
+  document.querySelector('.chat-head .av').textContent = v.e;
+  document.getElementById('haleSay').textContent = `${v.find.icon} NewHal'deki ${v.find.q.toLocaleLowerCase('tr')} ilanlarına ve işletmelerine bakıyorum…`;
+  results.innerHTML = '';
+  if (!adsCache) adsCache = await fetch('/api/ads').then(r => r.json()).catch(() => []);
+  const re = v.find.re;
+  const ads = (adsCache || []).filter(a => a.id && !String(a.id).startsWith('mersin-weather') && re.test(`${a.title || ''} ${a.body || ''}`)).slice(0, 25);
+  const pins = allPinsList.filter(p => re.test(`${p.title} ${(p.sells || []).join(' ')}`)).slice(0, 25);
+  document.getElementById('haleSay').textContent = ads.length + pins.length
+    ? `${v.find.icon} NewHal'de ${pins.length ? `${pins.length} işletme` : ''}${pins.length && ads.length ? ' ve ' : ''}${ads.length ? `${ads.length} ilan` : ''} buldum. Birine dokunun.`
+    : `${v.find.icon} NewHal'de şu an ${v.find.q.toLocaleLowerCase('tr')} ilanı yok. Siz satıyorsanız ilk ilanı siz verin!`;
+  const add = (html, href, onClick) => {
+    const b = document.createElement(href ? 'a' : 'button');
+    b.className = 'res';
+    if (href) b.href = href; else b.type = 'button';
+    b.innerHTML = html;
+    if (onClick) b.onclick = onClick;
+    results.appendChild(b);
+  };
+  pins.forEach(p => {
+    const st = stalls.find(s => s.p.id === p.id);
+    add(`<span class="ic">🏪</span><span><b>${esc(p.title)}</b>${p.verified ? ' ✅' : ''}<small>${esc(st ? 'Bu halde · dokunun, götüreyim' : (p.address || p.category || ''))}</small></span>`,
+      st ? null : `/?isletme=${encodeURIComponent(p.id)}`, st ? () => goStall(st) : null);
+  });
+  ads.forEach(a => {
+    const img = (a.images || [])[0];
+    add(`<span class="ic">${img ? `<img src="${esc(img)}" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:8px" />` : '📢'}</span><span><b>${esc(String(a.title || 'İlan').slice(0, 70))}</b><small>${esc(new Date(a.created_at).toLocaleDateString('tr-TR'))} · İlanı aç</small></span>`,
+      `/?ilan=${encodeURIComponent(a.id)}`);
+  });
+  if (!ads.length && !pins.length) add('<span class="ic">📢</span><span><b>Ücretsiz ilan ver</b><small>NewHal ana sayfasından</small></span>', '/');
+}
 q.addEventListener('input', renderResults);
 q.addEventListener('keydown', e => { if (e.key === 'Enter') { const f = results.querySelector('.res'); if (f) f.click(); } });
 
@@ -735,13 +775,21 @@ const pets = [
   { e: '🐕', say: 'Hav hav! 🐶', voice: 'hav hav', x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 2.4 },
   // satıcılar: simitçi gezer ve ara ara bağırır, nohut pilavcı tezgahında durur
   { e: '🧔', person: true, label: 'Simitçi', tray: '🥯', say: 'Sıcak simitler! Taze simit! 🥯', voice: 'sıcak simitler, taze simit', shoutEvery: 9, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 1.3 },
-  { e: '🧑‍🍳', person: true, fixed: true, cart: true, label: 'Nohut Pilavcı', tray: '🍛', say: 'Nohutlu pilav! Tavuklu, sıcacık! 🍛', voice: 'nohutlu pilav, tavuklu, sıcacık', shoutEvery: 12, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0 },
+  { e: '👴', person: true, fixed: true, cart: { sign: 'KESTANE', color: '#78350f', items: ['🌰', '🔥'] }, find: { q: 'Kestane', re: /kestane/i, icon: '🌰' }, label: 'Kestaneci', say: 'Sıcak kestane! Kebap kestane! 🌰 Bana dokun, kestanecileri göstereyim', voice: 'sıcak kestane, kebap kestane', shoutEvery: 11, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0, at: [-6, -2] },
+  { e: '👨', person: true, fixed: true, cart: { sign: 'MUZ', color: '#ca8a04', items: ['🍌', '🍌'] }, find: { q: 'Muz', re: /(^|[^a-zçğıöşü])muz(?![a-zçğıöşü]*af)/i, icon: '🍌' }, label: 'Muzcu', say: 'Muzlar geldi, taze muz! 🍌', voice: 'muzlar geldi, taze muz', shoutEvery: 13, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0, at: [11, -2] },
+  { e: '👩', person: true, fixed: true, cart: { sign: 'PORTAKAL', color: '#ea580c', items: ['🍊', '🍊'] }, find: { q: 'Portakal', re: /portakal|narenciye|mandalina/i, icon: '🍊' }, label: 'Portakalcı', say: 'Bal gibi portakal! 🍊', voice: 'bal gibi portakal', shoutEvery: 14, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0, at: [14, -2] },
+  { e: '🧓', person: true, fixed: true, cart: { sign: 'NAR', color: '#be123c', items: ['🍎', '🍷'] }, find: { q: 'Nar', re: /(^|[^a-zçğıöşü])nar(ı|lar|cı|ın)?([^a-zçğıöşü]|$)/i, icon: '🍎' }, label: 'Narcı', say: 'Mis gibi nar! Nar suyu! ❤️', voice: 'mis gibi nar, nar suyu', shoutEvery: 15, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0, at: [17, -2] },
+  { e: '🧑‍🍳', person: true, fixed: true, cart: { sign: 'NOHUT PİLAV', color: '#b91c1c', items: ['🍛', '🍗'] }, label: 'Nohut Pilavcı', tray: '🍛', say: 'Nohutlu pilav! Tavuklu, sıcacık! 🍛', voice: 'nohutlu pilav, tavuklu, sıcacık', shoutEvery: 12, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0 },
 ];
 function petsInit() {
   pets.forEach((p, i) => { p.x = Math.floor(GW / 2) - 4 + i * 8; p.y = GH - 2; p.nextShout = Date.now() + 3000 + i * 2500; });
   const sim = pets.find(p => p.label === 'Simitçi'); sim.x = Math.floor(GW / 2) - 2; sim.y = GH - 4;
-  const pil = pets.find(p => p.cart); pil.x = Math.floor(GW / 2) + 7; pil.y = GH - 2;
-  grid[pil.y][pil.x] = 1; grid[pil.y][pil.x + 1] = 1;   // pilav tezgahı
+  const pil = pets.find(p => p.label === 'Nohut Pilavcı'); pil.at = [7, -2];
+  // sabit tezgahlar: girişin iki yanına dizilir, tezgah karoları yürünmez
+  pets.filter(p => p.at).forEach(p => {
+    p.x = Math.max(1, Math.min(GW - 3, Math.floor(GW / 2) + p.at[0])); p.y = GH + p.at[1];
+    grid[p.y][p.x] = 1; grid[p.y][p.x + 1] = 1;
+  });
 }
 function petsUpdate(dt) {
   pets.forEach(p => {
@@ -771,11 +819,12 @@ function petsDraw(ox, oy) {
     if (p.person) {
       if (p.cart) {   // pilav arabası
         cx.fillStyle = 'rgba(0,0,0,.3)'; cx.fillRect(px + 10, py - 2, T * 1.2, T * .7);
-        cx.fillStyle = '#b91c1c'; roundRect(cx, px + 6, py - 8, T * 1.2, T * .62, 6); cx.fill();
-        cx.fillStyle = '#e5e7eb'; cx.fillRect(px + 10, py - 6, T * 1.2 - 8, 9);
+        const c = p.cart;
+        cx.fillStyle = c.color; roundRect(cx, px + 6, py - 8, T * 1.2, T * .62, 6); cx.fill();
+        cx.fillStyle = '#f8fafc'; cx.fillRect(px + 10, py - 6, T * 1.2 - 8, 9);
         cx.font = '16px "Segoe UI Emoji","Apple Color Emoji",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
-        cx.fillText('🍛', px + 6 + T * .35, py + 8); cx.fillText('🍗', px + 6 + T * .85, py + 8);
-        cx.font = '800 9px system-ui,sans-serif'; cx.fillStyle = '#7f1d1d'; cx.fillText('NOHUT PİLAV', px + 6 + T * .6, py - 2);
+        cx.fillText(c.items[0], px + 6 + T * .35, py + 8); cx.fillText(c.items[1], px + 6 + T * .85, py + 8);
+        cx.font = '800 8.5px system-ui,sans-serif'; cx.fillStyle = '#0f172a'; cx.fillText(c.sign, px + 6 + T * .6, py - 2);
       }
       drawPerson(px, py, p.e, p.label, p.path.length ? Math.abs(Math.sin(lastT / 110)) * 3 : 0);
       cx.font = '18px "Segoe UI Emoji","Apple Color Emoji",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
@@ -794,6 +843,7 @@ function petsDraw(ox, oy) {
 function petAt(wx, wy) { return pets.find(p => Math.hypot(p.x + .5 - wx, p.y + .5 - wy) < .8 || (p.cart && wx >= p.x && wx <= p.x + 2 && Math.abs(p.y + .5 - wy) < .8)); }
 function petSpeak(p) {
   p.talk = Date.now() + 2200; p.path = [];
+  if (p.find) setTimeout(() => openFinder(p), 450);
   try {
     const u = new SpeechSynthesisUtterance(p.voice);
     u.lang = 'tr-TR'; u.pitch = p.person ? 1 : p.e === '🐈' ? 1.9 : .6; u.rate = p.person ? 1 : p.e === '🐈' ? 1.1 : 1.3;
@@ -854,6 +904,7 @@ document.getElementById('zoomImg').addEventListener('click', e => {
 
 // ── Başlat ──
 fetch('/api/pins').then(r => r.json()).then(d => {
+  allPinsList = d.pins || d;
   const pins = (d.pins || d).filter(p => p.lat > HAL.lat[0] && p.lat < HAL.lat[1] && p.lng > HAL.lng[0] && p.lng < HAL.lng[1]);
   build(pins);
   petsInit();
