@@ -16,7 +16,7 @@
   :root { --bg: #0b1220; --panel: rgba(15, 23, 42, .92); --line: rgba(148, 163, 184, .25); --text: #e5e7eb; --muted: #94a3b8; --green: #22c55e; --orange: #f97316; }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
-  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: pointer; }
+  #world { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: pointer; }
   .top { position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); left: 10px; right: 10px; display: flex; gap: 8px; align-items: center; z-index: 5; pointer-events: none; }
   .top > * { pointer-events: auto; }
   .brand { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); text-decoration: none; color: var(--text); font-weight: 800; }
@@ -140,7 +140,7 @@ function build(pins) {
   const sides = Math.ceil(list.length / PER_ROW);
   const blocks = Math.ceil(sides / 2);
   GW = MARGIN * 2 + PER_ROW * STALL_W + CROSS;
-  GH = AISLE + blocks * (STALL_D * 2 + AISLE) + 6;   // altta giriş meydanı
+  GH = AISLE + blocks * (STALL_D * 2 + AISLE) + 4;   // altta giriş meydanı
   grid = Array.from({ length: GH }, () => new Uint8Array(GW));   // 0 yürünür, 1 dükkan
   for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) if (x === 0 || x === GW - 1 || y === 0) grid[y][x] = 1;
   list.forEach((item, i) => {
@@ -157,9 +157,9 @@ function build(pins) {
   });
   // Bölge başlıkları için ilk dükkanlar
   stalls.forEach(s => { if (!cats[s.z.cat]) cats[s.z.cat] = s; });
-  hale.x = Math.floor(GW / 2) + 2; hale.y = GH - 3;
+  hale.x = Math.floor(GW / 2) + 2; hale.y = GH - 2;
   grid[hale.y][hale.x] = 1;
-  me.x = Math.floor(GW / 2); me.y = GH - 2;
+  me.x = Math.floor(GW / 2); me.y = GH - 1;
   cam.x = me.x * T; cam.y = me.y * T;
 }
 
@@ -240,7 +240,7 @@ function draw() {
     for (let x = Math.max(0, Math.floor(ox / T)); x < Math.min(GW, (ox + innerWidth) / T + 1); x++)
       if ((x + y) % 2) cx.fillRect(x * T - ox, y * T - oy, T, T);
   // dış duvar
-  cx.strokeStyle = '#0f172a'; cx.lineWidth = 10; cx.strokeRect(-ox + 5, -oy + 5, GW * T - 10, GH * T);
+  cx.strokeStyle = '#0f172a'; cx.lineWidth = 10; cx.strokeRect(-ox + 5, -oy + 5, GW * T - 10, GH * T + T);
   // ana koridor yazısı ve bölge başlıkları
   cx.textAlign = 'center'; cx.textBaseline = 'middle';
   Object.values(cats).forEach(s => {
@@ -249,7 +249,7 @@ function draw() {
     cx.fillText(`▸ ${s.z.label}`, X + 30, Y);
   });
   // giriş
-  const gx = (GW / 2) * T - ox, gy = (GH - 1) * T - oy;
+  const gx = (GW / 2) * T - ox, gy = GH * T - oy;
   cx.fillStyle = '#22c55e'; cx.fillRect(gx - 3 * T, gy + T - 8, 6 * T, 8);
   cx.font = '800 16px system-ui,sans-serif'; cx.fillStyle = '#bbf7d0'; cx.fillText('🚪 GİRİŞ · MERSİN HAL KOMPLEKSİ', gx, gy + T / 2 - 6);
   stalls.forEach(s => drawStall(s, ox, oy));
@@ -287,8 +287,12 @@ function update(dt) {
     if (Math.abs(dx) > .01) me.dir = Math.sign(dx);
     me.step += dt * 12;
   }
-  cam.x += (me.x * T - cam.x) * Math.min(1, dt * 6);
-  cam.y += (me.y * T - cam.y) * Math.min(1, dt * 6);
+  // kamera oyuncuyu izler ama halin dışına taşmaz
+  const clamp = (v, lo, hi) => lo > hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, v));
+  const tcx = clamp(me.x * T, innerWidth / 2 - T, GW * T - innerWidth / 2);
+  const tcy = clamp(me.y * T, innerHeight / 2 - T, (GH + 1.5) * T - innerHeight / 2);
+  cam.x += (tcx - cam.x) * Math.min(1, dt * 6);
+  cam.y += (tcy - cam.y) * Math.min(1, dt * 6);
   // yakındaki dükkan
   const rx = Math.round(me.x), ry = Math.round(me.y);
   let best = null, bd = 2.2;
@@ -301,7 +305,8 @@ function update(dt) {
 }
 function loop(t) {
   const dt = Math.min(.05, (t - lastT) / 1000 || 0); lastT = t;
-  update(dt); draw(); requestAnimationFrame(loop);
+  update(dt); draw();
+  if (document.hidden) setTimeout(() => loop(performance.now()), 50); else requestAnimationFrame(loop);
 }
 
 // ── Dükkan kartı ──
@@ -331,9 +336,13 @@ const norm = s => String(s || '').toLocaleLowerCase('tr').normalize('NFD').repla
 function renderResults() {
   const v = norm(q.value.trim());
   let hits = stalls;
+  let produce = false;
   if (v) hits = stalls.filter(s => norm(s.p.title).includes(v) || (s.p.sells || []).some(x => norm(x).includes(v)) || norm(s.z.cat).includes(v));
+  // Ürün adı yazıldıysa ve eşleşen yoksa: sebze meyve satan komisyoncu ve tüccarları öner
+  if (v && !hits.length && v.length >= 3) { hits = stalls.filter(s => s.z.cat === 'Komisyoncu' || s.z.cat === 'Tüccar'); produce = true; }
   document.getElementById('haleSay').textContent = !v
     ? `Hoş geldiniz! 👋 Ben Hale. Halimizde ${stalls.length} dükkan var. Kimi ya da ne arıyorsunuz? Yazın, sizi dükkanın önüne götüreyim.`
+    : produce ? `"${q.value.trim()}" için dükkanlar ürün listesi girmemiş. Sebze meyve satan komisyoncu ve tüccarlarımız aşağıda, birine dokunun, sizi götüreyim. 🍅`
     : hits.length ? `"${q.value.trim()}" için ${hits.length} dükkan buldum. Birine dokunun, sizi oraya götüreyim. 🚶‍♀️` : `Üzgünüm, "${q.value.trim()}" ile eşleşen dükkan bulamadım. Başka bir kelime deneyin.`;
   results.innerHTML = '';
   hits.slice(0, 40).forEach(s => {
@@ -382,6 +391,7 @@ addEventListener('resize', resize);
 fetch('/api/pins').then(r => r.json()).then(d => {
   const pins = (d.pins || d).filter(p => p.lat > HAL.lat[0] && p.lat < HAL.lat[1] && p.lng > HAL.lng[0] && p.lng < HAL.lng[1]);
   build(pins);
+  window.__hal = { me, stalls };
   resize();
   document.getElementById('loading').remove();
   requestAnimationFrame(loop);
