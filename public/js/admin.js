@@ -2945,9 +2945,51 @@ async function submitAd(e) {
   }
 }
 
+// Bekleyen ilanlarda toplu seçim
+let adBulkSel = new Set();
+function renderAdBulkBar(ads) {
+  const pending = ads.filter(a => a.pending);
+  adBulkSel = new Set([...adBulkSel].filter(id => pending.some(a => a.id === id)));
+  let bar = document.getElementById('adBulkBar');
+  if (!pending.length) { if (bar) bar.remove(); return; }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'adBulkBar';
+    bar.className = 'ad-bulk-bar';
+    document.getElementById('adList').before(bar);
+  }
+  const n = adBulkSel.size;
+  const all = n === pending.length;
+  bar.innerHTML = `
+    <label class="ad-bulk-all"><input type="checkbox" ${all ? 'checked' : ''} /> Bekleyenlerin tümünü seç (${pending.length})</label>
+    <span class="ad-bulk-count">${n ? `${n} ilan seçili` : 'İlan seçilmedi'}</span>
+    <button type="button" class="btn-sm btn-approve-ad" data-bulk="approve" ${n ? '' : 'disabled'}>✅ Seçilenleri onayla</button>
+    <button type="button" class="btn-sm btn-delete" data-bulk="reject" ${n ? '' : 'disabled'}>❌ Seçilenleri reddet</button>`;
+  bar.querySelector('input').onchange = (e) => {
+    adBulkSel = new Set(e.target.checked ? pending.map(a => a.id) : []);
+    document.querySelectorAll('.ad-bulk-pick').forEach(c => { c.checked = adBulkSel.has(c.dataset.id); });
+    renderAdBulkBar(ads);
+  };
+  bar.querySelectorAll('[data-bulk]').forEach(b => { b.onclick = () => bulkAdAction(b.dataset.bulk, b); });
+  bar._ads = ads;
+}
+async function bulkAdAction(action, btn) {
+  const ids = [...adBulkSel];
+  if (!ids.length) return;
+  if (action === 'reject' && !confirm(`${ids.length} ilan reddedilip kalıcı olarak silinsin mi?`)) return;
+  btn.disabled = true;
+  const res = await api('/api/admin/ads/bulk', { method: 'POST', body: JSON.stringify({ ids, action }) });
+  if (!res || !res.ok) { btn.disabled = false; return showToast('İşlem yapılamadı', 'error'); }
+  const { count } = await res.json();
+  adBulkSel.clear();
+  showToast(action === 'approve' ? `✅ ${count} ilan onaylandı, yayında` : `❌ ${count} ilan reddedildi`, 'success');
+  loadAds();
+}
+
 function renderAdList(ads) {
   const list = document.getElementById('adList');
   list.innerHTML = '';
+  renderAdBulkBar(ads);
   if (!ads.length) {
     list.innerHTML = '<div class="ad-empty">Henüz ilan yok. Yukarıdan ilk ilanı ekleyin.</div>';
     return;
@@ -2963,6 +3005,7 @@ function renderAdList(ads) {
       ad.video ? (ad.video.type === 'youtube' ? '▶️ YouTube' : '🎬 Video') : '',
     ].filter(Boolean).join(' · ');
     card.innerHTML = `
+      ${ad.pending ? `<label class="ad-bulk-pick-wrap" title="Toplu işlem için seç"><input type="checkbox" class="ad-bulk-pick" data-id="${esc(ad.id)}" ${adBulkSel.has(ad.id) ? 'checked' : ''} /></label>` : ''}
       <div class="ad-thumb">${media}</div>
       <div class="ad-info">
         <div class="ad-item-title">${ad.no ? `<span class="ad-item-no">#${ad.no}</span> ` : ''}${ad.title ? esc(ad.title) : '<span class="ad-untitled">(Başlıksız ilan)</span>'}</div>
@@ -2990,6 +3033,11 @@ function renderAdList(ads) {
     if (extendBtn) extendBtn.onclick = () => setAdFeatured(ad.id, true, true);
     card.querySelector('[data-act="toggle"]').onclick = () => toggleAd(ad.id, ad.pending || ad.active === false, ad.pending);
     card.querySelector('[data-act="delete"]').onclick = () => deleteAd(ad.id, ad.title || 'Başlıksız');
+    const pick = card.querySelector('.ad-bulk-pick');
+    if (pick) pick.onchange = () => {
+      if (pick.checked) adBulkSel.add(ad.id); else adBulkSel.delete(ad.id);
+      renderAdBulkBar(ads);
+    };
     list.appendChild(card);
   });
 }

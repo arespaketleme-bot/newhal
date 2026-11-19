@@ -2769,6 +2769,25 @@ app.get('/api/admin/wa-sent-counts', requireAdmin, async (req, res) => {
   res.json({ today: pick(today), yesterday: pick(yesterday), todayDate: today, yesterdayDate: yesterday });
 });
 
+// Toplu onay / ret: onay yayına alır, ret ilanı ve dosyalarını siler
+app.post('/api/admin/ads/bulk', requireAdmin, async (req, res) => {
+  const ids = new Set((Array.isArray(req.body && req.body.ids) ? req.body.ids : []).map(String).slice(0, 500));
+  const action = req.body && req.body.action;
+  if (!ids.size || !['approve', 'reject'].includes(action)) return res.status(400).json({ error: 'Seçim geçersiz' });
+  const ads = await db.getAds();
+  const hit = ads.filter(a => ids.has(a.id));
+  if (!hit.length) return res.status(404).json({ error: 'İlan bulunamadı' });
+  if (action === 'approve') {
+    hit.forEach(a => { a.active = true; delete a.pending; });
+    if (!(await db.saveAds(ads))) return res.status(500).json({ error: 'Kaydedilemedi' });
+    hit.forEach(a => { void notifyAdAlerts(a); });
+  } else {
+    if (!(await db.saveAds(ads.filter(a => !ids.has(a.id))))) return res.status(500).json({ error: 'Silinemedi' });
+    for (const a of hit) await deleteAdFiles(a).catch(() => {});
+  }
+  res.json({ count: hit.length });
+});
+
 app.delete('/api/admin/ads/:id', requireAdmin, async (req, res) => {
   const ads = await db.getAds();
   const ad = ads.find(a => a.id === req.params.id);
