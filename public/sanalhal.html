@@ -85,6 +85,7 @@
 <canvas class="minimap" id="mini" aria-hidden="true"></canvas>
 <div class="hal-chat" id="halChat">
   <div class="hal-log" id="halLog"></div>
+  <button type="button" class="shout-btn" onclick="openShout()">📣 Malım var! Bağır</button>
   <div class="hal-quick" id="halQuick" aria-label="Hızlı mesajlar"></div>
   <form class="hal-send" id="halChatForm" autocomplete="off">
     <input id="halMsg" maxlength="140" placeholder="Haldekilere yazın…" aria-label="Sanal hal sohbeti" />
@@ -120,6 +121,58 @@
   <div class="acts" id="cActs"></div>
 </div>
 
+<div class="shout-bar" id="shoutBar" aria-live="polite"></div>
+<div class="modal-lite" id="shout" onclick="if(event.target===this)closeShout()">
+  <form class="lite-box" id="shoutForm" autocomplete="off">
+    <div class="lite-head"><b>📣 Malım var! Bağır</b><button class="x" style="position:static" type="button" aria-label="Kapat" onclick="closeShout()">×</button></div>
+    <p class="lite-note">Haldeki herkes duyar ve NewHal'de ilanınız olarak da yayınlanır.</p>
+    <label>Ürün<input name="urun" id="shUrun" maxlength="40" required placeholder="Örn: Limon" /></label>
+    <label>Miktar<input name="miktar" maxlength="30" required placeholder="Örn: 10 ton" /></label>
+    <label>Yer<input name="yer" maxlength="40" placeholder="Örn: Mersin Hal, 14 numara" /></label>
+    <label>Not<input name="not" maxlength="160" placeholder="Fiyat, kalite, telefon…" /></label>
+    <button class="btn btn-orange" type="submit" style="width:100%;justify-content:center">📣 Bağır ve ilan ver</button>
+  </form>
+</div>
+<div class="modal-lite" id="pano" onclick="if(event.target===this)closePano()">
+  <div class="lite-box pano-box">
+    <div class="lite-head"><b>📌 Aranıyor panosu</b><button class="x" style="position:static" type="button" aria-label="Kapat" onclick="closePano()">×</button></div>
+    <p class="lite-note">Alıcılar ne aradığını yazar, malı olan cevap verir. İlanlar 14 gün durur.</p>
+    <form id="panoForm" class="pano-new" autocomplete="off">
+      <input id="panoText" maxlength="200" placeholder="Örn: 50 kasa çilek arıyorum, Mersin teslim" />
+      <button class="btn btn-orange" type="submit">📌 As</button>
+    </form>
+    <div id="panoGuest" class="lite-note" hidden>Panoya yazmak ve cevap vermek için ana sayfadan üye girişi yapın.</div>
+    <div id="panoList" class="pano-list"></div>
+  </div>
+</div>
+<style>
+  .shout-btn { border: 0; border-radius: 12px; min-height: 40px; background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff; font-weight: 900; font-size: 14px; cursor: pointer; box-shadow: 0 6px 18px rgba(239,68,68,.3); }
+  .shout-bar { position: fixed; top: calc(62px + env(safe-area-inset-top, 0px)); left: 50%; transform: translate(-50%, -150%); width: min(560px, calc(100% - 24px)); z-index: 7; padding: 12px 16px; border-radius: 16px; background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff; font-size: 14.5px; box-shadow: 0 14px 40px rgba(0,0,0,.4); transition: transform .3s ease; }
+  .shout-bar.show { transform: translate(-50%, 0); }
+  .shout-bar a { color: #fff; font-weight: 800; }
+  .log-row.shout { background: rgba(245,158,11,.15); border-radius: 6px; padding: 2px 4px; }
+  .log-row a { color: #fde047; font-weight: 700; }
+  .modal-lite { position: fixed; inset: 0; z-index: 13; display: none; align-items: center; justify-content: center; background: rgba(2,6,23,.7); padding: 14px; }
+  .modal-lite.open { display: flex; }
+  .lite-box { width: min(440px, 100%); max-height: 92vh; overflow: auto; background: #0f172a; border: 1px solid var(--line); border-radius: 20px; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .lite-head { display: flex; justify-content: space-between; align-items: center; }
+  .lite-note { margin: 0; font-size: 13px; color: var(--muted); }
+  .lite-box label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 700; }
+  .lite-box input { min-height: 42px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0,0,0,.25); color: var(--text); font-size: 15px; outline: none; }
+  .pano-new { display: flex; gap: 8px; }
+  .pano-new input { flex: 1; min-width: 0; }
+  .pano-list { display: flex; flex-direction: column; gap: 10px; }
+  .pano-card { background: #fef3c7; color: #1c1917; border-radius: 4px 14px 14px 14px; padding: 10px 12px; box-shadow: 0 4px 0 rgba(0,0,0,.25); }
+  .pano-top { display: flex; justify-content: space-between; gap: 8px; }
+  .pano-top small, .pano-reply small { color: #78716c; }
+  .pano-text { margin: 4px 0 6px; font-size: 15px; font-weight: 600; }
+  .pano-reply { font-size: 13px; padding: 5px 8px; margin-top: 4px; background: rgba(255,255,255,.7); border-radius: 8px; }
+  .pano-rform { display: flex; gap: 6px; margin-top: 8px; }
+  .pano-rform input { flex: 1; min-width: 0; min-height: 38px; padding: 0 10px; border-radius: 9px; border: 1px solid #d6d3d1; font-size: 14px; }
+  .pano-rform .btn { min-height: 38px; padding: 0 12px; }
+  .pano-del { margin-top: 6px; border: 0; background: transparent; color: #b91c1c; font-weight: 700; cursor: pointer; padding: 0; }
+  .pano-empty { text-align: center; color: var(--muted); padding: 18px 0; }
+</style>
 <div class="dama" id="dama">
   <div class="dama-box">
     <div class="dama-head"><b id="damaTitle">☕ Kahvehane</b><button class="x" style="position:static" type="button" aria-label="Kapat" onclick="closeDama()">×</button></div>
@@ -274,6 +327,7 @@ function build(pins) {
   for (let y = GH - 7; y < GH; y++) for (let x = 1; x <= 2; x++) grid[y][x] = 1;   // tır
   grid[GH - 6][12] = 1; grid[GH - 6][13] = 1;   // katibin masası
   DAMA_SPOTS.forEach(([x]) => { grid[GH - 6][x] = 1; });   // kahvehane masaları
+  for (let x = 25; x <= 27; x++) grid[GH - 7][x] = 1;   // aranıyor panosu
   hale.x = Math.floor(GW / 2) + 2; hale.y = GH - 2;
   grid[hale.y][hale.x] = 1;
   me.x = Math.floor(GW / 2); me.y = GH - 1;
@@ -515,6 +569,7 @@ function draw() {
   drawYard(ox, oy);
   drawKatip(ox, oy);
   drawCafe(ox, oy);
+  drawPano(ox, oy);
   petsDraw(ox, oy);
   drawPerson(hale.x * T - ox + T / 2, hale.y * T - oy + T / 2, '👩‍💼', 'Hale · Bana dokunun', Math.sin(lastT / 300) * 2);
   // hedef işareti
@@ -685,6 +740,7 @@ cv.addEventListener('click', e => {
   if (pet) { petSpeak(pet); return; }
   if (Math.abs(tx - hale.x) <= 1 && Math.abs(ty - hale.y) <= 1) { openChat(); return; }
   if (tx >= 11 && tx <= 13 && ty >= GH - 7 && ty <= GH - 6) { openKatip(); return; }
+  if (tx >= PANO_X && tx <= PANO_X + 2 && ty >= GH - 8 && ty <= GH - 6) { openPano(); return; }
   const masa = DAMA_SPOTS.findIndex(([mx]) => Math.abs(tx - mx) <= 1 && ty >= GH - 7 && ty <= GH - 5);
   if (masa >= 0) { openDama(masa); return; }
   const s = stalls.find(s => tx >= s.x && tx < s.x + s.w && ty >= s.y && ty < s.y + s.h);
@@ -749,11 +805,117 @@ try { voiceOn = localStorage.getItem('halVoice') !== '0'; } catch {}
 function speakMsg(m) {
   if (!voiceOn || firstBatch || m.from === sid.slice(0, 8) || !('speechSynthesis' in window)) return;
   try {
-    const u = new SpeechSynthesisUtterance(`${m.name} diyor ki: ${m.text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')}`);
+    const u = new SpeechSynthesisUtterance(`${m.name} ${m.shout ? 'bağırıyor' : 'diyor ki'}: ${m.text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')}`);
     u.lang = 'tr-TR'; u.rate = 1.05;
     speechSynthesis.speak(u);
   } catch {}
 }
+function showShout(m) {
+  const el = document.getElementById('shoutBar');
+  el.innerHTML = `<b>📣 ${esc(m.name)} bağırıyor:</b> ${esc(m.text.replace(/^📣\s*/, ''))} ${m.adId ? `<a href="/?ilan=${encodeURIComponent(m.adId)}" target="_blank" rel="noopener">İlanı gör →</a>` : ''}`;
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  clearTimeout(showShout.t); showShout.t = setTimeout(() => el.classList.remove('show'), 9000);
+}
+// "Malım var" penceresi
+window.openShout = function () {
+  if (!token()) { flashHal('Bağırmak için ana sayfadan üye girişi yapın'); alert('"Malım var" diye bağırmak için NewHal üyesi olmalısınız. Ana sayfadan ücretsiz üye olabilirsiniz.'); return; }
+  document.getElementById('shout').classList.add('open');
+  setTimeout(() => document.getElementById('shUrun').focus(), 50);
+};
+window.closeShout = function () { document.getElementById('shout').classList.remove('open'); };
+document.getElementById('shoutForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target, btn = f.querySelector('button[type=submit]');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/sanal/bagir', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+      body: JSON.stringify({ sid, urun: f.urun.value, miktar: f.miktar.value, yer: f.yer.value, not: f.not.value }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { alert(d.error || 'Gönderilemedi'); }
+    else { addMsg(d.msg); showShout(d.msg); f.reset(); closeShout(); bubbles.set(sid.slice(0, 8), { text: d.msg.text, until: Date.now() + 9000 }); }
+  } catch { alert('Gönderilemedi'); }
+  btn.disabled = false;
+});
+document.querySelectorAll('#shout input, #pano input, #pano textarea').forEach(i => i.addEventListener('keydown', e => e.stopPropagation()));
+
+// ── Kahvehane "Aranıyor" panosu ──
+const PANO_X = 25;
+let panoList = [];
+async function panoFetch(url, body) {
+  const h = { 'Content-Type': 'application/json' };
+  const t = token(); if (t) h.Authorization = 'Bearer ' + t;
+  const r = await fetch(url, body ? { method: 'POST', headers: h, body: JSON.stringify(body) } : { headers: h, cache: 'no-store' });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || 'İşlem yapılamadı');
+  return d;
+}
+function ago(iso) {
+  const m = Math.max(1, Math.round((Date.now() - Date.parse(iso)) / 60000));
+  return m < 60 ? `${m} dk önce` : m < 1440 ? `${Math.round(m / 60)} saat önce` : `${Math.round(m / 1440)} gün önce`;
+}
+function renderPano() {
+  const box = document.getElementById('panoList');
+  const member = !!token();
+  document.getElementById('panoForm').hidden = !member;
+  document.getElementById('panoGuest').hidden = member;
+  if (!panoList.length) { box.innerHTML = '<div class="pano-empty">Panoda henüz ilan yok. İlk aradığınızı siz yazın! 📌</div>'; return; }
+  box.innerHTML = '';
+  panoList.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'pano-card';
+    card.innerHTML = `<div class="pano-top"><b>📌 ${esc(p.name)}</b><small>${ago(p.at)}</small></div>
+      <div class="pano-text">${esc(p.text)}</div>
+      <div class="pano-replies">${p.replies.map(r => `<div class="pano-reply"><b>${esc(r.name)}:</b> ${esc(r.text)} <small>${ago(r.at)}</small></div>`).join('')}</div>
+      ${member ? `<form class="pano-rform"><input maxlength="200" placeholder="Bende var! Fiyat, miktar, numaranız…" /><button class="btn btn-green" type="submit">Cevapla</button></form>` : ''}
+      ${p.mine ? '<button type="button" class="pano-del">🗑 İlanımı kaldır</button>' : ''}`;
+    const rf = card.querySelector('.pano-rform');
+    if (rf) {
+      rf.querySelector('input').addEventListener('keydown', e => e.stopPropagation());
+      rf.onsubmit = async e => {
+        e.preventDefault();
+        const v = rf.querySelector('input').value.trim(); if (!v) return;
+        try { panoList = await panoFetch(`/api/sanal/pano/${encodeURIComponent(p.id)}/cevap`, { text: v }); renderPano(); } catch (err) { alert(err.message); }
+      };
+    }
+    const del = card.querySelector('.pano-del');
+    if (del) del.onclick = async () => {
+      if (!confirm('İlanınız panodan kaldırılsın mı?')) return;
+      try { panoList = await panoFetch(`/api/sanal/pano/${encodeURIComponent(p.id)}/sil`, {}); renderPano(); } catch (err) { alert(err.message); }
+    };
+    box.appendChild(card);
+  });
+}
+window.openPano = async function () {
+  document.getElementById('pano').classList.add('open');
+  document.getElementById('panoList').innerHTML = '<div class="pano-empty">Yükleniyor…</div>';
+  try { panoList = await panoFetch('/api/sanal/pano'); } catch { panoList = []; }
+  renderPano();
+};
+window.closePano = function () { document.getElementById('pano').classList.remove('open'); };
+document.getElementById('panoForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const i = document.getElementById('panoText'), v = i.value.trim();
+  if (!v) return;
+  try { panoList = await panoFetch('/api/sanal/pano', { text: v, sid }); i.value = ''; renderPano(); } catch (err) { alert(err.message); }
+});
+let panoCount = 0;
+fetch('/api/sanal/pano').then(r => r.json()).then(d => { panoCount = Array.isArray(d) ? d.length : 0; }).catch(() => {});
+function drawPano(ox, oy) {
+  const px = PANO_X * T - ox, py = (GH - 7) * T - oy;
+  if (px > innerWidth + 60 || px < -120 || py > innerHeight + 60 || py < -100) return;
+  cx.fillStyle = 'rgba(0,0,0,.35)'; cx.fillRect(px + 4, py + 4, T * 2.4, T * 1.5);
+  cx.fillStyle = '#7c2d12'; roundRect(cx, px, py, T * 2.4, T * 1.5, 6); cx.fill();
+  cx.fillStyle = '#d6b98c'; cx.fillRect(px + 5, py + 5, T * 2.4 - 10, T * 1.5 - 10);
+  [[.18, .3, '#fde047'], [.55, .25, '#86efac'], [.3, .62, '#fda4af'], [.68, .6, '#93c5fd']].forEach(([a, b, c]) => {
+    cx.fillStyle = c; cx.fillRect(px + T * 2.4 * a - 9, py + T * 1.5 * b - 7, 18, 14);
+  });
+  cx.font = '800 11px system-ui,sans-serif'; cx.fillStyle = '#fff'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  const label = `📌 ARANIYOR${panoCount ? ` (${panoCount})` : ''} · dokun`;
+  const w = cx.measureText(label).width + 12;
+  cx.fillStyle = 'rgba(124,45,18,.95)'; roundRect(cx, px + T * 1.2 - w / 2, py - 20, w, 17, 8); cx.fill();
+  cx.fillStyle = '#fff'; cx.fillText(label, px + T * 1.2, py - 11);
+}
+
 window.toggleVoice = function () {
   voiceOn = !voiceOn;
   try { localStorage.setItem('halVoice', voiceOn ? '1' : '0'); } catch {}
@@ -765,10 +927,12 @@ function addMsg(m) {
   if (m.id <= lastMsgId) return;
   lastMsgId = m.id;
   speakMsg(m);
+  if (m.shout && !firstBatch) showShout(m);
   bubbles.set(m.from, { text: m.text, until: Date.now() + 8000 });
   const row = document.createElement('div');
   row.className = 'log-row' + (m.from === sid.slice(0, 8) ? ' mine' : '');
-  row.innerHTML = `<b>${esc(m.name)}</b> ${esc(m.text)}`;
+  row.innerHTML = `<b>${esc(m.name)}</b> ${esc(m.text)}${m.adId ? ` <a href="/?ilan=${encodeURIComponent(m.adId)}" target="_blank" rel="noopener">İlanı gör</a>` : ''}`;
+  if (m.shout) row.classList.add('shout');
   const box = logEl();
   box.appendChild(row);
   while (box.children.length > 40) box.firstChild.remove();

@@ -4022,6 +4022,103 @@ app.post('/api/sanal/dama', (req, res) => {
   res.set('Cache-Control', 'no-store').json(damaView(t, sid));
 });
 
+// ── "Malım var" bağırması: halde herkes duyar, aynı anda ilan olarak yayınlanır ──
+const halShoutLast = new Map();
+const cleanLine = (v, n) => String(v || '').replace(/[\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
+app.post('/api/sanal/bagir', requireAuth, async (req, res) => {
+  if (req.user.role !== 'user' || !req.user.id) return res.status(403).json({ error: 'Bağırmak için üye girişi yapın' });
+  const urun = cleanLine(req.body.urun, 40), miktar = cleanLine(req.body.miktar, 30), yer = cleanLine(req.body.yer, 40), not = cleanLine(req.body.not, 160);
+  if (!urun || !miktar) return res.status(400).json({ error: 'Ürün ve miktar yazın' });
+  if (/https?:\/\/|www\./i.test(`${urun} ${miktar} ${yer} ${not}`)) return res.status(400).json({ error: 'Bağlantı paylaşılamaz' });
+  const uid = String(req.user.id), now = Date.now();
+  if (now - (halShoutLast.get(uid) || 0) < 5 * 60 * 1000) return res.status(429).json({ error: '5 dakikada bir bağırabilirsiniz' });
+  const ads = await db.getAds();
+  const dayAgo = new Date(now - DAY_MS).toISOString();
+  if (ads.filter(a => a.owner && a.owner.id === req.user.id && a.created_at > dayAgo).length >= USER_MAX_ADS_PER_DAY) {
+    return res.status(429).json({ error: `Günde en fazla ${USER_MAX_ADS_PER_DAY} ilan verebilirsiniz` });
+  }
+  halShoutLast.set(uid, now);
+  const { data: owner } = await db.supabase.from('users').select('name').eq('id', req.user.id).maybeSingle();
+  const fullName = (owner && owner.name) || req.user.name || 'Kullanıcı';
+  const title = `${miktar} ${urun} var${yer ? ` · ${yer}` : ''}`.slice(0, 120);
+  const body = [`📣 ${miktar} ${urun} var!`, yer ? `📍 Yer: ${yer}` : '', not, '', 'Sanal Hal\'den bağırarak verildi.'].filter((l, i, a) => l || (i && a[i - 1])).join('\n').trim();
+  const created = { id: crypto.randomUUID(), title, body, images: [], video: null, featured: false, active: true,
+    owner: { id: req.user.id, name: fullName }, created_at: new Date().toISOString(), source: { type: 'sanal-hal' } };
+  if (!(await db.saveAds([created, ...ads]))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
+  void notifyAdAlerts(created);
+  const name = String(fullName).trim().split(/\s+/)[0].slice(0, 16) || 'Üye';
+  const sid = String(req.body.sid || '').slice(0, 8);
+  const msg = { id: ++halMsgSeq, from: sid, name, text: `📣 ${miktar} ${urun} var!${yer ? ` Yer: ${yer}.` : ''}${not ? ` ${not}` : ''}`.slice(0, 200), at: now, shout: true, adId: created.id };
+  halMsgs.push(msg);
+  if (halMsgs.length > 60) halMsgs.shift();
+  const reward = await awardEconomyPoints(req.user.id, 'ad_created', `ad:${created.id}`).catch(() => ({ amount: 0 }));
+  res.json({ msg, adId: created.id, points_awarded: reward.amount || 0 });
+});
+
+// ── Kahvehane "Aranıyor" panosu: alıcılar ne aradığını yazar, satıcılar cevap verir ──
+const PANO_FILE = 'sanal-pano.json', PANO_MAX = 40, PANO_DAYS = 14;
+async function getPano() {
+  const list = (await db.getPrivateJson(PANO_FILE).catch(() => null)) || [];
+  const cut = Date.now() - PANO_DAYS * DAY_MS;
+  return (Array.isArray(list) ? list : []).filter(p => Date.parse(p.at) > cut);
+}
+const panoPublic = (list, uid) => list.map(p => ({ id: p.id, name: p.name, text: p.text, at: p.at, mine: !!uid && p.uid === uid,
+  replies: (p.replies || []).map(r => ({ name: r.name, text: r.text, at: r.at, mine: !!uid && r.uid === uid })) }));
+function viewerUid(req) {
+  try { const h = req.headers.authorization; if (h) { const u = jwt.verify(h.split(' ')[1], JWT_SECRET); if (u.role === 'user') return u.id; } } catch {}
+  return null;
+}
+const panoLast = new Map();
+app.get('/api/sanal/pano', async (req, res) => {
+  res.set('Cache-Control', 'no-store').json(panoPublic(await getPano(), viewerUid(req)));
+});
+app.post('/api/sanal/pano', requireAuth, async (req, res) => {
+  if (req.user.role !== 'user') return res.status(403).json({ error: 'Panoya yazmak için üye girişi yapın' });
+  const text = cleanLine(req.body.text, 200);
+  if (text.length < 5) return res.status(400).json({ error: 'Ne aradığınızı yazın' });
+  if (/https?:\/\/|www\./i.test(text)) return res.status(400).json({ error: 'Bağlantı paylaşılamaz' });
+  const k = 'p' + req.user.id, now = Date.now();
+  if (now - (panoLast.get(k) || 0) < 60 * 1000) return res.status(429).json({ error: 'Biraz bekleyip tekrar yazın' });
+  panoLast.set(k, now);
+  const list = await getPano();
+  const name = String(req.user.name || 'Üye').trim().split(/\s+/)[0].slice(0, 16) || 'Üye';
+  list.unshift({ id: crypto.randomUUID(), uid: req.user.id, name, text, at: new Date().toISOString(), replies: [] });
+  if (!(await db.savePrivateJson(PANO_FILE, list.slice(0, PANO_MAX)))) return res.status(500).json({ error: 'Kaydedilemedi' });
+  const msg = { id: ++halMsgSeq, from: String(req.body.sid || '').slice(0, 8), name, text: `📌 Panoya yazdı: ${text}`.slice(0, 200), at: now, pano: true };
+  halMsgs.push(msg); if (halMsgs.length > 60) halMsgs.shift();
+  res.json(panoPublic(list.slice(0, PANO_MAX), req.user.id));
+});
+app.post('/api/sanal/pano/:id/cevap', requireAuth, async (req, res) => {
+  if (req.user.role !== 'user') return res.status(403).json({ error: 'Cevap yazmak için üye girişi yapın' });
+  const text = cleanLine(req.body.text, 200);
+  if (text.length < 2) return res.status(400).json({ error: 'Cevap boş' });
+  if (/https?:\/\/|www\./i.test(text)) return res.status(400).json({ error: 'Bağlantı paylaşılamaz' });
+  const k = 'c' + req.user.id, now = Date.now();
+  if (now - (panoLast.get(k) || 0) < 15 * 1000) return res.status(429).json({ error: 'Biraz bekleyip tekrar yazın' });
+  panoLast.set(k, now);
+  const list = await getPano();
+  const post = list.find(p => p.id === req.params.id);
+  if (!post) return res.status(404).json({ error: 'İlan bulunamadı' });
+  post.replies = (post.replies || []).slice(-29);
+  const name = String(req.user.name || 'Üye').trim().split(/\s+/)[0].slice(0, 16) || 'Üye';
+  post.replies.push({ uid: req.user.id, name, text, at: new Date().toISOString() });
+  if (!(await db.savePrivateJson(PANO_FILE, list))) return res.status(500).json({ error: 'Kaydedilemedi' });
+  if (post.uid && post.uid !== req.user.id) {
+    db.supabase.from('user_notifications').insert({ recipient_id: post.uid, actor_id: req.user.id, type: 'announcement',
+      title: '📌 Sanal Hal panosundaki ilanınıza cevap geldi', body: `${name}: ${text}`.slice(0, 300) }).then(() => {}, () => {});
+  }
+  res.json(panoPublic(list, req.user.id));
+});
+app.post('/api/sanal/pano/:id/sil', requireAuth, async (req, res) => {
+  const list = await getPano();
+  const post = list.find(p => p.id === req.params.id);
+  if (!post) return res.status(404).json({ error: 'İlan bulunamadı' });
+  if (post.uid !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ error: 'Yalnız kendi ilanınızı silebilirsiniz' });
+  const next = list.filter(p => p !== post);
+  if (!(await db.savePrivateJson(PANO_FILE, next))) return res.status(500).json({ error: 'Silinemedi' });
+  res.json(panoPublic(next, req.user.id));
+});
+
 app.post('/api/sanal/cikis', (req, res) => {
   halVisitors.delete(String((req.body && req.body.sid) || ''));
   res.json({ ok: true });
