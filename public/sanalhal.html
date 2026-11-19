@@ -814,10 +814,10 @@ window.__miniOthers = function (k, ox, oy) {
 };
 
 // ── Kahvehane: dama masaları ──
-const DAMA_SPOTS = [[33], [37]];
+const DAMA_SPOTS = [[17], [21]];
 let masalar = [];
 function drawCafe(ox, oy) {
-  const x0 = 31 * T - ox, y0 = (GH - 7.4) * T - oy;
+  const x0 = 15 * T - ox, y0 = (GH - 7.4) * T - oy;
   if (x0 > innerWidth + 40 || y0 > innerHeight + 40 || x0 + T * 9 < -40) return;
   cx.fillStyle = 'rgba(120,53,15,.28)'; roundRect(cx, x0, y0, T * 8.6, T * 2.5, 12); cx.fill();
   cx.strokeStyle = 'rgba(251,191,36,.45)'; cx.lineWidth = 2; cx.stroke();
@@ -952,12 +952,11 @@ function petsInit() {
   const sim = pets.find(p => p.label === 'Simitçi'); sim.x = Math.floor(GW / 2) - 1; sim.y = GH - 3;
   const pil = pets.find(p => p.label === 'Nohut Pilavcı'); pil.at = [7, -2];
   // sabit tezgahlar: girişin iki yanına dizilir, tezgah karoları yürünmez
-  // en sağ kenar: yukarıdan aşağı, her biri bir koridorun ağzında
   const RIGHT_ORDER = ['Elmacı', 'Çilekçi', 'Marulcu', 'Patatesçi', 'Cevizci'];
   pets.filter(p => p.right).sort((a, b) => RIGHT_ORDER.indexOf(a.label) - RIGHT_ORDER.indexOf(b.label)).forEach((p, i) => {
-    p.x = GW - 2; p.y = AISLE + i * (STALL_D * 2 + AISLE) + STALL_D * 2 + 1;
-    if (p.y >= GH - 1) p.y = GH - 3 - i;
-    grid[p.y][p.x] = 1; grid[p.y][p.x - 1] = 1;
+    // narcının üstünde, yukarıdan aşağı tek sıra
+    p.x = Math.floor(GW / 2) + 17; p.y = GH - 7 + i; p.right = false;
+    grid[p.y][p.x] = 1; grid[p.y][p.x + 1] = 1;
   });
   pets.filter(p => p.at).forEach(p => {
     p.x = Math.max(1, Math.min(GW - 3, Math.floor(GW / 2) + p.at[0])); p.y = GH + p.at[1];
