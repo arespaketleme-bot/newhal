@@ -773,6 +773,9 @@ window.__miniOthers = function (k, ox, oy) {
 const pets = [
   { e: '🐈', say: 'Miyav! 🐾', voice: 'miyav', x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 1.6 },
   { e: '🐕', say: 'Hav hav! 🐶', voice: 'hav hav', x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 2.4 },
+  // motosikletliler: halde hızlıca dolaşır, ara ara korna çalar
+  { e: '🏍️', person: true, moto: true, label: 'Motorcu', say: 'Dıt dıt! Yol verin! 🏍️', voice: 'dıt dıt, yol verin', shoutEvery: 16, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 4.2 },
+  { e: '🛵', person: true, moto: true, label: 'Kurye', say: 'Sipariş geldi, çekilin! 📦', voice: 'sipariş geldi, çekilin', shoutEvery: 19, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 3.6 },
   // satıcılar: simitçi gezer ve ara ara bağırır, nohut pilavcı tezgahında durur
   { e: '🧔', person: true, label: 'Simitçi', tray: '🥯', say: 'Sıcak simitler! Taze simit! 🥯', voice: 'sıcak simitler, taze simit', shoutEvery: 9, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 1.3 },
   { e: '👴', person: true, fixed: true, cart: { sign: 'KESTANE', color: '#78350f', items: ['🌰', '🔥'] }, find: { q: 'Kestane', re: /kestane/i, icon: '🌰' }, label: 'Kestaneci', say: 'Sıcak kestane! Kebap kestane! 🌰 Bana dokun, kestanecileri göstereyim', voice: 'sıcak kestane, kebap kestane', shoutEvery: 11, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0, at: [-6, -2] },
@@ -783,6 +786,7 @@ const pets = [
 ];
 function petsInit() {
   pets.forEach((p, i) => { p.x = Math.floor(GW / 2) - 4 + i * 8; p.y = GH - 2; p.nextShout = Date.now() + 3000 + i * 2500; });
+  pets.filter(p => p.moto).forEach((p, i) => { p.x = 3 + i * 30; p.y = 2 + i * 10; });
   const sim = pets.find(p => p.label === 'Simitçi'); sim.x = Math.floor(GW / 2) - 2; sim.y = GH - 4;
   const pil = pets.find(p => p.label === 'Nohut Pilavcı'); pil.at = [7, -2];
   // sabit tezgahlar: girişin iki yanına dizilir, tezgah karoları yürünmez
@@ -800,11 +804,12 @@ function petsUpdate(dt) {
     if (!p.path.length) {
       if ((p.wait -= dt) > 0) return;
       for (let tries = 0; tries < 8 && !p.path.length; tries++) {
-        const tx = Math.max(1, Math.min(GW - 2, Math.round(p.x + (Math.random() - .5) * 16)));
-        const ty = Math.max(1, Math.min(GH - 1, Math.round(p.y + (Math.random() - .5) * 16)));
+        const spread = p.moto ? 40 : 16;
+        const tx = Math.max(1, Math.min(GW - 2, Math.round(p.x + (Math.random() - .5) * spread)));
+        const ty = Math.max(1, Math.min(GH - 1, Math.round(p.y + (Math.random() - .5) * spread)));
         p.path = findPath(Math.round(p.x), Math.round(p.y), tx, ty) || [];
       }
-      p.wait = 1 + Math.random() * 3;
+      p.wait = p.moto ? .3 + Math.random() : 1 + Math.random() * 3;
       return;
     }
     const t = p.path[0], dx = t.x - p.x, dy = t.y - p.y, d = Math.hypot(dx, dy), sp = p.sp * dt;
@@ -828,7 +833,7 @@ function petsDraw(ox, oy) {
       }
       drawPerson(px, py, p.e, p.label, p.path.length ? Math.abs(Math.sin(lastT / 110)) * 3 : 0);
       cx.font = '18px "Segoe UI Emoji","Apple Color Emoji",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
-      if (!p.cart) cx.fillText(p.tray, px + 13, py - 14);
+      if (!p.cart && p.tray) cx.fillText(p.tray, px + 13, py - 14);
       if (p.talk > Date.now()) drawBubble(px, py - 6, p.say);
       return;
     }
