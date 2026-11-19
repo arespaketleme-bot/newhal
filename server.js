@@ -4025,34 +4025,45 @@ app.post('/api/sanal/dama', (req, res) => {
 // ── "Malım var" bağırması: halde herkes duyar, aynı anda ilan olarak yayınlanır ──
 const halShoutLast = new Map();
 const cleanLine = (v, n) => String(v || '').replace(/[\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
-app.post('/api/sanal/bagir', requireAuth, async (req, res) => {
-  if (req.user.role !== 'user' || !req.user.id) return res.status(403).json({ error: 'Bağırmak için üye girişi yapın' });
+app.post('/api/sanal/bagir', async (req, res) => {
+  // Üye ilanı hemen yayınlanır; misafirin ilanı yönetim onayına düşer
+  let user = null;
+  try { const h = req.headers.authorization; if (h) { const u = jwt.verify(h.split(' ')[1], JWT_SECRET); if (u.role === 'user' && u.id) user = u; } } catch {}
+  req.user = user || { id: null, name: 'Misafir' };
+  const sidFull = String((req.body && req.body.sid) || '');
+  if (!user && !/^[a-z0-9-]{8,40}$/i.test(sidFull)) return res.status(400).json({ error: 'Oturum geçersiz' });
   const urun = cleanLine(req.body.urun, 40), miktar = cleanLine(req.body.miktar, 30), yer = cleanLine(req.body.yer, 40), not = cleanLine(req.body.not, 160);
   if (!urun || !miktar) return res.status(400).json({ error: 'Ürün ve miktar yazın' });
   if (/https?:\/\/|www\./i.test(`${urun} ${miktar} ${yer} ${not}`)) return res.status(400).json({ error: 'Bağlantı paylaşılamaz' });
-  const uid = String(req.user.id), now = Date.now();
-  if (now - (halShoutLast.get(uid) || 0) < 5 * 60 * 1000) return res.status(429).json({ error: '5 dakikada bir bağırabilirsiniz' });
+  const now = Date.now();
+  const limitKeys = user ? ['u' + user.id] : ['s' + sidFull, 'ip' + getIp(req)];
+  if (limitKeys.some(k => now - (halShoutLast.get(k) || 0) < 5 * 60 * 1000)) return res.status(429).json({ error: '5 dakikada bir bağırabilirsiniz' });
   const ads = await db.getAds();
   const dayAgo = new Date(now - DAY_MS).toISOString();
-  if (ads.filter(a => a.owner && a.owner.id === req.user.id && a.created_at > dayAgo).length >= USER_MAX_ADS_PER_DAY) {
+  if (user && ads.filter(a => a.owner && a.owner.id === user.id && a.created_at > dayAgo).length >= USER_MAX_ADS_PER_DAY) {
     return res.status(429).json({ error: `Günde en fazla ${USER_MAX_ADS_PER_DAY} ilan verebilirsiniz` });
   }
-  halShoutLast.set(uid, now);
-  const { data: owner } = await db.supabase.from('users').select('name').eq('id', req.user.id).maybeSingle();
-  const fullName = (owner && owner.name) || req.user.name || 'Kullanıcı';
+  if (!user && ads.filter(a => a.source && a.source.type === 'sanal-hal-misafir' && a.created_at > dayAgo).length >= 60) {
+    return res.status(429).json({ error: 'Bugün çok bağırıldı, yarın tekrar deneyin' });
+  }
+  limitKeys.forEach(k => halShoutLast.set(k, now));
+  if (halShoutLast.size > 5000) halShoutLast.clear();
+  let fullName = 'Misafir';
+  if (user) { const { data: owner } = await db.supabase.from('users').select('name').eq('id', user.id).maybeSingle(); fullName = (owner && owner.name) || user.name || 'Kullanıcı'; }
   const title = `${miktar} ${urun} var${yer ? ` · ${yer}` : ''}`.slice(0, 120);
   const body = [`📣 ${miktar} ${urun} var!`, yer ? `📍 Yer: ${yer}` : '', not, '', 'Sanal Hal\'den bağırarak verildi.'].filter((l, i, a) => l || (i && a[i - 1])).join('\n').trim();
   const created = { id: crypto.randomUUID(), title, body, images: [], video: null, featured: false, active: true,
-    owner: { id: req.user.id, name: fullName }, created_at: new Date().toISOString(), source: { type: 'sanal-hal' } };
+    ...(user ? { owner: { id: user.id, name: fullName } } : { pending: true }),
+    created_at: new Date().toISOString(), source: { type: user ? 'sanal-hal' : 'sanal-hal-misafir' } };
   if (!(await db.saveAds([created, ...ads]))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
-  void notifyAdAlerts(created);
+  if (user) void notifyAdAlerts(created);
   const name = String(fullName).trim().split(/\s+/)[0].slice(0, 16) || 'Üye';
   const sid = String(req.body.sid || '').slice(0, 8);
-  const msg = { id: ++halMsgSeq, from: sid, name, text: `📣 ${miktar} ${urun} var!${yer ? ` Yer: ${yer}.` : ''}${not ? ` ${not}` : ''}`.slice(0, 200), at: now, shout: true, adId: created.id };
+  const msg = { id: ++halMsgSeq, from: sid, name, text: `📣 ${miktar} ${urun} var!${yer ? ` Yer: ${yer}.` : ''}${not ? ` ${not}` : ''}`.slice(0, 200), at: now, shout: true, ...(user ? { adId: created.id } : {}) };
   halMsgs.push(msg);
   if (halMsgs.length > 60) halMsgs.shift();
-  const reward = await awardEconomyPoints(req.user.id, 'ad_created', `ad:${created.id}`).catch(() => ({ amount: 0 }));
-  res.json({ msg, adId: created.id, points_awarded: reward.amount || 0 });
+  const reward = user ? await awardEconomyPoints(user.id, 'ad_created', `ad:${created.id}`).catch(() => ({ amount: 0 })) : { amount: 0 };
+  res.json({ msg, adId: created.id, pending: !user, points_awarded: reward.amount || 0 });
 });
 
 // ── Kahvehane "Aranıyor" panosu: alıcılar ne aradığını yazar, satıcılar cevap verir ──

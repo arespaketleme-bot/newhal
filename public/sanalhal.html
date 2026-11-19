@@ -125,7 +125,7 @@
 <div class="modal-lite" id="shout" onclick="if(event.target===this)closeShout()">
   <form class="lite-box" id="shoutForm" autocomplete="off">
     <div class="lite-head"><b>📣 Malım var! Bağır</b><button class="x" style="position:static" type="button" aria-label="Kapat" onclick="closeShout()">×</button></div>
-    <p class="lite-note">Haldeki herkes duyar ve NewHal'de ilanınız olarak da yayınlanır.</p>
+    <p class="lite-note" id="shoutNote"></p>
     <label>Ürün<input name="urun" id="shUrun" maxlength="40" required placeholder="Örn: Limon" /></label>
     <label>Miktar<input name="miktar" maxlength="30" required placeholder="Örn: 10 ton" /></label>
     <label>Yer<input name="yer" maxlength="40" placeholder="Örn: Mersin Hal, 14 numara" /></label>
@@ -819,8 +819,10 @@ function showShout(m) {
 }
 // "Malım var" penceresi
 window.openShout = function () {
-  if (!token()) { flashHal('Bağırmak için ana sayfadan üye girişi yapın'); alert('"Malım var" diye bağırmak için NewHal üyesi olmalısınız. Ana sayfadan ücretsiz üye olabilirsiniz.'); return; }
   document.getElementById('shout').classList.add('open');
+  document.getElementById('shoutNote').textContent = token()
+    ? "Haldeki herkes duyar ve NewHal'de ilanınız olarak hemen yayınlanır."
+    : "Haldeki herkes duyar. Üye olmadığınız için ilanınız yönetim onayından sonra NewHal'de yayınlanır. Telefonunuzu nota yazmayı unutmayın.";
   setTimeout(() => document.getElementById('shUrun').focus(), 50);
 };
 window.closeShout = function () { document.getElementById('shout').classList.remove('open'); };
@@ -829,11 +831,12 @@ document.getElementById('shoutForm').addEventListener('submit', async e => {
   const f = e.target, btn = f.querySelector('button[type=submit]');
   btn.disabled = true;
   try {
-    const r = await fetch('/api/sanal/bagir', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+    const hh = { 'Content-Type': 'application/json' }; if (token()) hh.Authorization = 'Bearer ' + token();
+    const r = await fetch('/api/sanal/bagir', { method: 'POST', headers: hh,
       body: JSON.stringify({ sid, urun: f.urun.value, miktar: f.miktar.value, yer: f.yer.value, not: f.not.value }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { alert(d.error || 'Gönderilemedi'); }
-    else { addMsg(d.msg); showShout(d.msg); f.reset(); closeShout(); bubbles.set(sid.slice(0, 8), { text: d.msg.text, until: Date.now() + 9000 }); }
+    else { addMsg(d.msg); showShout(d.msg); f.reset(); closeShout(); bubbles.set(sid.slice(0, 8), { text: d.msg.text, until: Date.now() + 9000 }); if (d.pending) flashHal('Bağırdınız! İlanınız onaydan sonra yayınlanacak'); }
   } catch { alert('Gönderilemedi'); }
   btn.disabled = false;
 });
