@@ -678,3 +678,13 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 .sidebar-nav::-webkit-scrollbar { width: 6px; }
 .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(148,163,184,.35); border-radius: 6px; }
 .sidebar-footer { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+
+/* Sunucu / depolama / veritabanı kutusu */
+.sys-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; transition: opacity .2s; }
+.sys-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.sys-card h4 { margin: 0; }
+.sys-row-head { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; margin-bottom: 5px; }
+.sys-bar { height: 9px; border-radius: 99px; background: rgba(148,163,184,.18); overflow: hidden; }
+.sys-bar span { display: block; height: 100%; border-radius: 99px; }
+.sys-line { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--text-2); }
+.sys-note { font-size: 12.5px; color: var(--text-3); }

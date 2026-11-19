@@ -232,7 +232,51 @@ async function saveBusinessLevelRules() {
   }
 }
 
+// Sunucu, depolama ve veritabanı kullanımı
+const BUCKET_NAMES = { 'pin-images': 'İşletme resimleri', 'ad-media': 'İlan resim ve videoları', 'app-data': 'Ayarlar ve kayıtlar' };
+const TABLE_NAMES = { pins: 'İşletmeler', categories: 'Kategoriler', users: 'Üyeler', chat_messages: 'Sohbet mesajları', direct_messages: 'Özel mesajlar', logs: 'Hareket kayıtları', newhal_points_ledger: 'Puan hareketleri', pin_comments: 'Yorumlar', pin_likes: 'Beğeniler', reports: 'Şikayetler', site_stats: 'Site istatistikleri', user_follows: 'Takipler', user_notifications: 'Bildirimler' };
+function fmtBytes(b) {
+  if (!(b >= 0)) return '?';
+  if (b >= 1073741824) return (b / 1073741824).toFixed(2) + ' GB';
+  if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB';
+  return Math.round(b / 1024) + ' KB';
+}
+function sysBar(label, used, max, note = '') {
+  const pct = max > 0 ? Math.min(100, used / max * 100) : 0;
+  const color = pct >= 85 ? '#ef4444' : pct >= 65 ? '#f59e0b' : '#22c55e';
+  return `<div class="sys-row"><div class="sys-row-head"><b>${label}</b><span>${note || `${fmtBytes(used)} / ${fmtBytes(max)}`} · <b style="color:${color}">%${pct.toFixed(pct < 10 ? 1 : 0)}</b></span></div>
+    <div class="sys-bar"><span style="width:${pct}%;background:${color}"></span></div></div>`;
+}
+async function loadSystemInfo(force) {
+  const box = document.getElementById('sysInfo');
+  if (!box) return;
+  if (force) box.style.opacity = '.5';
+  const res = await api('/api/admin/system' + (force ? '?yenile=1' : ''));
+  box.style.opacity = '';
+  if (!res || !res.ok) { box.textContent = 'Bilgi alınamadı'; return; }
+  const d = await res.json();
+  const s = d.server, L = d.limits;
+  const up = s.uptimeSec >= 86400 ? `${Math.floor(s.uptimeSec / 86400)} gün ${Math.floor(s.uptimeSec % 86400 / 3600)} saat` : `${Math.floor(s.uptimeSec / 3600)} saat ${Math.floor(s.uptimeSec % 3600 / 60)} dk`;
+  const stTotal = d.storage.reduce((a, b) => a + b.bytes, 0);
+  const stFiles = d.storage.reduce((a, b) => a + b.files, 0);
+  const rows = d.tables.reduce((a, b) => a + b.rows, 0);
+  box.innerHTML = `
+    <div class="sys-card"><h4>🖥 Sunucu</h4>
+      ${sysBar('Bellek', s.memUsed, s.memMax)}
+      ${s.cpuPct == null ? '<div class="sys-note">İşlemci ölçülüyor, birkaç saniye sonra Yenile tuşuna basın.</div>' : sysBar('İşlemci', s.cpuPct, 100, `${s.cores} çekirdek payı`)}
+      <div class="sys-note">Kesintisiz çalışma: ${up}</div></div>
+    <div class="sys-card"><h4>🗂 Depolama (resim, video, dosya)</h4>
+      ${sysBar('Toplam', stTotal, L.storageMb * 1048576)}
+      ${d.storage.map(b => `<div class="sys-line"><span>${esc(BUCKET_NAMES[b.name] || b.name)}</span><span>${fmtBytes(b.bytes)} · ${b.files.toLocaleString('tr-TR')} dosya</span></div>`).join('')}
+      <div class="sys-note">${stFiles.toLocaleString('tr-TR')} dosya</div></div>
+    <div class="sys-card"><h4>🗄 Veritabanı</h4>
+      ${d.dbBytes ? sysBar('Boyut', d.dbBytes, L.dbMb * 1048576) : `<div class="sys-note">Sınır: ${L.dbMb} MB · Toplam ${rows.toLocaleString('tr-TR')} kayıt</div>`}
+      ${d.tables.filter(t => t.rows).sort((a, b) => b.rows - a.rows).map(t => `<div class="sys-line"><span>${esc(TABLE_NAMES[t.name] || t.name)}</span><span>${t.rows.toLocaleString('tr-TR')} kayıt</span></div>`).join('')}</div>
+    <div class="sys-note" style="grid-column:1/-1">Depolama ve veritabanı ${new Date(d.measuredAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} itibarıyla ölçüldü.</div>`;
+}
+
 async function loadStats() {
+  loadSystemInfo();
   const res = await api('/api/admin/stats');
   if (!res) return;
   const d = await res.json();

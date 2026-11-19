@@ -1172,6 +1172,65 @@ app.put('/api/admin/pins/:id', requireAdmin, async (req, res) => {
 });
 
 // ── ADMIN: İstatistik ─────────────────────────────────────────
+// ── Sistem kullanımı: sunucu (bellek/işlemci), depolama ve veritabanı ──
+const SYS_LIMITS = {
+  memMb: Number(process.env.SERVER_MEM_MB) || 512,       // Render ücretsiz plan
+  storageMb: Number(process.env.STORAGE_LIMIT_MB) || 1024, // Supabase ücretsiz plan
+  dbMb: Number(process.env.DB_LIMIT_MB) || 500,
+};
+function readCg(file) { try { return fs.readFileSync('/sys/fs/cgroup/' + file, 'utf8').trim(); } catch { return null; } }
+let cpuSample = null;
+function serverUsage() {
+  const os = require('os');
+  let memUsed = process.memoryUsage().rss, memMax = SYS_LIMITS.memMb * 1048576;
+  const cur = Number(readCg('memory.current')), max = readCg('memory.max');
+  if (cur > 0) memUsed = cur;
+  if (max && max !== 'max' && Number(max) > 0) memMax = Number(max);
+  // İşlemci: son ölçümden bu yana kullanılan pay
+  let cores = os.cpus().length || 1;
+  const cm = (readCg('cpu.max') || '').split(' ');
+  if (cm[0] && cm[0] !== 'max' && Number(cm[1]) > 0) cores = Number(cm[0]) / Number(cm[1]);
+  const usec = Number(((readCg('cpu.stat') || '').match(/usage_usec (\d+)/) || [])[1]) || (() => { const c = process.cpuUsage(); return c.user + c.system; })();
+  const now = Date.now();
+  let cpuPct = null;
+  if (cpuSample && now > cpuSample.at) cpuPct = Math.min(100, ((usec - cpuSample.usec) / 1000) / ((now - cpuSample.at) * cores) * 100);
+  cpuSample = { at: now, usec };
+  return { memUsed, memMax, cpuPct, cores: Math.round(cores * 100) / 100, uptimeSec: Math.round(process.uptime()), node: process.version };
+}
+async function bucketSize(sb, bucket, prefix = '') {
+  let bytes = 0, files = 0;
+  for (let off = 0; ; off += 1000) {
+    const { data } = await sb.storage.from(bucket).list(prefix, { limit: 1000, offset: off });
+    if (!data || !data.length) break;
+    for (const f of data) {
+      if (f.id) { bytes += (f.metadata && f.metadata.size) || 0; files++; }
+      else { const r = await bucketSize(sb, bucket, prefix ? `${prefix}/${f.name}` : f.name); bytes += r.bytes; files += r.files; }
+    }
+    if (data.length < 1000) break;
+  }
+  return { bytes, files };
+}
+const SYS_TABLES = ['pins', 'categories', 'users', 'chat_messages', 'direct_messages', 'logs', 'newhal_points_ledger', 'pin_comments', 'pin_likes', 'reports', 'site_stats', 'user_follows', 'user_notifications'];
+let sysCache = null;
+app.get('/api/admin/system', requireAdmin, async (req, res) => {
+  const server = serverUsage();
+  if (!sysCache || Date.now() - sysCache.at > 10 * 60 * 1000 || req.query.yenile) {
+    const sb = db.supabase;
+    const { data: buckets } = await sb.storage.listBuckets();
+    const storage = [];
+    for (const b of buckets || []) storage.push({ name: b.name, ...(await bucketSize(sb, b.name)) });
+    const tables = [];
+    for (const t of SYS_TABLES) {
+      const { count, error } = await sb.from(t).select('*', { count: 'exact', head: true });
+      if (!error) tables.push({ name: t, rows: count || 0 });
+    }
+    let dbBytes = null;
+    try { const { data, error } = await sb.rpc('newhal_db_size'); if (!error && data) dbBytes = Number(data); } catch {}
+    sysCache = { at: Date.now(), storage, tables, dbBytes };
+  }
+  res.set('Cache-Control', 'no-store').json({ server, limits: SYS_LIMITS, measuredAt: new Date(sysCache.at).toISOString(), ...sysCache });
+});
+
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   res.json(await db.getStats());
 });
