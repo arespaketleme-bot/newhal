@@ -786,7 +786,7 @@ const pets = [
 ];
 function petsInit() {
   pets.forEach((p, i) => { p.x = Math.floor(GW / 2) - 4 + i * 8; p.y = GH - 2; p.nextShout = Date.now() + 3000 + i * 2500; });
-  pets.filter(p => p.moto).forEach((p, i) => { p.x = 3 + i * 30; p.y = 2 + i * 10; });
+  pets.filter(p => p.moto).forEach((p, i) => { p.x = 3 + i * 30; p.y = 2 + i * 7; });
   const sim = pets.find(p => p.label === 'Simitçi'); sim.x = Math.floor(GW / 2) - 2; sim.y = GH - 4;
   const pil = pets.find(p => p.label === 'Nohut Pilavcı'); pil.at = [7, -2];
   // sabit tezgahlar: girişin iki yanına dizilir, tezgah karoları yürünmez
