@@ -596,10 +596,11 @@ async function openFinder(v) {
   results.innerHTML = '';
   if (!adsCache) adsCache = await fetch('/api/ads').then(r => r.json()).catch(() => []);
   const re = v.find.re;
-  const ads = (adsCache || []).filter(a => a.id && !String(a.id).startsWith('mersin-weather') && re.test(`${a.title || ''} ${a.body || ''}`)).slice(0, 25);
-  const pins = allPinsList.filter(p => re.test(`${p.title} ${(p.sells || []).join(' ')}`)).slice(0, 25);
+  const ads = v.find.noAds ? [] : (adsCache || []).filter(a => a.id && !String(a.id).startsWith('mersin-weather') && re.test(`${a.title || ''} ${a.body || ''}`)).slice(0, 25);
+  const pins = allPinsList.filter(p => (v.find.cat && p.category === v.find.cat) || re.test(`${p.title} ${(p.sells || []).join(' ')}`))
+    .sort((a, b) => (stalls.some(s => s.p.id === b.id) ? 1 : 0) - (stalls.some(s => s.p.id === a.id) ? 1 : 0)).slice(0, 25);
   document.getElementById('haleSay').textContent = ads.length + pins.length
-    ? `${v.find.icon} NewHal'de ${pins.length ? `${pins.length} işletme` : ''}${pins.length && ads.length ? ' ve ' : ''}${ads.length ? `${ads.length} ilan` : ''} buldum. Birine dokunun.`
+    ? `${v.find.icon} ${v.find.intro ? v.find.intro + ' ' : ''}NewHal'de ${pins.length ? `${pins.length} işletme` : ''}${pins.length && ads.length ? ' ve ' : ''}${ads.length ? `${ads.length} ilan` : ''} buldum. Birine dokunun.`
     : `${v.find.icon} NewHal'de şu an ${v.find.q.toLocaleLowerCase('tr')} ilanı yok. Siz satıyorsanız ilk ilanı siz verin!`;
   const add = (html, href, onClick) => {
     const b = document.createElement(href ? 'a' : 'button');
@@ -776,6 +777,7 @@ const pets = [
   // motosikletliler: halde hızlıca dolaşır, ara ara korna çalar
   { e: '🏍️', person: true, moto: true, label: 'Motorcu', say: 'Dıt dıt! Yol verin! 🏍️', voice: 'dıt dıt, yol verin', shoutEvery: 16, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 4.2 },
   { e: '🛵', person: true, moto: true, label: 'Kurye', say: 'Sipariş geldi, çekilin! 📦', voice: 'sipariş geldi, çekilin', shoutEvery: 19, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 3.6 },
+  { e: '🧑', person: true, label: 'Çaycı', tray: '🍵', find: { q: 'Lokanta ve kahvehane', re: /çay|kahve|kıraathane|cafe|kafe|lokanta|restoran|kebap|pide|döner/i, cat: 'Restoran', noAds: true, icon: '🍵', intro: 'Çayı benden, yemeği bunlardan!' }, say: 'Çaaay! Taze demlendi! ☕', voice: 'çay, taze demlendi', shoutEvery: 10, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 1.5 },
   // satıcılar: simitçi gezer ve ara ara bağırır, nohut pilavcı tezgahında durur
   { e: '🧔', person: true, label: 'Simitçi', tray: '🥯', say: 'Sıcak simitler! Taze simit! 🥯', voice: 'sıcak simitler, taze simit', shoutEvery: 9, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 1.3 },
   { e: '👴', person: true, fixed: true, cart: { sign: 'KESTANE', color: '#78350f', items: ['🌰', '🔥'] }, find: { q: 'Kestane', re: /kestane/i, icon: '🌰' }, label: 'Kestaneci', say: 'Sıcak kestane! Kebap kestane! 🌰 Bana dokun, kestanecileri göstereyim', voice: 'sıcak kestane, kebap kestane', shoutEvery: 11, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0, at: [-6, -2] },
@@ -792,6 +794,7 @@ const pets = [
 function petsInit() {
   pets.forEach((p, i) => { p.x = Math.floor(GW / 2) - 4 + i * 8; p.y = GH - 2; p.nextShout = Date.now() + 3000 + i * 2500; });
   pets.filter(p => p.moto).forEach((p, i) => { p.x = 3 + i * 30; p.y = 2 + i * 7; });
+  const cay = pets.find(p => p.label === 'Çaycı'); cay.x = Math.floor(GW / 2) + 3; cay.y = GH - 3;
   const sim = pets.find(p => p.label === 'Simitçi'); sim.x = Math.floor(GW / 2) - 1; sim.y = GH - 3;
   const pil = pets.find(p => p.label === 'Nohut Pilavcı'); pil.at = [7, -2];
   // sabit tezgahlar: girişin iki yanına dizilir, tezgah karoları yürünmez
