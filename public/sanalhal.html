@@ -916,7 +916,7 @@ fetch('/api/pins').then(r => r.json()).then(d => {
   // ?dukkan=ID ile doğrudan dükkana git
   const want = new URLSearchParams(location.search).get('dukkan');
   const s = want && stalls.find(s => String(s.p.id) === want);
-  if (s) setTimeout(() => goStall(s), 400); else setTimeout(openChat, 700);
+  if (s) setTimeout(() => goStall(s), 400);
 }).catch(() => { document.getElementById('loading').textContent = 'Hal yüklenemedi, sayfayı yenileyin.'; });
 })();
 </script>
