@@ -737,7 +737,7 @@ window.openKatip = function () {
   if (!katipStory) { document.getElementById('statusTxt').textContent = 'Katip: Bugün hikaye yok, yarın gel!'; return; }
   const a = katipStory;
   storyIdx = 0;
-  document.getElementById('storyTitle').textContent = a.title || 'Günün hikayesi';
+  document.getElementById('storyTitle').innerHTML = maskPhones(a.title || 'Günün hikayesi');
   document.getElementById('storyBody').innerHTML = maskPhones(a.body || '').replace(/\n/g, '<br>');
   document.getElementById('storyLink').href = `/?ilan=${encodeURIComponent(a.id)}`;
   renderStory();
