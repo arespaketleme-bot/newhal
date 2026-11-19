@@ -583,6 +583,7 @@ function startPresence() {
 let lastMsgId = 0;
 const bubbles = new Map();   // kişi (ilk 8 harf) → { text, until }
 const logEl = () => document.getElementById('halLog');
+window.__halDbg = () => ({ bubbles: [...bubbles], others: [...others.entries()].map(([k, o]) => [k, o.x, o.y]), me: [me.x, me.y], sid: sid.slice(0, 8) });
 function addMsg(m) {
   if (m.id <= lastMsgId) return;
   lastMsgId = m.id;
