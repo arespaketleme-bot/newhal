@@ -783,12 +783,16 @@ const pets = [
   { e: '👩', person: true, fixed: true, cart: { sign: 'PORTAKAL', color: '#ea580c', items: ['🍊', '🍊'] }, find: { q: 'Portakal', re: /portakal|narenciye|mandalina/i, icon: '🍊' }, label: 'Portakalcı', say: 'Bal gibi portakal! 🍊', voice: 'bal gibi portakal', shoutEvery: 14, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0, at: [14, -2] },
   { e: '🧓', person: true, fixed: true, cart: { sign: 'NAR', color: '#be123c', items: ['🍎', '🍷'] }, find: { q: 'Nar', re: /(^|[^a-zçğıöşü])nar(ı|lar|cı|ın)?([^a-zçğıöşü]|$)/i, icon: '🍎' }, label: 'Narcı', say: 'Mis gibi nar! Nar suyu! ❤️', voice: 'mis gibi nar, nar suyu', shoutEvery: 15, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0, at: [17, -2] },
   { e: '👩‍🦰', person: true, fixed: true, cart: { sign: 'ÇİLEK', color: '#e11d48', items: ['🍓', '🍓'] }, find: { q: 'Çilek', re: /çilek/i, icon: '🍓' }, label: 'Çilekçi', say: 'Kokulu çilek, taze çilek! 🍓', voice: 'kokulu çilek, taze çilek', shoutEvery: 12, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0, at: [-3, -4] },
+  { e: '👨‍🦳', person: true, fixed: true, cart: { sign: 'ELMA', color: '#dc2626', items: ['🍎', '🍏'] }, find: { q: 'Elma', re: /elma/i, icon: '🍎' }, label: 'Elmacı', say: 'Kırmızı elma, yeşil elma! 🍎', voice: 'kırmızı elma, yeşil elma', shoutEvery: 12, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0, at: [-6, -4] },
+  { e: '👨‍🌾', person: true, fixed: true, cart: { sign: 'MARUL', color: '#16a34a', items: ['🥬', '🥬'] }, find: { q: 'Marul', re: /marul|göbek|iceberg|kıvırcık/i, icon: '🥬' }, label: 'Marulcu', say: 'Çıtır çıtır marul! 🥬', voice: 'çıtır çıtır marul', shoutEvery: 13, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0, at: [1, -4] },
+  { e: '🧔‍♂️', person: true, fixed: true, cart: { sign: 'PATATES', color: '#a16207', items: ['🥔', '🥔'] }, find: { q: 'Patates', re: /patates/i, icon: '🥔' }, label: 'Patatesçi', say: 'Niğde patatesi, Afyon patatesi! 🥔', voice: 'niğde patatesi, afyon patatesi', shoutEvery: 15, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0, at: [5, -4] },
+  { e: '👵', person: true, fixed: true, cart: { sign: 'CEVİZ', color: '#78350f', items: ['🌰', '🥜'] }, find: { q: 'Ceviz', re: /ceviz/i, icon: '🥜' }, label: 'Cevizci', say: 'Taze ceviz, içi dolu! 🥜', voice: 'taze ceviz, içi dolu', shoutEvery: 13, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0, at: [9, -4] },
   { e: '🧑‍🍳', person: true, fixed: true, cart: { sign: 'NOHUT PİLAV', color: '#b91c1c', items: ['🍛', '🍗'] }, label: 'Nohut Pilavcı', tray: '🍛', say: 'Nohutlu pilav! Tavuklu, sıcacık! 🍛', voice: 'nohutlu pilav, tavuklu, sıcacık', shoutEvery: 12, x: 0, y: 0, path: [], wait: 0, talk: 0, sp: 0 },
 ];
 function petsInit() {
   pets.forEach((p, i) => { p.x = Math.floor(GW / 2) - 4 + i * 8; p.y = GH - 2; p.nextShout = Date.now() + 3000 + i * 2500; });
   pets.filter(p => p.moto).forEach((p, i) => { p.x = 3 + i * 30; p.y = 2 + i * 7; });
-  const sim = pets.find(p => p.label === 'Simitçi'); sim.x = Math.floor(GW / 2) - 2; sim.y = GH - 4;
+  const sim = pets.find(p => p.label === 'Simitçi'); sim.x = Math.floor(GW / 2) - 1; sim.y = GH - 3;
   const pil = pets.find(p => p.label === 'Nohut Pilavcı'); pil.at = [7, -2];
   // sabit tezgahlar: girişin iki yanına dizilir, tezgah karoları yürünmez
   pets.filter(p => p.at).forEach(p => {
