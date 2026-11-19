@@ -34,7 +34,7 @@ function closeAuthModal() {
 
 
 function updateAuthUI(name) {
-  if (name) { try { localStorage.setItem('hasLoggedInBefore', '1'); } catch {} }
+  if (name) { try { localStorage.setItem('hasLoggedInBefore', '1'); } catch {} setTimeout(unlockAdPhones, 0); }
   document.getElementById('joinNudge')?.remove();
   if (name && document.getElementById('adsGrid')) setTimeout(renderInviteNudge, 0);
   const btn1 = document.getElementById('authBtn');
@@ -3928,18 +3928,53 @@ function appendTextWithPhoneLinks(parent, text) {
   if (last < text.length) appendPhonesOnly(parent, text.slice(last));
 }
 
+// İlanlardaki numaralar yalnız üyelere açık; misafir maskeli numara ve "Numarayı göster" tuşu görür
+function isMember() { try { return !!localStorage.getItem('userToken'); } catch { return false; } }
+function makePhoneLink(tel, label) {
+  const a = document.createElement('a');
+  a.href = `tel:${tel}`;
+  a.className = 'ad-phone';
+  a.textContent = `📞 ${label}`;
+  a.addEventListener('click', (e) => e.stopPropagation());   // karttaki büyütmeyi tetiklemesin
+  return a;
+}
+function maskPhone(label) {
+  const d = label.replace(/\D/g, '');
+  return `${d.slice(0, 4)} *** ** ${d.slice(-2)}`;
+}
+function makeLockedPhone(tel, label) {
+  const box = document.createElement('span');
+  box.className = 'ad-phone-locked';
+  box.dataset.tel = tel;
+  box.dataset.label = label;
+  const num = document.createElement('span');
+  num.className = 'ad-phone-mask';
+  num.textContent = `🔒 ${maskPhone(label)}`;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'ad-phone-show';
+  btn.textContent = '📞 Numarayı göster';
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    if (isMember()) { unlockAdPhones(); return; }
+    if (typeof showToast === 'function') showToast('Numarayı görmek için ücretsiz üye olun', 'info');
+    openAuthModal();
+  };
+  box.append(num, btn);
+  box.addEventListener('click', (e) => e.stopPropagation());
+  return box;
+}
+function unlockAdPhones() {
+  document.querySelectorAll('.ad-phone-locked').forEach(b => b.replaceWith(makePhoneLink(b.dataset.tel, b.dataset.label)));
+}
+
 function appendPhonesOnly(parent, text) {
   let last = 0;
   for (const match of text.matchAll(PHONE_IN_TEXT)) {
     const tel = toTelNumber(match[0]);
     if (!tel) continue;
     if (match.index > last) parent.appendChild(document.createTextNode(text.slice(last, match.index)));
-    const a = document.createElement('a');
-    a.href = `tel:${tel}`;
-    a.className = 'ad-phone';
-    a.textContent = `📞 ${match[0].trim()}`;
-    a.addEventListener('click', (e) => e.stopPropagation());   // karttaki büyütmeyi tetiklemesin
-    parent.appendChild(a);
+    parent.appendChild(isMember() ? makePhoneLink(tel, match[0].trim()) : makeLockedPhone(tel, match[0].trim()));
     last = match.index + match[0].length;
   }
   if (last < text.length) parent.appendChild(document.createTextNode(text.slice(last)));
@@ -5311,7 +5346,10 @@ function showStoryItem() {
     call.className = 'story-action';
     call.href = `tel:${phone.replace(/[^\d+]/g, '')}`;
     call.textContent = '📞 Ara';
-    call.onclick = () => pauseStory(true);
+    call.onclick = (e) => {
+      if (!isMember() && !(showContactInfo && pin.phone)) { e.preventDefault(); pauseStory(true); openAuthModal(); return; }
+      pauseStory(true);
+    };
     actions.appendChild(call);
   }
   if (!entry.weekly) {

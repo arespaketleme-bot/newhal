@@ -3120,3 +3120,9 @@ body { overflow-x: clip; max-width: 100%; }
 .ad-feed-progress { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: rgba(255,255,255,.18); z-index: 6; pointer-events: none; }
 .ad-feed-progress span { display: block; height: 100%; width: 0; background: #22c55e; transition: width .1s linear; }
 .ad-feed-pause { position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); left: 64px; z-index: 6; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(0,0,0,.45); color: #fff; font-size: 16px; cursor: pointer; backdrop-filter: blur(6px); }
+
+/* İlandaki gizli numara (misafir) */
+.ad-phone-locked { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; max-width: 340px; }
+.ad-phone-mask { display: flex; align-items: center; justify-content: center; min-height: 42px; border-radius: 14px; border: 1px solid var(--border, rgba(148,163,184,.3)); background: rgba(148,163,184,.1); font-weight: 600; letter-spacing: .5px; }
+.ad-phone-show { min-height: 46px; border: 0; border-radius: 999px; background: #ffe600; color: #1a1a1a; font-weight: 800; font-size: 15px; cursor: pointer; box-shadow: 0 6px 18px rgba(255,230,0,.25); }
+.ad-phone-show:hover { filter: brightness(.96); }
