@@ -3906,16 +3906,23 @@ app.post('/api/sanal/konum', (req, res) => {
 const halMsgs = [];
 let halMsgSeq = 0;
 const halMsgLast = new Map();   // üye → son mesaj zamanı
-app.post('/api/sanal/mesaj', requireAuth, (req, res) => {
+app.post('/api/sanal/mesaj', (req, res) => {
   const text = String((req.body && req.body.text) || '').replace(/[\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 140);
   if (!text) return res.status(400).json({ error: 'Mesaj boş' });
   if (/https?:\/\/|www\./i.test(text)) return res.status(400).json({ error: 'Sanal halde bağlantı paylaşılamaz' });
-  const uid = String(req.user.id);
+  // Üye ise adıyla, değilse "Misafir" olarak yazar; sınır hem oturuma hem bağlantıya göre
+  let user = null;
+  try { const h = req.headers.authorization; if (h) { const u = jwt.verify(h.split(' ')[1], JWT_SECRET); if (u.role === 'user') user = u; } } catch {}
+  const sidFull = String((req.body && req.body.sid) || '');
+  if (!/^[a-z0-9-]{8,40}$/i.test(sidFull)) return res.status(400).json({ error: 'Oturum geçersiz' });
   const now = Date.now();
-  if (now - (halMsgLast.get(uid) || 0) < 2500) return res.status(429).json({ error: 'Biraz yavaş yazın' });
-  halMsgLast.set(uid, now);
-  const sid = String((req.body && req.body.sid) || '').slice(0, 8);
-  const name = String(req.user.name || 'Üye').trim().split(/\s+/)[0].slice(0, 16) || 'Üye';
+  const keysToCheck = [user ? 'u' + user.id : 's' + sidFull, 'ip' + getIp(req)];
+  const gap = user ? 2500 : 4000;
+  if (keysToCheck.some(k => now - (halMsgLast.get(k) || 0) < (k.startsWith('ip') ? 1200 : gap))) return res.status(429).json({ error: 'Biraz yavaş yazın' });
+  keysToCheck.forEach(k => halMsgLast.set(k, now));
+  if (halMsgLast.size > 5000) halMsgLast.clear();
+  const sid = sidFull.slice(0, 8);
+  const name = user ? (String(user.name || 'Üye').trim().split(/\s+/)[0].slice(0, 16) || 'Üye') : 'Misafir';
   const msg = { id: ++halMsgSeq, from: sid, name, text, at: now };
   halMsgs.push(msg);
   if (halMsgs.length > 60) halMsgs.shift();

@@ -82,6 +82,7 @@
 <canvas class="minimap" id="mini" aria-hidden="true"></canvas>
 <div class="hal-chat" id="halChat">
   <div class="hal-log" id="halLog"></div>
+  <div class="hal-quick" id="halQuick" aria-label="Hızlı mesajlar"></div>
   <form class="hal-send" id="halChatForm" autocomplete="off">
     <input id="halMsg" maxlength="140" placeholder="Haldekilere yazın…" aria-label="Sanal hal sohbeti" />
     <button type="submit" aria-label="Gönder">➤</button>
@@ -97,6 +98,10 @@
   .hal-send input { flex: 1; min-width: 0; min-height: 42px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-size: 14px; outline: none; }
   .hal-send button { width: 46px; border: 0; border-radius: 12px; background: var(--green); color: #052e16; font-size: 18px; font-weight: 900; cursor: pointer; }
   .hint { display: none !important; }
+  .hal-quick { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .hal-quick::-webkit-scrollbar { display: none; }
+  .hal-quick button { flex-shrink: 0; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 7px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .hal-quick button:hover { background: rgba(34,197,94,.18); border-color: rgba(34,197,94,.5); }
   .card { z-index: 9; }
   @media (max-width: 640px) { .hal-log { max-height: 84px; } }
 </style>
@@ -488,22 +493,34 @@ async function sendHalMsg(e) {
   const inp = document.getElementById('halMsg');
   const text = inp.value.trim();
   if (!text) return;
-  const t = token();
-  if (!t) { alert('Sohbet etmek için NewHal üyesi olun. Ana sayfadan ücretsiz üye olabilirsiniz.'); return; }
-  inp.disabled = true;
-  try {
-    const r = await fetch('/api/sanal/mesaj', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify({ text, sid }) });
-    const d = await r.json().catch(() => ({}));
-    if (r.ok) { inp.value = ''; addMsg(d); }
-    else if (r.status === 401) alert('Oturumunuz kapanmış. Ana sayfadan yeniden giriş yapın.');
-    else alert(d.error || 'Mesaj gönderilemedi');
-  } catch { alert('Mesaj gönderilemedi'); }
-  inp.disabled = false; inp.focus();
+  await postHalMsg(text, inp);
 }
+async function postHalMsg(text, inp) {
+  const t = token();
+  const h = { 'Content-Type': 'application/json' };
+  if (t) h.Authorization = 'Bearer ' + t;
+  if (inp) inp.disabled = true;
+  try {
+    const r = await fetch('/api/sanal/mesaj', { method: 'POST', headers: h, body: JSON.stringify({ text, sid }) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) { if (inp) inp.value = ''; addMsg(d); }
+    else flashHal(d.error || 'Mesaj gönderilemedi');
+  } catch { flashHal('Mesaj gönderilemedi'); }
+  if (inp) { inp.disabled = false; inp.focus(); }
+}
+function flashHal(t) { const s = document.getElementById('statusTxt'); if (s) s.textContent = '⚠️ ' + t; const i = document.getElementById('halMsg'); if (i) { i.placeholder = t; setTimeout(() => { i.placeholder = 'Haldekilere yazın…'; }, 2500); } }
+// Hızlı sohbet tuşları
+const QUICK_MSGS = ['Merhaba 👋', 'Fiyatı nedir? 💰', 'Elinizde var mı?', 'Kaç kasa var? 📦', 'Numaranızı alabilir miyim? 📞', 'Teşekkürler 🙏', 'Kolay gelsin 💪'];
+const qb = document.getElementById('halQuick');
+QUICK_MSGS.forEach(m => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.textContent = m;
+  b.onclick = () => postHalMsg(m, null);
+  qb.appendChild(b);
+});
 document.getElementById('halChatForm').addEventListener('submit', sendHalMsg);
 document.getElementById('halMsg').addEventListener('keydown', e => e.stopPropagation());
 document.getElementById('halMsg').addEventListener('focus', () => { Object.keys(keys).forEach(k => { if (k[0] !== '_') keys[k] = false; }); });
-if (!token()) document.getElementById('halMsg').placeholder = 'Sohbet için üye girişi yapın';
 
 window.__drawOthers = function (ox, oy, dt) {
   others.forEach(o => {
