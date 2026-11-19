@@ -3900,7 +3900,7 @@ app.post('/api/sanal/konum', (req, res) => {
   for (const [k, v] of halVisitors) if (k !== sid) others.push({ id: k.slice(0, 8), x: v.x, y: v.y, dir: v.dir, name: v.name });
   const after = Number(req.body && req.body.after) || 0;
   const msgs = halMsgs.filter(m => m.id > after && now - m.at < 10 * 60 * 1000).slice(-30);
-  res.set('Cache-Control', 'no-store').json({ count: halVisitors.size, others, msgs, me: sid.slice(0, 8) });
+  res.set('Cache-Control', 'no-store').json({ count: halVisitors.size, others, msgs, me: sid.slice(0, 8), masalar: damaSummary() });
 });
 // Sanal Hal sohbeti: yalnız üyeler yazar, son 60 mesaj bellekte tutulur
 const halMsgs = [];
@@ -3948,6 +3948,78 @@ app.put('/api/admin/sanal/katip', requireAdmin, async (req, res) => {
   const adId = req.body && req.body.adId ? String(req.body.adId) : null;
   if (!(await db.savePrivateJson(KATIP_FILE, { adId, at: new Date().toISOString() }))) return res.status(500).json({ error: 'Kaydedilemedi' });
   res.json({ adId });
+});
+
+// ── Sanal Hal kahvehanesi: iki kişilik dama masaları (bellekte) ──
+const Dama = require('./public/js/dama-rules.js');
+const DAMA_TABLES = 2, DAMA_IDLE = 40000;
+const damaTables = Array.from({ length: DAMA_TABLES }, () => ({ board: Dama.init(), turn: 1, seats: { 1: null, '-1': null }, winner: 0, reason: '', last: null, moves: 0 }));
+function damaReset(t) { t.board = Dama.init(); t.turn = 1; t.winner = 0; t.reason = ''; t.last = null; t.moves = 0; }
+function damaPrune(t) {
+  const now = Date.now();
+  for (const k of ['1', '-1']) {
+    const s = t.seats[k];
+    if (s && now - s.at > DAMA_IDLE) {
+      t.seats[k] = null;
+      if (!t.winner && t.moves > 0 && t.seats[String(-Number(k))]) { t.winner = -Number(k); t.reason = 'Rakip masadan kalktı'; }
+    }
+  }
+  if (!t.seats['1'] && !t.seats['-1']) damaReset(t);
+}
+function damaView(t, sid) {
+  const me = t.seats['1'] && t.seats['1'].sid === sid ? 1 : t.seats['-1'] && t.seats['-1'].sid === sid ? -1 : 0;
+  return { board: t.board, turn: t.turn, me, winner: t.winner, reason: t.reason, last: t.last, moves: t.moves,
+    white: t.seats['1'] && t.seats['1'].name, black: t.seats['-1'] && t.seats['-1'].name,
+    whiteN: Dama.count(t.board, 1), blackN: Dama.count(t.board, -1) };
+}
+function damaSummary() {
+  return damaTables.map(t => { damaPrune(t); return { w: t.seats['1'] && t.seats['1'].name, b: t.seats['-1'] && t.seats['-1'].name, playing: !!(t.seats['1'] && t.seats['-1'] && !t.winner) }; });
+}
+function halName(req) {
+  try { const h = req.headers.authorization; if (h) { const u = jwt.verify(h.split(' ')[1], JWT_SECRET); if (u.role === 'user' && u.name) return String(u.name).trim().split(/\s+/)[0].slice(0, 16) || 'Üye'; } } catch {}
+  return 'Misafir';
+}
+app.post('/api/sanal/dama', (req, res) => {
+  const b = req.body || {};
+  const sid = String(b.sid || '');
+  const t = damaTables[Number(b.masa)];
+  if (!t || !/^[a-z0-9-]{8,40}$/i.test(sid)) return res.status(400).json({ error: 'Masa bulunamadı' });
+  damaPrune(t);
+  const mine = ['1', '-1'].find(k => t.seats[k] && t.seats[k].sid === sid);
+  if (mine) t.seats[mine].at = Date.now();
+  const fail = (msg) => res.status(400).json({ error: msg, ...damaView(t, sid) });
+  if (b.action === 'otur') {
+    if (mine) return res.json(damaView(t, sid));
+    // başka masada oturuyorsa oradan kalkar
+    damaTables.forEach(o => ['1', '-1'].forEach(k => { if (o !== t && o.seats[k] && o.seats[k].sid === sid) o.seats[k] = null; }));
+    const want = b.renk === -1 ? '-1' : b.renk === 1 ? '1' : (!t.seats['1'] ? '1' : '-1');
+    if (t.seats[want]) return fail('Bu yer dolu');
+    if (t.winner) damaReset(t);
+    t.seats[want] = { sid, name: halName(req), at: Date.now() };
+  } else if (b.action === 'kalk') {
+    if (mine) {
+      t.seats[mine] = null;
+      if (!t.winner && t.moves > 0 && t.seats[String(-Number(mine))]) { t.winner = -Number(mine); t.reason = 'Rakip masadan kalktı'; }
+      if (!t.seats['1'] && !t.seats['-1']) damaReset(t);
+    }
+  } else if (b.action === 'hamle') {
+    if (!mine) return fail('Önce masaya oturun');
+    if (!t.seats['1'] || !t.seats['-1']) return fail('Rakip bekleniyor');
+    if (t.winner) return fail('Oyun bitti');
+    if (Number(mine) !== t.turn) return fail('Sıra rakipte');
+    const path = Array.isArray(b.path) ? b.path.slice(0, 20).map(p => [Number(p[0]), Number(p[1])]) : [];
+    if (path.length < 2 || !Dama.isLegal(t.board, t.turn, path)) return fail('Bu hamle kurala uymuyor');
+    t.board = Dama.apply(t.board, path).board;
+    t.last = path; t.moves++;
+    t.turn = -t.turn;
+    if (!Dama.legalMoves(t.board, t.turn).length) { t.winner = -t.turn; t.reason = Dama.count(t.board, t.turn) ? 'Rakibin oynayacak hamlesi kalmadı' : 'Bütün taşlar alındı'; }
+  } else if (b.action === 'yeni') {
+    if (!mine) return fail('Önce masaya oturun');
+    if (t.winner) damaReset(t);
+  } else if (b.action === 'pes') {
+    if (mine && !t.winner && t.seats['1'] && t.seats['-1']) { t.winner = -Number(mine); t.reason = 'Rakip pes etti'; }
+  }
+  res.set('Cache-Control', 'no-store').json(damaView(t, sid));
 });
 
 app.post('/api/sanal/cikis', (req, res) => {

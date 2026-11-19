@@ -118,6 +118,43 @@
   <div class="acts" id="cActs"></div>
 </div>
 
+<div class="dama" id="dama">
+  <div class="dama-box">
+    <div class="dama-head"><b id="damaTitle">☕ Kahvehane</b><button class="x" style="position:static" type="button" aria-label="Kapat" onclick="closeDama()">×</button></div>
+    <div class="dama-p" id="damaBlack"></div>
+    <div class="dama-board" id="damaBoard"></div>
+    <div class="dama-p" id="damaWhite"></div>
+    <div class="dama-info" id="damaInfo"></div>
+    <div class="dama-acts" id="damaActs"></div>
+    <details class="dama-rules"><summary>Kurallar</summary>Türk daması oynanır. Taşlar ileri ve yana birer kare gider, geri gidemez. Rakip taşın üstünden atlayarak alınır, almak zorunludur ve en çok taş alınan yol seçilir. Son sıraya varan taş dama olur; dama dört yöne istediği kadar gider. Bütün taşları alınan ya da oynayacak hamlesi kalmayan kaybeder.</details>
+  </div>
+</div>
+<style>
+  .dama { position: fixed; inset: 0; z-index: 13; display: none; align-items: center; justify-content: center; background: rgba(2,6,23,.72); padding: 12px; }
+  .dama.open { display: flex; }
+  .dama-box { width: min(420px, 100%); max-height: 96vh; overflow: auto; background: #1c1917; border: 1px solid rgba(251,191,36,.35); border-radius: 20px; padding: 12px; }
+  .dama-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; color: #fbbf24; }
+  .dama-board { display: grid; grid-template-columns: repeat(8, 1fr); aspect-ratio: 1; border: 6px solid #78350f; border-radius: 8px; overflow: hidden; }
+  .dc { border: 0; padding: 0; background: #fde68a; display: grid; place-items: center; cursor: pointer; position: relative; }
+  .dc.dk { background: #b45309; }
+  .dc.last { box-shadow: inset 0 0 0 3px rgba(59,130,246,.75); }
+  .dc.can { box-shadow: inset 0 0 0 3px rgba(34,197,94,.8); }
+  .dc.sel { box-shadow: inset 0 0 0 4px #22c55e; }
+  .dc.to::after { content: ''; width: 34%; height: 34%; border-radius: 50%; background: rgba(34,197,94,.85); }
+  .pc { width: 78%; height: 78%; border-radius: 50%; display: block; box-shadow: 0 3px 0 rgba(0,0,0,.35), inset 0 -3px 0 rgba(0,0,0,.15); }
+  .pc.w { background: radial-gradient(circle at 35% 30%, #fff, #e5e7eb); }
+  .pc.b { background: radial-gradient(circle at 35% 30%, #4b5563, #111827); }
+  .pc.k { outline: 3px solid #f59e0b; outline-offset: -7px; }
+  .pc.k::after { content: '♛'; display: grid; place-items: center; height: 100%; color: #f59e0b; font-size: 18px; }
+  .dama-p { padding: 7px 10px; margin: 6px 0; border-radius: 10px; background: rgba(255,255,255,.05); font-weight: 700; font-size: 14px; }
+  .dama-p.turn { background: rgba(34,197,94,.2); outline: 1px solid rgba(34,197,94,.6); }
+  .dama-info { text-align: center; font-size: 14px; margin: 6px 0 10px; min-height: 20px; }
+  .dama-info.warn { color: #fca5a5; }
+  .dama-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .dama-acts .btn { flex: 1; justify-content: center; }
+  .dama-rules { margin-top: 10px; font-size: 12.5px; color: #a8a29e; line-height: 1.5; }
+  .dama-rules summary { cursor: pointer; font-weight: 700; color: #d6d3d1; }
+</style>
 <div class="zoom" id="zoom" onclick="if(event.target===this)closeZoom()">
   <button class="x zoom-x" type="button" aria-label="Kapat" onclick="closeZoom()">×</button>
   <img id="zoomImg" alt="Büyütülmüş resim" />
@@ -174,6 +211,7 @@
   </div>
 </div>
 
+<script src="/js/dama-rules.js"></script>
 <script>
 (() => {
 'use strict';
@@ -233,6 +271,7 @@ function build(pins) {
   stalls.forEach(s => { if (!cats[s.z.cat]) cats[s.z.cat] = s; });
   for (let y = GH - 7; y < GH; y++) for (let x = 1; x <= 2; x++) grid[y][x] = 1;   // tır
   grid[GH - 6][12] = 1; grid[GH - 6][13] = 1;   // katibin masası
+  DAMA_SPOTS.forEach(([x]) => { grid[GH - 6][x] = 1; });   // kahvehane masaları
   hale.x = Math.floor(GW / 2) + 2; hale.y = GH - 2;
   grid[hale.y][hale.x] = 1;
   me.x = Math.floor(GW / 2); me.y = GH - 1;
@@ -473,6 +512,7 @@ function draw() {
   stalls.forEach(s => drawStall(s, ox, oy));
   drawYard(ox, oy);
   drawKatip(ox, oy);
+  drawCafe(ox, oy);
   petsDraw(ox, oy);
   drawPerson(hale.x * T - ox + T / 2, hale.y * T - oy + T / 2, '👩‍💼', 'Hale · Bana dokunun', Math.sin(lastT / 300) * 2);
   // hedef işareti
@@ -632,7 +672,7 @@ addEventListener('keydown', e => {
   if (e.key === 'Enter') { document.getElementById('halMsg').focus(); e.preventDefault(); return; }
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(k)) { keys[k] = true; e.preventDefault(); }
-  if (k === 'Escape') { if (document.getElementById('zoom').classList.contains('open')) { closeZoom(); return; } closeCard(); closeKatip(); }
+  if (k === 'Escape') { if (document.getElementById('dama').classList.contains('open')) { closeDama(); return; } if (document.getElementById('zoom').classList.contains('open')) { closeZoom(); return; } closeCard(); closeKatip(); }
 });
 addEventListener('keyup', e => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; keys[k] = false; });
 addEventListener('blur', () => { Object.keys(keys).forEach(k => { if (k[0] !== '_') keys[k] = false; }); });
@@ -643,6 +683,8 @@ cv.addEventListener('click', e => {
   if (pet) { petSpeak(pet); return; }
   if (Math.abs(tx - hale.x) <= 1 && Math.abs(ty - hale.y) <= 1) { openChat(); return; }
   if (tx >= 11 && tx <= 13 && ty >= GH - 7 && ty <= GH - 6) { openKatip(); return; }
+  const masa = DAMA_SPOTS.findIndex(([mx]) => Math.abs(tx - mx) <= 1 && ty >= GH - 7 && ty <= GH - 5);
+  if (masa >= 0) { openDama(masa); return; }
   const s = stalls.find(s => tx >= s.x && tx < s.x + s.w && ty >= s.y && ty < s.y + s.h);
   if (s) { goStall(s); return; }
   walkTo(tx, ty);
@@ -671,6 +713,7 @@ async function sendPresence() {
     const r = await fetch('/api/sanal/konum', { method: 'POST', headers: h, body: JSON.stringify({ sid, x: me.x, y: me.y, dir: me.dir, after: lastMsgId }) });
     const d = await r.json();
     (d.msgs || []).forEach(addMsg);
+    if (Array.isArray(d.masalar)) masalar = d.masalar;
     const seen = new Set();
     (d.others || []).forEach(o => {
       seen.add(o.id);
@@ -769,6 +812,117 @@ window.__miniOthers = function (k, ox, oy) {
   mx.fillStyle = '#38bdf8';
   others.forEach(o => { mx.beginPath(); mx.arc(ox + (o.x + .5) * k, oy + (o.y + .5) * k, 2.2, 0, 7); mx.fill(); });
 };
+
+// ── Kahvehane: dama masaları ──
+const DAMA_SPOTS = [[33], [37]];
+let masalar = [];
+function drawCafe(ox, oy) {
+  const x0 = 31 * T - ox, y0 = (GH - 7.4) * T - oy;
+  if (x0 > innerWidth + 40 || y0 > innerHeight + 40 || x0 + T * 9 < -40) return;
+  cx.fillStyle = 'rgba(120,53,15,.28)'; roundRect(cx, x0, y0, T * 8.6, T * 2.5, 12); cx.fill();
+  cx.strokeStyle = 'rgba(251,191,36,.45)'; cx.lineWidth = 2; cx.stroke();
+  cx.font = '800 12px system-ui,sans-serif'; cx.fillStyle = '#fbbf24'; cx.textAlign = 'left'; cx.textBaseline = 'middle';
+  cx.fillText('☕ KAHVEHANE · Dama masaları', x0 + 10, y0 + 12);
+  DAMA_SPOTS.forEach(([tx], i) => {
+    const px = tx * T - ox + T / 2, py = (GH - 6) * T - oy + T / 2;
+    const m = masalar[i] || {};
+    // tabureler ve oturanlar
+    [[-1, m.w, '⚪'], [1, m.b, '⚫']].forEach(([sx, name, dot]) => {
+      cx.fillStyle = '#78350f'; cx.beginPath(); cx.arc(px + sx * T * .95, py + 4, 9, 0, 7); cx.fill();
+      if (name) drawPerson(px + sx * T * .95, py - 2, '🧑', `${dot} ${name}`, 0);
+    });
+    // masa ve dama tahtası
+    cx.fillStyle = 'rgba(0,0,0,.3)'; cx.fillRect(px - 17, py - 13, 38, 38);
+    cx.fillStyle = '#a16207'; cx.fillRect(px - 19, py - 19, 38, 38);
+    for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) { cx.fillStyle = (a + b) % 2 ? '#fef3c7' : '#92400e'; cx.fillRect(px - 16 + a * 8, py - 16 + b * 8, 8, 8); }
+    const label = m.playing ? '♟ Oyun sürüyor · izle' : m.w || m.b ? '🪑 Rakip bekleniyor · otur' : '🪑 Boş masa · otur';
+    cx.font = '700 10.5px system-ui,sans-serif'; cx.textAlign = 'center';
+    const w = cx.measureText(label).width + 12;
+    cx.fillStyle = m.playing ? 'rgba(22,163,74,.9)' : 'rgba(15,23,42,.85)'; roundRect(cx, px - w / 2, py + 22, w, 17, 8); cx.fill();
+    cx.fillStyle = '#fff'; cx.fillText(label, px, py + 31);
+  });
+}
+
+// ── Dama penceresi ──
+let damaMasa = -1, damaState = null, damaSel = null, damaTimer = null, damaBusy = false;
+async function damaCall(action, extra) {
+  if (damaMasa < 0) return;
+  const h = { 'Content-Type': 'application/json' };
+  const t = token(); if (t) h.Authorization = 'Bearer ' + t;
+  try {
+    const r = await fetch('/api/sanal/dama', { method: 'POST', headers: h, body: JSON.stringify({ sid, masa: damaMasa, action, ...(extra || {}) }) });
+    const d = await r.json();
+    if (d && d.board) { damaState = d; renderDama(); }
+    if (!r.ok && d.error) damaMsg(d.error, true);
+  } catch {}
+}
+function damaMsg(t, warn) { const el = document.getElementById('damaInfo'); el.textContent = t; el.classList.toggle('warn', !!warn); }
+window.openDama = function (i) {
+  damaMasa = i; damaState = null; damaSel = null;
+  document.getElementById('damaTitle').textContent = `☕ Kahvehane · ${i + 1}. masa`;
+  document.getElementById('dama').classList.add('open');
+  damaCall('durum');
+  clearInterval(damaTimer);
+  damaTimer = setInterval(() => { if (!document.hidden && !damaBusy) damaCall('durum'); }, 1200);
+};
+window.closeDama = function () {
+  document.getElementById('dama').classList.remove('open');
+  clearInterval(damaTimer);
+  if (damaState && damaState.me) damaCall('kalk');
+  damaMasa = -1;
+};
+function renderDama() {
+  const d = damaState, me = d.me, flip = me === -1;
+  const legal = me && me === d.turn && !d.winner && d.white && d.black ? Dama.legalMoves(d.board, d.turn) : [];
+  const starts = new Set(legal.map(m => m[0].join(',')));
+  const ends = damaSel ? legal.filter(m => m[0].join(',') === damaSel) : [];
+  const endSet = new Set(ends.map(m => m[m.length - 1].join(',')));
+  const lastSet = new Set((d.last || []).map(p => p.join(',')));
+  const g = document.getElementById('damaBoard');
+  g.innerHTML = '';
+  for (let vr = 0; vr < 8; vr++) for (let vc = 0; vc < 8; vc++) {
+    const r = flip ? 7 - vr : vr, c = flip ? 7 - vc : vc, key = `${r},${c}`, v = d.board[r][c];
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'dc' + ((r + c) % 2 ? ' dk' : '') + (lastSet.has(key) ? ' last' : '') + (damaSel === key ? ' sel' : '') + (endSet.has(key) ? ' to' : '') + (starts.has(key) && !damaSel ? ' can' : '');
+    if (v) cell.innerHTML = `<i class="pc ${v > 0 ? 'w' : 'b'}${Math.abs(v) === 2 ? ' k' : ''}"></i>`;
+    cell.onclick = () => {
+      if (endSet.has(key)) {
+        const m = ends.find(m => m[m.length - 1].join(',') === key);
+        damaSel = null; damaBusy = true;
+        damaCall('hamle', { path: m }).finally(() => { damaBusy = false; });
+        return;
+      }
+      damaSel = starts.has(key) ? (damaSel === key ? null : key) : null;
+      renderDama();
+    };
+    g.appendChild(cell);
+  }
+  const you = me === 1 ? 'beyaz' : me === -1 ? 'siyah' : '';
+  document.getElementById('damaWhite').textContent = `⚪ ${d.white || 'Boş'} · ${d.whiteN} taş`;
+  document.getElementById('damaBlack').textContent = `⚫ ${d.black || 'Boş'} · ${d.blackN} taş`;
+  document.getElementById('damaWhite').classList.toggle('turn', d.turn === 1 && !d.winner);
+  document.getElementById('damaBlack').classList.toggle('turn', d.turn === -1 && !d.winner);
+  let info;
+  if (d.winner) info = `🏆 ${d.winner === 1 ? (d.white || 'Beyaz') : (d.black || 'Siyah')} kazandı! ${d.reason || ''}`;
+  else if (!d.white || !d.black) info = me ? 'Rakip bekleniyor… Haldekilere "dama oynayalım" diye yazabilirsiniz.' : 'Masaya oturup oynayabilirsiniz.';
+  else if (!me) info = 'Oyunu izliyorsunuz.';
+  else if (me === d.turn) info = `Sıra sizde (${you}). Taşınıza dokunun.`;
+  else info = 'Rakip düşünüyor…';
+  if (me === d.turn && !d.winner && legal.length && legal.some(m => Dama.apply(d.board, m).taken)) info = `Sıra sizde (${you}). Taş almak zorunlu!`;
+  damaMsg(info, false);
+  const a = document.getElementById('damaActs');
+  a.innerHTML = '';
+  const btn = (t, cls, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + cls; b.textContent = t; b.onclick = fn; a.appendChild(b); };
+  if (!me) {
+    if (!d.white) btn('⚪ Beyaz otur', 'btn-green', () => damaCall('otur', { renk: 1 }));
+    if (!d.black) btn('⚫ Siyah otur', 'btn-dark', () => damaCall('otur', { renk: -1 }));
+  } else {
+    if (d.winner) btn('🔁 Tekrar oyna', 'btn-green', () => damaCall('yeni'));
+    else if (d.white && d.black) btn('🏳️ Pes et', 'btn-dark', () => { if (confirm('Pes etmek istiyor musunuz?')) damaCall('pes'); });
+    btn('🚶 Masadan kalk', 'btn-dark', () => { damaCall('kalk'); });
+  }
+}
 
 // ── Halde gezen kedi ve köpek: dokununca ses çıkarır ──
 const pets = [
