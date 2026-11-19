@@ -1671,16 +1671,18 @@ async function loadUsers() {
           <td><strong>#${Number(u.id)}</strong></td>
           <td><strong>${esc(u.name)}</strong></td>
           <td>${esc(u.email)}</td>
-          <td>${u.phone_number ? `<a href="tel:${esc(String(u.phone_number).replace(/\D/g, ''))}">${esc(u.phone_number)}</a>` : '—'}</td>
-          <td style="color:var(--text-3); font-family:monospace; font-size:12px;">${esc(u.googleId) || '-'}</td>
+          <td>${u.phone_number ? `<a href="tel:${esc(String(u.phone_number).replace(/\D/g, ''))}">${esc(u.phone_number)}</a>${waIntl(u.phone_number) ? `<br><button type="button" class="btn-sm btn-wa user-wa-btn" data-uid="${Number(u.id)}">💬 WhatsApp'tan yaz</button>` : ''}` : '—'}</td>
           <td><strong id="userPointsBalance-${Number(u.id)}" data-balance="${Number(u.points_balance || 0)}">${Number(u.points_balance || 0).toLocaleString('tr-TR')} Para Puan</strong></td>
           <td><strong id="userLevel-${Number(u.id)}">Seviye ${Number(u.level || 1)}</strong></td>
           <td class="user-points-actions"><input type="number" id="userPointsAmount-${Number(u.id)}" min="1" max="100000" step="1" placeholder="Miktar" aria-label="Yüklenecek Para Puan" /><button type="button" class="btn-sm btn-approve" onclick="addUserPoints(${Number(u.id)})">Yükle</button></td>
           <td>${d}</td>
         `;
+        const wb = tr.querySelector('.user-wa-btn');
+        if (wb) wb.onclick = () => sendWelcomeWhatsapp(u);
         tbody.appendChild(tr);
       });
     }
+    loadWaWelcome();
   } catch (err) {
     showToast('Kullanıcılar yüklenemedi', 'error');
   }
@@ -3129,6 +3131,50 @@ function markInviteSent(btn) {
 }
 
 // wa.me yönlendirmesi bazı WhatsApp uygulamalarında emojileri "?" yapıyor; doğrudan api.whatsapp.com kullanılır
+// Üyelere WhatsApp karşılama mesajı (taslağı yönetici değiştirebilir)
+const DEFAULT_WA_WELCOME = [
+  'Merhaba {isim} 👋',
+  '',
+  'NewHal ailesine hoş geldiniz! 🎉',
+  '',
+  'Sitemizi kullandığınız için teşekkür ederiz. Tavsiye ve yorumlarınızı bekliyoruz, her fikriniz NewHal\'i daha iyi yapmamıza yardım ediyor.',
+  '',
+  'https://newhal.com',
+].join('\n');
+let waWelcome = DEFAULT_WA_WELCOME;
+function waIntl(phone) {
+  let d = String(phone || '').replace(/\D/g, '');
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.length === 11 && d.startsWith('0')) d = '9' + d;
+  if (d.length === 10 && d.startsWith('5')) d = '90' + d;
+  return d.length >= 11 ? d : '';
+}
+async function loadWaWelcome() {
+  const res = await api('/api/admin/whatsapp-welcome-template');
+  if (res && res.ok) waWelcome = (await res.json()).template || DEFAULT_WA_WELCOME;
+  const box = document.getElementById('waWelcomeTemplate');
+  if (box && document.activeElement !== box) box.value = waWelcome;
+}
+async function saveWaWelcome() {
+  const template = document.getElementById('waWelcomeTemplate').value.trim();
+  if (!template) return showToast('Mesaj boş olamaz', 'error');
+  const res = await api('/api/admin/whatsapp-welcome-template', { method: 'PUT', body: JSON.stringify({ template }) });
+  if (!res || !res.ok) return showToast('Mesaj kaydedilemedi', 'error');
+  waWelcome = template;
+  showToast('💬 Karşılama mesajı kaydedildi', 'success');
+}
+function resetWaWelcome() {
+  document.getElementById('waWelcomeTemplate').value = DEFAULT_WA_WELCOME;
+  showToast('Varsayılan mesaj yüklendi, kaydetmeyi unutmayın', 'success');
+}
+function sendWelcomeWhatsapp(u) {
+  const phone = waIntl(u.phone_number);
+  if (!phone) return showToast('Numara anlaşılamadı', 'error');
+  const name = String(u.name || '').trim().split(/\s+/)[0] || '';
+  const msg = waWelcome.split('{isim}').join(name).replace(/Merhaba\s+👋/, 'Merhaba 👋');
+  window.open(waSendUrl(phone, msg), '_blank', 'noopener');
+}
+
 function waSendUrl(phone, message) {
   return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
 }

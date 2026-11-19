@@ -696,3 +696,11 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 .ad-bulk-bar button[disabled] { opacity: .45; cursor: not-allowed; }
 .ad-bulk-pick-wrap { display: flex; align-items: flex-start; padding: 4px 2px 0 0; cursor: pointer; }
 .ad-bulk-pick, .ad-bulk-all input { width: 20px; height: 20px; accent-color: #22c55e; cursor: pointer; }
+
+/* Üyelere WhatsApp karşılama mesajı */
+.wa-welcome-card { margin: 0 0 18px; padding: 16px; border-radius: 14px; border: 1px solid rgba(37,211,102,.35); background: rgba(37,211,102,.05); }
+.wa-welcome-card h3 { margin: 0 0 4px; }
+.wa-welcome-card p { margin: 0 0 10px; font-size: 13.5px; opacity: .8; }
+.wa-welcome-card textarea { width: 100%; box-sizing: border-box; border-radius: 10px; padding: 10px; font: inherit; background: rgba(0,0,0,.2); color: inherit; border: 1px solid var(--border); resize: vertical; }
+.wa-welcome-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.user-wa-btn { margin-top: 6px; white-space: nowrap; background: #25D366 !important; color: #053b1d !important; border: 0; }

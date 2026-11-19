@@ -639,10 +639,19 @@
           <h1>Kullanıcılar</h1>
           <p>Kayıtlı üyeler ve Para Puan bakiyeleri</p>
         </div>
+        <div class="wa-welcome-card">
+          <h3>💬 WhatsApp karşılama mesajı</h3>
+          <p>Üyenin numarasının yanındaki "WhatsApp'tan yaz" tuşu bu mesajı hazır açar. <b>{isim}</b> yazdığınız yere üyenin adı gelir.</p>
+          <textarea id="waWelcomeTemplate" rows="6" maxlength="2000"></textarea>
+          <div class="wa-welcome-actions">
+            <button type="button" class="btn-sm" onclick="resetWaWelcome()">Varsayılana dön</button>
+            <button type="button" class="btn-sm btn-approve" onclick="saveWaWelcome()">Kaydet</button>
+          </div>
+        </div>
         <div class="pins-table-wrap">
           <table class="pins-table">
             <thead>
-              <tr><th>Profil</th><th>Kullanıcı No</th><th>Kullanıcı Adı</th><th>E-posta</th><th>Cep Telefonu</th><th>Google ID</th><th>Para Puan</th><th>Seviye</th><th>Puan Yükle</th><th>Kayıt Tarihi</th></tr>
+              <tr><th>Profil</th><th>Kullanıcı No</th><th>Kullanıcı Adı</th><th>E-posta</th><th>Cep Telefonu</th><th>Para Puan</th><th>Seviye</th><th>Puan Yükle</th><th>Kayıt Tarihi</th></tr>
             </thead>
             <tbody id="usersBody"></tbody>
           </table>
