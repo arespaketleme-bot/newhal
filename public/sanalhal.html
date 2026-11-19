@@ -115,6 +115,34 @@
   <div class="acts" id="cActs"></div>
 </div>
 
+<div class="story" id="story" onclick="if(event.target===this)closeKatip()">
+  <div class="story-box">
+    <div class="story-head"><span>🧑‍💼 Katibin günün hikayesi</span><button class="x" style="position:static" type="button" aria-label="Kapat" onclick="closeKatip()">×</button></div>
+    <div class="story-media" id="storyMedia"></div>
+    <button class="story-nav prev" id="storyPrev" type="button" aria-label="Önceki" onclick="storyStep(-1)">‹</button>
+    <button class="story-nav next" id="storyNext" type="button" aria-label="Sonraki" onclick="storyStep(1)">›</button>
+    <div class="story-dots" id="storyDots"></div>
+    <div class="story-text"><h3 id="storyTitle"></h3><p id="storyBody"></p>
+      <a class="btn btn-orange" id="storyLink" href="/">📄 İlanı aç</a></div>
+  </div>
+</div>
+<style>
+  .story { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(2,6,23,.75); z-index: 12; padding: 14px; }
+  .story.open { display: flex; }
+  .story-box { position: relative; width: min(440px, 100%); max-height: 92vh; overflow: auto; background: #0f172a; border: 1px solid var(--line); border-radius: 20px; }
+  .story-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px 10px 16px; font-weight: 800; }
+  .story-media { background: #000; aspect-ratio: 4 / 5; display: grid; place-items: center; }
+  .story-media img, .story-media video, .story-media iframe { width: 100%; height: 100%; object-fit: contain; border: 0; display: block; }
+  .story-empty { font-size: 60px; }
+  .story-nav { position: absolute; top: 45%; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; font-size: 24px; cursor: pointer; }
+  .story-nav.prev { left: 8px; } .story-nav.next { right: 8px; }
+  .story-dots { display: flex; justify-content: center; gap: 5px; padding: 8px 0 0; }
+  .story-dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(148,163,184,.4); }
+  .story-dots i.on { background: #fde047; }
+  .story-text { padding: 10px 16px 16px; }
+  .story-text h3 { margin: 4px 0 6px; font-size: 17px; }
+  .story-text p { margin: 0 0 12px; color: #cbd5e1; font-size: 14px; line-height: 1.5; max-height: 180px; overflow: auto; }
+</style>
 <div class="chat" id="chat" onclick="if(event.target===this)closeChat()">
   <div class="chat-box">
     <div class="chat-head">
@@ -187,6 +215,7 @@ function build(pins) {
   // Bölge başlıkları için ilk dükkanlar
   stalls.forEach(s => { if (!cats[s.z.cat]) cats[s.z.cat] = s; });
   for (let y = GH - 7; y < GH; y++) for (let x = 1; x <= 2; x++) grid[y][x] = 1;   // tır
+  grid[GH - 6][12] = 1; grid[GH - 6][13] = 1;   // katibin masası
   hale.x = Math.floor(GW / 2) + 2; hale.y = GH - 2;
   grid[hale.y][hale.x] = 1;
   me.x = Math.floor(GW / 2); me.y = GH - 1;
@@ -307,6 +336,24 @@ function drawTruck(x, y, loaded, fruits, full) {
     cx.fillStyle = '#fff'; cx.textAlign = 'left'; cx.fillText(t, x - w / 2 + 7, y - 16);
   }
 }
+// Katip: masasında oturur, dokununca günün hikayesini açar
+function drawKatip(ox, oy) {
+  const kx = 12.6 * T - ox, ky = (GH - 6) * T - oy + T / 2;
+  // masa
+  cx.fillStyle = 'rgba(0,0,0,.3)'; cx.fillRect(kx - T * .55 + 4, ky + 6, T * 1.5, T * .7);
+  cx.fillStyle = '#92400e'; roundRect(cx, kx - T * .55, ky + 2, T * 1.5, T * .62, 5); cx.fill();
+  cx.fillStyle = '#f8fafc'; cx.fillRect(kx - T * .2, ky + 8, 16, 12);
+  cx.font = '14px "Segoe UI Emoji","Apple Color Emoji",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  cx.fillText('📒', kx + T * .55, ky + 15);
+  drawPerson(kx, ky - 6, '🧑‍💼', 'Katip · Bana dokunun', Math.sin(lastT / 400) * 1.5);
+  // parlayan halka: hikaye var
+  if (katipStory) {
+    cx.strokeStyle = `rgba(250,204,21,${.5 + Math.sin(lastT / 250) * .3})`; cx.lineWidth = 3;
+    cx.beginPath(); cx.arc(kx, ky - 8, 19, 0, 7); cx.stroke();
+  }
+  if (Math.hypot(me.x - 12.6, me.y - (GH - 6.2)) < 2.2) drawBubble(kx, ky - 6, katipStory ? 'Günün hikayesi bende! Bana dokun 📜' : 'Bugün hikaye yok, yarın gel!');
+}
+
 function drawYard(ox, oy) {
   const t = performance.now() / 1000, c = Math.floor(t / YARD_CYCLE), p = t % YARD_CYCLE;
   const W = v => v * T - ox, H = v => v * T - oy;
@@ -408,6 +455,7 @@ function draw() {
   cx.font = '800 16px system-ui,sans-serif'; cx.fillStyle = '#bbf7d0'; cx.fillText('🚪 GİRİŞ · MERSİN HAL KOMPLEKSİ', gx, gy + T / 2 - 6);
   stalls.forEach(s => drawStall(s, ox, oy));
   drawYard(ox, oy);
+  drawKatip(ox, oy);
   drawPerson(hale.x * T - ox + T / 2, hale.y * T - oy + T / 2, '👩‍💼', 'Hale · Bana dokunun', Math.sin(lastT / 300) * 2);
   // hedef işareti
   if (me.path.length) { const t = me.path[me.path.length - 1]; cx.strokeStyle = '#fde047'; cx.lineWidth = 2; cx.beginPath(); cx.arc(t.x * T - ox + T / 2, t.y * T - oy + T / 2, 10 + Math.sin(lastT / 150) * 2, 0, 7); cx.stroke(); }
@@ -528,7 +576,7 @@ addEventListener('keydown', e => {
   if (e.key === 'Enter') { document.getElementById('halMsg').focus(); e.preventDefault(); return; }
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(k)) { keys[k] = true; e.preventDefault(); }
-  if (k === 'Escape') closeCard();
+  if (k === 'Escape') { closeCard(); closeKatip(); }
 });
 addEventListener('keyup', e => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; keys[k] = false; });
 addEventListener('blur', () => { Object.keys(keys).forEach(k => { if (k[0] !== '_') keys[k] = false; }); });
@@ -536,6 +584,7 @@ cv.addEventListener('click', e => {
   const ox = cam.x - innerWidth / 2 + T / 2, oy = cam.y - innerHeight / 2 + T / 2;
   const tx = Math.floor((e.clientX + ox) / T), ty = Math.floor((e.clientY + oy) / T);
   if (Math.abs(tx - hale.x) <= 1 && Math.abs(ty - hale.y) <= 1) { openChat(); return; }
+  if (tx >= 11 && tx <= 13 && ty >= GH - 7 && ty <= GH - 6) { openKatip(); return; }
   const s = stalls.find(s => tx >= s.x && tx < s.x + s.w && ty >= s.y && ty < s.y + s.h);
   if (s) { goStall(s); return; }
   walkTo(tx, ty);
@@ -662,6 +711,41 @@ window.__miniOthers = function (k, ox, oy) {
   mx.fillStyle = '#38bdf8';
   others.forEach(o => { mx.beginPath(); mx.arc(ox + (o.x + .5) * k, oy + (o.y + .5) * k, 2.2, 0, 7); mx.fill(); });
 };
+
+// ── Katibin hikayesi ──
+let katipStory = null, storyIdx = 0;
+fetch('/api/sanal/katip').then(r => r.json()).then(d => { katipStory = d.ad || null; }).catch(() => {});
+function isMemberHal() { try { return !!localStorage.getItem('userToken'); } catch { return false; } }
+function maskPhones(t) {
+  if (isMemberHal()) return esc(t);
+  return esc(t).replace(/(\+?90[\s.-]?)?0?\s?5\d{2}[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}/g, m => { const d = m.replace(/\D/g, ''); return `${d.slice(0, 4)} *** ** ${d.slice(-2)} 🔒`; });
+}
+function renderStory() {
+  const a = katipStory, box = document.getElementById('storyMedia');
+  const items = [...(a.images || []).map(u => ({ img: u }))];
+  if (a.video) items.push(a.video.type === 'youtube' ? { yt: a.video.id } : { vid: a.video.url });
+  storyIdx = (storyIdx + items.length) % Math.max(1, items.length);
+  const it = items[storyIdx];
+  box.innerHTML = !it ? '<div class="story-empty">📜</div>'
+    : it.img ? `<img src="${esc(it.img)}" alt="${esc(a.title || 'Günün hikayesi')}" />`
+    : it.yt ? `<iframe src="https://www.youtube.com/embed/${esc(it.yt)}?autoplay=1&playsinline=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`
+    : `<video src="${esc(it.vid)}" controls autoplay playsinline></video>`;
+  document.getElementById('storyDots').innerHTML = items.length > 1 ? items.map((_, i) => `<i class="${i === storyIdx ? 'on' : ''}"></i>`).join('') : '';
+  document.getElementById('storyPrev').hidden = document.getElementById('storyNext').hidden = items.length < 2;
+}
+window.openKatip = function () {
+  if (!katipStory) { document.getElementById('statusTxt').textContent = 'Katip: Bugün hikaye yok, yarın gel!'; return; }
+  const a = katipStory;
+  storyIdx = 0;
+  document.getElementById('storyTitle').textContent = a.title || 'Günün hikayesi';
+  document.getElementById('storyBody').innerHTML = maskPhones(a.body || '').replace(/\n/g, '<br>');
+  document.getElementById('storyLink').href = `/?ilan=${encodeURIComponent(a.id)}`;
+  renderStory();
+  document.getElementById('story').classList.add('open');
+  try { window.dataLayer.push({ event: 'sanal_hal_katip', ilan: a.id }); } catch {}
+};
+window.closeKatip = function () { document.getElementById('story').classList.remove('open'); document.getElementById('storyMedia').innerHTML = ''; };
+window.storyStep = function (d) { storyIdx += d; renderStory(); };
 
 // ── Başlat ──
 fetch('/api/pins').then(r => r.json()).then(d => {

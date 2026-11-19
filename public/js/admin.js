@@ -2283,7 +2283,7 @@ async function loadAds() {
   loadFacebookStatus();
   loadWaTemplate();
   await loadAdStats();
-  const [res, settingsRes] = await Promise.all([api('/api/admin/ads'), api('/api/admin/ad-story-settings')]);
+  const [res, settingsRes] = await Promise.all([api('/api/admin/ads'), api('/api/admin/ad-story-settings'), loadKatip()]);
   if (!res) return;
   const ads = await res.json();
   if (settingsRes && settingsRes.ok) {
@@ -2988,6 +2988,19 @@ async function bulkAdAction(action, btn) {
   loadAds();
 }
 
+// Sanal haldeki katibin göstereceği günün hikayesi
+let katipAdId = null;
+async function loadKatip() {
+  try { katipAdId = (await (await fetch('/api/sanal/katip', { cache: 'no-store' })).json()).adId || null; } catch {}
+}
+async function setKatipAd(id, ads) {
+  const res = await api('/api/admin/sanal/katip', { method: 'PUT', body: JSON.stringify({ adId: id }) });
+  if (!res || !res.ok) return showToast('Kaydedilemedi', 'error');
+  katipAdId = id;
+  showToast(id ? '📜 Katip bu ilanı günün hikayesi olarak gösterecek' : 'Katip en yeni resimli ilanı gösterecek', 'success');
+  renderAdList(ads);
+}
+
 function renderAdList(ads) {
   const list = document.getElementById('adList');
   list.innerHTML = '';
@@ -3024,6 +3037,7 @@ function renderAdList(ads) {
         <button type="button" class="btn-sm btn-vitrin" data-act="featured">${ad.featured ? '☆ Vitrinden Çıkar' : '⭐ Vitrine Ekle'}</button>
         ${ad.featured ? '<button type="button" class="btn-sm btn-vitrin" data-act="extend">⏳ Süre Uzat</button>' : ''}
         <button type="button" class="btn-sm${ad.pending ? ' btn-approve-ad' : ''}" data-act="toggle">${ad.pending ? '✅ Onayla' : ad.active === false ? '👁 Yayınla' : '🙈 Gizle'}</button>
+        ${!ad.pending && ad.active !== false ? `<button type="button" class="btn-sm btn-katip${katipAdId === ad.id ? ' on' : ''}" data-act="katip" title="Sanal haldeki katip bu ilanı hikaye olarak göstersin">${katipAdId === ad.id ? '📜 Katipte gösteriliyor' : '📜 Katibe ver'}</button>` : ''}
         <button type="button" class="btn-sm btn-delete" data-act="delete">🗑 Sil</button>
       </div>`;
     card.querySelector('[data-act="facebook"]').onclick = (e) => shareAdToFacebook(ad, e.currentTarget);
@@ -3035,6 +3049,8 @@ function renderAdList(ads) {
     if (extendBtn) extendBtn.onclick = () => setAdFeatured(ad.id, true, true);
     card.querySelector('[data-act="toggle"]').onclick = () => toggleAd(ad.id, ad.pending || ad.active === false, ad.pending);
     card.querySelector('[data-act="delete"]').onclick = () => deleteAd(ad.id, ad.title || 'Başlıksız');
+    const katipBtn = card.querySelector('[data-act="katip"]');
+    if (katipBtn) katipBtn.onclick = () => setKatipAd(katipAdId === ad.id ? null : ad.id, ads);
     const pick = card.querySelector('.ad-bulk-pick');
     if (pick) pick.onchange = () => {
       if (pick.checked) adBulkSel.add(ad.id); else adBulkSel.delete(ad.id);

@@ -3929,6 +3929,23 @@ app.post('/api/sanal/mesaj', (req, res) => {
   res.json(msg);
 });
 
+// Sanal Hal katibi: yönetimin seçtiği günün hikayesi (ilan)
+const KATIP_FILE = 'sanal-katip.json';
+app.get('/api/sanal/katip', async (req, res) => {
+  const saved = await db.getPrivateJson(KATIP_FILE).catch(() => null);
+  const id = saved && saved.adId;
+  const ads = await db.getAds();
+  let ad = id && ads.find(a => a.id === id && a.active !== false && !a.pending);
+  let chosen = !!ad;
+  if (!ad) ad = ads.filter(a => a.active !== false && !a.pending && ((a.images || []).length || a.video)).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
+  res.set('Cache-Control', 'no-store').json({ ad: ad ? publicAd(ad) : null, chosen, adId: id || null, at: saved && saved.at });
+});
+app.put('/api/admin/sanal/katip', requireAdmin, async (req, res) => {
+  const adId = req.body && req.body.adId ? String(req.body.adId) : null;
+  if (!(await db.savePrivateJson(KATIP_FILE, { adId, at: new Date().toISOString() }))) return res.status(500).json({ error: 'Kaydedilemedi' });
+  res.json({ adId });
+});
+
 app.post('/api/sanal/cikis', (req, res) => {
   halVisitors.delete(String((req.body && req.body.sid) || ''));
   res.json({ ok: true });

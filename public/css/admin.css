@@ -704,3 +704,5 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 .wa-welcome-card textarea { width: 100%; box-sizing: border-box; border-radius: 10px; padding: 10px; font: inherit; background: rgba(0,0,0,.2); color: inherit; border: 1px solid var(--border); resize: vertical; }
 .wa-welcome-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
 .user-wa-btn { margin-top: 6px; white-space: nowrap; background: #25D366 !important; color: #053b1d !important; border: 0; }
+
+.btn-katip.on { background: rgba(234,179,8,.2) !important; border-color: #eab308 !important; color: #fde047 !important; font-weight: 800; }
