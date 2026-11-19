@@ -392,9 +392,15 @@ function draw() {
   // ana koridor yazısı ve bölge başlıkları
   cx.textAlign = 'center'; cx.textBaseline = 'middle';
   Object.values(cats).forEach(s => {
-    const X = (MARGIN + 6) * T - ox, Y = (s.up ? s.y - 2 : s.y + s.h + 1) * T - oy + T / 2;
-    cx.font = '800 15px system-ui,sans-serif'; cx.fillStyle = s.z.color;
-    cx.fillText(`▸ ${s.z.label}`, X + 30, Y);
+    // başlık, bölümün ilk dükkanının hemen üstünde/altında ve onun hizasında durur
+    const X = s.x * T - ox + 6, Y = (s.up ? s.y - 1 : s.y + s.h) * T - oy + (s.up ? T * .28 : T * .72);
+    const txt = `▸ ${s.z.label}`;
+    cx.font = '800 14px system-ui,sans-serif'; cx.textAlign = 'left';
+    const w = cx.measureText(txt).width + 14;
+    cx.fillStyle = 'rgba(15,23,42,.85)'; roundRect(cx, X - 6, Y - 11, w, 22, 11); cx.fill();
+    cx.fillStyle = s.z.color === '#dc2626' ? '#f87171' : s.z.color === '#0f766e' ? '#2dd4bf' : s.z.color;
+    cx.fillText(txt, X + 1, Y);
+    cx.textAlign = 'center';
   });
   // giriş
   const gx = (GW / 2) * T - ox, gy = GH * T - oy;
