@@ -706,3 +706,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); ov
 .user-wa-btn { margin-top: 6px; white-space: nowrap; background: #25D366 !important; color: #053b1d !important; border: 0; }
 
 .btn-katip.on { background: rgba(234,179,8,.2) !important; border-color: #eab308 !important; color: #fde047 !important; font-weight: 800; }
+
+/* Toplu seçim kutusu karttaki ızgarayı bozmasın: resmin sol üst köşesinde durur */
+.ad-item { position: relative; }
+.ad-item .ad-bulk-pick-wrap { position: absolute; top: 6px; left: 6px; z-index: 2; padding: 3px; border-radius: 6px; background: rgba(15,23,42,.85); }
