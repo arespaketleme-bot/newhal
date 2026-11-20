@@ -1,0 +1,26 @@
+{
+  "appId": "com.newhal.app",
+  "appName": "NewHal",
+  "webDir": "www",
+  "server": {
+    "url": "https://newhal.com/?kaynak=ios",
+    "errorPath": "offline.html"
+  },
+  "ios": {
+    "scheme": "NewHal",
+    "contentInset": "never",
+    "backgroundColor": "#f4f7f5",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "launchAutoHide": true,
+      "backgroundColor": "#f4f7f5",
+      "showSpinner": false
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}

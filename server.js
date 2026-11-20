@@ -191,7 +191,12 @@ function requireAdmin(req, res, next) {
   }
 }
 
+// iPhone uygulaması: Google girişinden dönüş kodu ve iPhone bildirimleri (ios.js)
+const ios = require('./ios')(app, { db, jwt, requireAuth });
+
 async function sendBrowserPushMany(userIds, payload) {
+  // Uygulamayı kullananlara aynı bildirim iPhone bildirimi olarak da gider
+  void ios.sendApnsMany(userIds, payload).catch(err => console.error('iPhone bildirimi gönderilemedi:', err.message));
   try {
     await vapidInitialization;
     if (!vapidConfigured || !userIds.length) return;
@@ -375,8 +380,13 @@ app.get('/auth/google', (req, res, next) => {
   res.cookie('newhal_referral', cleanReferralCode(req.query.ref), {
     httpOnly: true, secure: true, sameSite: 'lax', maxAge: 10 * 60 * 1000, path: '/',
   });
+  // iPhone uygulaması girişi Safari penceresinde yapar; dönüşte uygulamaya kodla geri gidilir
+  if (req.query.app === 'ios') res.cookie('newhal_app', 'ios', { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 10 * 60 * 1000, path: '/' });
+  else res.clearCookie('newhal_app', { httpOnly: true, secure: true, sameSite: 'lax', path: '/' });
   next();
 }, passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
+
+const isAppLogin = req => String(req.headers.cookie || '').split(';').some(part => part.trim() === 'newhal_app=ios');
 
 // Google'dan dönüşte hata olursa çıplak "Internal Server Error" yerine siteye dönülür ve hata yöneticiye bildirilir
 let googleAuthFailNotifiedAt = 0;
@@ -391,6 +401,10 @@ function googleAuthCallback(req, res, next) {
       if (Date.now() - googleAuthFailNotifiedAt > 10 * 60 * 1000) {
         googleAuthFailNotifiedAt = Date.now();
         sendTelegram(`⚠️ <b>Google ile giriş başarısız</b>\n${tgEsc(reason)}\n📱 ${tgEsc(describeDevice(req.headers['user-agent'] || ''))}`).catch(() => {});
+      }
+      if (isAppLogin(req)) {
+        res.clearCookie('newhal_app', { httpOnly: true, secure: true, sameSite: 'lax', path: '/' });
+        return res.redirect('/app-giris?error=1');
       }
       return res.redirect('/?error=google_auth_failed');
     }
@@ -440,6 +454,11 @@ app.get('/auth/google/callback',
     if (req.user._newhalCreated) {
       welcomeBonus = (await awardEconomyPoints(req.user.id, 'welcome_bonus', `welcome:${req.user.id}`)).amount;
       notifyNewMember(req.user).catch(err => console.error('Yeni üye Telegram bildirimi gönderilemedi:', err.message));
+    }
+    if (isAppLogin(req)) {
+      res.clearCookie('newhal_app', { httpOnly: true, secure: true, sameSite: 'lax', path: '/' });
+      const code = ios.issueAppCode({ token, name: req.user.name, points: pointsAwarded ? 100 : 0, welcome: welcomeBonus || 0 });
+      return res.redirect(`/app-giris?code=${encodeURIComponent(code)}`);
     }
     res.redirect(`/?googleAuth=success&token=${token}&name=${encodeURIComponent(req.user.name)}${pointsAwarded ? '&points=100' : ''}${welcomeBonus ? `&welcome=${welcomeBonus}` : ''}`);
   }

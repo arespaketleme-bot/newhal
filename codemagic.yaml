@@ -1,0 +1,49 @@
+# NewHal iPhone uygulaması — Codemagic bulut derlemesi (Mac gerekmez)
+# Kurulum adımları: ios-app/README.md
+# Derleme elle başlatılır (Codemagic → NewHal → "Start new build" → ios-appstore).
+workflows:
+  ios-appstore:
+    name: NewHal iOS → TestFlight / App Store
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      # Codemagic → Team settings → Integrations → App Store Connect'te bu adla kaydedilen API anahtarı
+      app_store_connect: NewHal App Store Connect
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.newhal.app
+      vars:
+        XCODE_PROJECT: ios-app/ios/App/App.xcodeproj
+        XCODE_SCHEME: App
+        # App Store Connect → Uygulamalar → NewHal → Uygulama Bilgileri → "Apple Kimliği" (yalnızca rakam)
+        APP_STORE_APPLE_ID: "0000000000"
+      node: 22
+      xcode: latest
+    scripts:
+      - name: Paketleri kur
+        working_directory: ios-app
+        script: npm ci
+      - name: Capacitor ayarlarını iOS projesine yaz
+        working_directory: ios-app
+        script: npx cap sync ios
+      - name: İmzalama profillerini projeye uygula
+        script: xcode-project use-profiles --project "$XCODE_PROJECT"
+      - name: Derle (IPA)
+        script: |
+          # Her derlemenin numarası TestFlight'taki son numaradan bir fazla olur
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0)
+          BUILD=$((LATEST + 1))
+          echo "Derleme numarası: $BUILD"
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME" \
+            --archive-xcargs "CURRENT_PROJECT_VERSION=$BUILD"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        # Derleme bitince TestFlight'a yüklenir; App Store incelemesine panelden gönderilir
+        submit_to_testflight: true
