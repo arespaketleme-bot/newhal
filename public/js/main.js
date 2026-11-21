@@ -4031,7 +4031,7 @@ function playFbVideo(media, url) {
   // Dikey videolar ekrana sığsın: oynatıcı ölçülür, uzunsa küçültülür
   const fit = () => {
     const v = box.querySelector('.fb-video');
-    const sp = v && v.querySelector('span');
+    const sp = v && (v.querySelector('iframe') || v.querySelector('span'));
     if (!sp || !sp.offsetHeight) return;
     const avail = Math.max(240, window.innerHeight * 0.72);
     const k = Math.min(1, avail / sp.offsetHeight);
@@ -4040,7 +4040,7 @@ function playFbVideo(media, url) {
     box.style.height = Math.round(sp.offsetHeight * k) + 'px';
   };
   loadFbSdk().then(FB => {
-    box.innerHTML = `<div class="fb-video" id="${id}" data-href="${url.replace(/"/g, '%22')}" data-autoplay="true" data-allowfullscreen="true" data-show-text="false" data-width="${Math.round(Math.min(box.clientWidth || 500, 560))}"></div>`;
+    box.innerHTML = `<div class="fb-video" id="${id}" data-href="${url.replace(/"/g, '%22')}" data-autoplay="true" data-allowfullscreen="true" data-show-text="false" data-width="${Math.round(Math.min(box.clientWidth || 500, 900))}"></div>`;
     const onReady = msg => {
       if (msg.type !== 'video' || msg.id !== id) return;
       try { msg.instance.mute(); msg.instance.play(); } catch {}

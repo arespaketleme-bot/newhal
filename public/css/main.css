@@ -3149,3 +3149,5 @@ body { overflow-x: clip; max-width: 100%; }
 
 .fb-video-box { overflow: hidden; align-items: flex-start; }
 .fb-video-box .fb-video { flex: none; }
+
+.fb-video-box .fb-video > span { height: auto !important; }
