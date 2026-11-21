@@ -4026,19 +4026,30 @@ function loadFbSdk() {
 function playFbVideo(media, url) {
   const box = document.createElement('div');
   box.className = 'fb-video-box';
-  const id = 'fbv' + Math.random().toString(36).slice(2);
-  box.innerHTML = `<div class="fb-video" id="${id}" data-href="${url.replace(/"/g, '%22')}" data-autoplay="true" data-allowfullscreen="true" data-show-text="false" data-width="auto"></div>`;
   media.appendChild(box);
+  // Dikey videolar ekrana sığsın: önce ölçülür, uzunsa daha dar çizilir
+  const avail = () => Math.max(240, Math.min(window.innerHeight * 0.7, media.clientHeight || 9999));
+  let id = '', resized = false;
+  const draw = width => {
+    id = 'fbv' + Math.random().toString(36).slice(2);
+    box.innerHTML = `<div class="fb-video" id="${id}" data-href="${url.replace(/"/g, '%22')}" data-autoplay="true" data-allowfullscreen="true" data-show-text="false" data-width="${Math.round(width)}"></div>`;
+    window.FB.XFBML.parse(box);
+  };
   loadFbSdk().then(FB => {
     const onReady = msg => {
       if (msg.type !== 'video' || msg.id !== id) return;
+      const el = box.querySelector('.fb-video > span') || box.querySelector('iframe');
+      const h = el ? el.offsetHeight : 0, w = el ? el.offsetWidth : 0;
+      if (!resized && h > avail() + 4 && w) {
+        resized = true;
+        draw(Math.max(200, w * avail() / h));
+        return;
+      }
       try { msg.instance.mute(); msg.instance.play(); } catch {}
-      // Sessizlik ilk dokunuşta kalkar
-      box.addEventListener('pointerdown', () => { try { msg.instance.unmute(); } catch {} }, { once: true });
       FB.Event.unsubscribe('xfbml.ready', onReady);
     };
     FB.Event.subscribe('xfbml.ready', onReady);
-    FB.XFBML.parse(box);
+    draw(Math.min(box.clientWidth || media.clientWidth || 500, 900));
   }).catch(() => { box.replaceWith(fbVideoFrame(url, '')); });
 }
 // Pencerede gösterilecek parçalar: önce video (varsa), sonra resimler
