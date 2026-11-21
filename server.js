@@ -1467,6 +1467,8 @@ function cleanAd(body, { allowVideoFile = true } = {}) {
   } else if (body.video && body.video.type === 'youtube') {
     const id = youtubeId(body.video.url);
     if (id) video = { type: 'youtube', id };
+  } else if (body.video && body.video.type === 'facebook' && /^https:\/\/(www\.|web\.|m\.)?facebook\.com\/\S+$/.test(String(body.video.url || ''))) {
+    video = { type: 'facebook', url: String(body.video.url).slice(0, 500) };
   }
   return { title, body: text, images, video };
 }
@@ -1574,7 +1576,14 @@ async function deleteAdFiles(ad) {
 }
 
 // Herkese açık ilan: ekleyenin hesap kimliği gösterilmez
-const publicAd = ({ owner, ...ad }) => (owner ? { ...ad, owner_name: owner.name, owner_id: owner.id } : ad);
+// Facebook video: ilan yazısındaki "🎬 Video: bağlantı" satırından da tanınır (eski ilanlar için)
+const FB_VIDEO_LINE = /🎬 Video: (https:\/\/(?:www\.|web\.|m\.)?facebook\.com\/\S+)/;
+function withFbVideo(ad) {
+  if (ad.video || !ad.body) return ad;
+  const m = String(ad.body).match(FB_VIDEO_LINE);
+  return m ? { ...ad, video: { type: 'facebook', url: m[1] } } : ad;
+}
+const publicAd = ({ owner, ...ad }) => { ad = withFbVideo(ad); return owner ? { ...ad, owner_name: owner.name, owner_id: owner.id } : ad; };
 
 // İlan etkileşimleri ilanların kendisi gibi özel veri deposunda tutulur. Böylece
 // ilanlar için yeni bir SQL migration gerekmez ve eski ilanlar da desteklenir.
@@ -2520,6 +2529,7 @@ async function fbBotFinish(ctx, candidates, { notifySummary }) {
     if (!ad.title) { run.skipped++; continue; }
     if (!c.video && /\/(videos|reel|watch)\b|\/share\/(v|r)\/|[?&]v=\d/i.test(c.url || '')) c.video = c.url;
     // Gönderide video varsa bağlantısı ilan yazısında görünür
+    if (c.video && !ad.video) ad.video = { type: 'facebook', url: c.video };
     if (c.video && !String(ad.body || '').includes(c.video)) ad.body = `${ad.body ? ad.body + '\n\n' : ''}🎬 Video: ${c.video}`;
     newAds.push({
       id: crypto.randomUUID(), ...ad, featured: false, active: true,

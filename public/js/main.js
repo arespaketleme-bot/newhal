@@ -3691,6 +3691,15 @@ function buildAdCard(ad) {
     yt.innerHTML = '<span class="ad-play">▶</span>';
     yt.onclick = (e) => { e.stopPropagation(); openAdViewer(ad, 0); };
     card.appendChild(yt);
+  } else if (ad.video && ad.video.type === 'facebook') {
+    const fb = document.createElement('button');
+    fb.type = 'button';
+    fb.className = 'ad-media ad-youtube ad-fbvideo';
+    fb.setAttribute('aria-label', 'Videoyu oynat');
+    if (images[0]) fb.style.backgroundImage = `url("${images[0].replace(/"/g, '%22')}")`;
+    fb.innerHTML = '<span class="ad-play">▶</span>';
+    fb.onclick = (e) => { e.stopPropagation(); openAdViewer(ad, 0); };
+    card.appendChild(fb);
   } else if (images.length) {
     const main = document.createElement('img');
     main.className = 'ad-media';
@@ -3983,10 +3992,25 @@ function appendPhonesOnly(parent, text) {
 // ── İlan büyütme penceresi ────────────────────────────────────
 let adViewer = null;   // { ad, items, index }
 
+// Facebook'un kendi oynatıcısı (video Facebook'ta kalır)
+function fbVideoSrc(url, autoplay) {
+  return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false&autoplay=${autoplay ? 1 : 0}&mute=0`;
+}
+function fbVideoFrame(url, cls) {
+  const f = document.createElement('iframe');
+  f.className = cls;
+  f.src = fbVideoSrc(url, true);
+  f.allow = 'autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen';
+  f.allowFullscreen = true;
+  f.style.border = '0';
+  f.style.background = '#000';
+  f.title = 'Facebook videosu';
+  return f;
+}
 // Pencerede gösterilecek parçalar: önce video (varsa), sonra resimler
 function adViewerItems(ad) {
   const items = [];
-  if (ad.video) items.push({ kind: ad.video.type === 'youtube' ? 'youtube' : 'video', value: ad.video.type === 'youtube' ? ad.video.id : ad.video.url });
+  if (ad.video) items.push({ kind: ad.video.type === 'youtube' || ad.video.type === 'facebook' ? ad.video.type : 'video', value: ad.video.type === 'youtube' ? ad.video.id : ad.video.url });
   (ad.images || []).forEach(url => items.push({ kind: 'image', value: url }));
   if (!items.length) items.push({ kind: 'image', value: AD_LOGO_URL, logo: true });
   return items;
@@ -4086,6 +4110,8 @@ function renderAdViewer() {
     iframe.allowFullscreen = true;
     iframe.title = ad.title || 'İlan videosu';
     media.appendChild(iframe);
+  } else if (item && item.kind === 'facebook') {
+    media.appendChild(fbVideoFrame(item.value, ''));
   }
   const multi = items.length > 1;
   el.querySelectorAll('.ad-viewer-nav').forEach(b => { b.hidden = !multi; });
