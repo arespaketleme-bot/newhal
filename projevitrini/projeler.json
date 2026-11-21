@@ -1,0 +1,302 @@
+[
+  {
+    "id": "haber-kazanc",
+    "ad": "Haber Kazanç",
+    "aciklama": "Günün haberlerini toplayıp okunabilir özetlere dönüştüren haber sitesi.",
+    "etiketler": [
+      "Web",
+      "Haber",
+      "Yapay Zeka"
+    ],
+    "link": "#",
+    "renk": "#ff6b4a",
+    "baslangicGoruntulenme": 420
+  },
+  {
+    "id": "toptown",
+    "ad": "TopTown",
+    "aciklama": "Şehir içi işletmeleri ve fırsatları tek ekranda buluşturan yerel rehber.",
+    "etiketler": [
+      "Web",
+      "Yerel"
+    ],
+    "link": "#",
+    "renk": "#4a9dff",
+    "baslangicGoruntulenme": 310
+  },
+  {
+    "id": "reels-kapak",
+    "ad": "Reels Kapak",
+    "aciklama": "Kısa videolar için tek tıkla dikkat çekici kapak görseli üretir.",
+    "etiketler": [
+      "Görsel",
+      "Sosyal Medya"
+    ],
+    "link": "#",
+    "renk": "#c86bff",
+    "baslangicGoruntulenme": 260
+  },
+  {
+    "id": "hal-otomasyonu",
+    "ad": "Hal Otomasyonu",
+    "aciklama": "Hal fiyatlarını ve stok hareketlerini düzenli takip eden yönetim paneli.",
+    "etiketler": [
+      "Panel",
+      "Otomasyon"
+    ],
+    "link": "#",
+    "renk": "#2fd08a",
+    "baslangicGoruntulenme": 190
+  },
+  {
+    "id": "uzay-oyunu",
+    "ad": "Uzay Oyunu",
+    "aciklama": "Tarayıcıda oynanan, refleks isteyen küçük bir uzay oyunu.",
+    "etiketler": [
+      "Oyun"
+    ],
+    "link": "#",
+    "renk": "#ffc53d",
+    "baslangicGoruntulenme": 150
+  },
+  {
+    "id": "sahne-canli",
+    "ad": "Sahne Canlı Yayın",
+    "aciklama": "Canlı yayınlar için seyirci etkileşimli sahne ekranı.",
+    "etiketler": [
+      "Yayın",
+      "Canlı"
+    ],
+    "link": "#",
+    "renk": "#ff4f8b",
+    "baslangicGoruntulenme": 120
+  },
+  {
+    "id": "fatura-kes",
+    "ad": "Fatura Kes",
+    "aciklama": "İş birlikleri için saniyeler içinde düzenli fatura hazırlar.",
+    "etiketler": [
+      "Araç",
+      "Finans"
+    ],
+    "link": "#",
+    "renk": "#3dd6d0",
+    "baslangicGoruntulenme": 80
+  },
+  {
+    "id": "musteri-bul",
+    "ad": "Müşteri Bul",
+    "aciklama": "Hedef kitleye uygun müşteri adaylarını bulup kişisel e posta hazırlar.",
+    "etiketler": [
+      "Satış",
+      "Otomasyon"
+    ],
+    "link": "#",
+    "renk": "#ff9f43",
+    "baslangicGoruntulenme": 60
+  },
+  {
+    "id": "newhal",
+    "ad": "Newhal",
+    "aciklama": "İşletme tanıtım sitesi, arama motorlarında öne çıkacak şekilde kurgulandı.",
+    "etiketler": [
+      "Web",
+      "Tanıtım"
+    ],
+    "link": "#",
+    "renk": "#8a7dff",
+    "baslangicGoruntulenme": 40
+  },
+  {
+    "id": "egitim-gorselleri",
+    "ad": "Eğitim Görselleri",
+    "aciklama": "Zor konuları etkileşimli, görsel sayfalarla anlatan eğitim seti.",
+    "etiketler": [
+      "Eğitim",
+      "Görsel"
+    ],
+    "link": "#",
+    "renk": "#9be15d",
+    "baslangicGoruntulenme": 20
+  },
+  {
+    "id": "kafe-siparis",
+    "ad": "Kafe Sipariş",
+    "aciklama": "Masadaki kodu okutup menüden sipariş verilen kafe uygulaması.",
+    "etiketler": [
+      "Mobil",
+      "Restoran"
+    ],
+    "link": "#",
+    "renk": "#ff7a59",
+    "baslangicGoruntulenme": 380
+  },
+  {
+    "id": "randevu-al",
+    "ad": "Randevu Al",
+    "aciklama": "Kuaför ve klinikler için çevrim içi randevu takvimi.",
+    "etiketler": [
+      "Web",
+      "Takvim"
+    ],
+    "link": "#",
+    "renk": "#5ac8fa",
+    "baslangicGoruntulenme": 290
+  },
+  {
+    "id": "butce-kocu",
+    "ad": "Bütçe Koçu",
+    "aciklama": "Harcamaları kategorilere ayırıp aylık özet çıkaran kişisel bütçe aracı.",
+    "etiketler": [
+      "Finans",
+      "Mobil"
+    ],
+    "link": "#",
+    "renk": "#34c759",
+    "baslangicGoruntulenme": 240
+  },
+  {
+    "id": "emlak-harita",
+    "ad": "Emlak Harita",
+    "aciklama": "İlanları harita üzerinde gösteren, fiyat karşılaştırmalı emlak sitesi.",
+    "etiketler": [
+      "Web",
+      "Harita"
+    ],
+    "link": "#",
+    "renk": "#ffb340",
+    "baslangicGoruntulenme": 210
+  },
+  {
+    "id": "podcast-ozet",
+    "ad": "Podcast Özet",
+    "aciklama": "Uzun podcast bölümlerini birkaç dakikalık özete çeviren araç.",
+    "etiketler": [
+      "Yapay Zeka",
+      "Ses"
+    ],
+    "link": "#",
+    "renk": "#af52de",
+    "baslangicGoruntulenme": 175
+  },
+  {
+    "id": "kelime-oyunu",
+    "ad": "Kelime Avı",
+    "aciklama": "Her gün yeni bir kelime bulmacası sunan tarayıcı oyunu.",
+    "etiketler": [
+      "Oyun",
+      "Eğitim"
+    ],
+    "link": "#",
+    "renk": "#ffd60a",
+    "baslangicGoruntulenme": 160
+  },
+  {
+    "id": "stok-takip",
+    "ad": "Stok Takip",
+    "aciklama": "Küçük dükkanlar için barkodla stok sayımı ve eksik ürün uyarısı.",
+    "etiketler": [
+      "Panel",
+      "Ticaret"
+    ],
+    "link": "#",
+    "renk": "#30b0c7",
+    "baslangicGoruntulenme": 135
+  },
+  {
+    "id": "etkinlik-bileti",
+    "ad": "Etkinlik Bileti",
+    "aciklama": "Konser ve atölyeler için bilet satış ve giriş kontrol sistemi.",
+    "etiketler": [
+      "Web",
+      "Etkinlik"
+    ],
+    "link": "#",
+    "renk": "#ff375f",
+    "baslangicGoruntulenme": 110
+  },
+  {
+    "id": "spor-planlayici",
+    "ad": "Spor Planlayıcı",
+    "aciklama": "Hedefe göre haftalık antrenman programı hazırlayan uygulama.",
+    "etiketler": [
+      "Sağlık",
+      "Mobil"
+    ],
+    "link": "#",
+    "renk": "#64d2ff",
+    "baslangicGoruntulenme": 95
+  },
+  {
+    "id": "tarif-defteri",
+    "ad": "Tarif Defteri",
+    "aciklama": "Dolaptaki malzemelere göre yemek tarifi öneren mutfak yardımcısı.",
+    "etiketler": [
+      "Yemek",
+      "Yapay Zeka"
+    ],
+    "link": "#",
+    "renk": "#ff9500",
+    "baslangicGoruntulenme": 75
+  },
+  {
+    "id": "ceviri-botu",
+    "ad": "Çeviri Botu",
+    "aciklama": "Mesajları anında 30 dile çeviren sohbet botu.",
+    "etiketler": [
+      "Bot",
+      "Dil"
+    ],
+    "link": "#",
+    "renk": "#7d7aff",
+    "baslangicGoruntulenme": 55
+  },
+  {
+    "id": "veli-iletisim",
+    "ad": "Veli İletişim",
+    "aciklama": "Okul ile veliler arasında duyuru ve ödev paylaşım platformu.",
+    "etiketler": [
+      "Eğitim",
+      "Web"
+    ],
+    "link": "#",
+    "renk": "#4cd964",
+    "baslangicGoruntulenme": 35
+  },
+  {
+    "id": "hava-asistani",
+    "ad": "Hava Asistanı",
+    "aciklama": "Hava durumuna göre kıyafet ve etkinlik önerisi veren sesli asistan.",
+    "etiketler": [
+      "Ses",
+      "Mobil"
+    ],
+    "link": "#",
+    "renk": "#a2d2ff",
+    "baslangicGoruntulenme": 22
+  },
+  {
+    "id": "portfolyo-kur",
+    "ad": "Portfolyo Kur",
+    "aciklama": "Birkaç soruyla kişisel tanıtım sitesi hazırlayan site kurucu.",
+    "etiketler": [
+      "Web",
+      "Araç"
+    ],
+    "link": "#",
+    "renk": "#e056fd",
+    "baslangicGoruntulenme": 12
+  },
+  {
+    "id": "evcil-dostu",
+    "ad": "Evcil Dostu",
+    "aciklama": "Evcil hayvan aşı ve mama takibini hatırlatan uygulama.",
+    "etiketler": [
+      "Mobil",
+      "Hayvan"
+    ],
+    "link": "#",
+    "renk": "#f8a5c2",
+    "baslangicGoruntulenme": 5
+  }
+]

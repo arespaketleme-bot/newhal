@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Vitrin Yönetimi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --zemin:#07080c; --kart:#12141d; --cizgi:rgba(255,255,255,.08); --yazi:#f3f4f8; --soluk:#8c90a3; --yesil:#2fd08a; --kirmizi:#ff6b6b; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--zemin); color: var(--yazi); font-family: "Space Grotesk", system-ui, sans-serif; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  .kap { max-width: 860px; margin: 0 auto; padding: 32px 16px 60px; }
+  header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+  h1 { font-size: 28px; letter-spacing: -.03em; }
+  h2 { font-size: 18px; margin: 30px 0 12px; display: flex; align-items: center; gap: 10px; }
+  .rozet { font-size: 12px; background: rgba(255,255,255,.08); border-radius: 999px; padding: 3px 9px; color: var(--soluk); }
+  .rozet.dolu { background: #ffc53d; color: #111; }
+  a.geri { color: var(--soluk); text-decoration: none; font-size: 14px; }
+  a.geri:hover { color: var(--yazi); }
+  .giris { max-width: 360px; margin: 14vh auto 0; background: var(--kart); border: 1px solid var(--cizgi); border-radius: 22px; padding: 28px; }
+  .giris p { color: var(--soluk); margin: 8px 0 18px; font-size: 14px; }
+  input { font: inherit; width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--cizgi); background: rgba(255,255,255,.04); color: var(--yazi); outline: none; }
+  input:focus { border-color: #4a9dff; }
+  button { font: inherit; font-weight: 700; cursor: pointer; border: 0; border-radius: 999px; padding: 10px 16px; font-size: 14px; }
+  .ana { background: var(--yazi); color: #111; width: 100%; margin-top: 12px; padding: 12px; }
+  .hata { color: var(--kirmizi); font-size: 14px; margin-top: 10px; min-height: 1em; }
+  .liste { display: grid; gap: 10px; }
+  .oge { background: var(--kart); border: 1px solid var(--cizgi); border-radius: 16px; padding: 16px; display: grid; grid-template-columns: 34px 1fr auto; gap: 14px; align-items: start; }
+  .oge .top { width: 34px; height: 34px; border-radius: 50%; }
+  .oge h3 { font-size: 17px; letter-spacing: -.01em; }
+  .oge p { color: #c5c8d6; font-size: 14px; margin-top: 4px; line-height: 1.5; word-break: break-word; }
+  .oge .ek { color: var(--soluk); font-size: 12px; margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+  .oge .ek a { color: #7fb6ff; word-break: break-all; }
+  .tuslar { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .onayla { background: var(--yesil); color: #062; }
+  .reddet { background: rgba(255,107,107,.14); color: var(--kirmizi); }
+  .kaldir { background: rgba(255,255,255,.06); color: var(--soluk); padding: 8px 12px; font-size: 13px; }
+  .kaldir:hover { color: var(--kirmizi); }
+  button:disabled { opacity: .5; cursor: wait; }
+  .bos { color: var(--soluk); background: var(--kart); border: 1px dashed var(--cizgi); border-radius: 16px; padding: 22px; text-align: center; font-size: 14px; }
+  .cikis { background: rgba(255,255,255,.06); color: var(--soluk); }
+  .kucuk-oge { grid-template-columns: 22px 1fr auto auto; align-items: center; padding: 10px 14px; }
+  .kucuk-oge .top { width: 22px; height: 22px; }
+  .kucuk-oge h3 { font-size: 15px; font-weight: 500; }
+  .kucuk-oge .sayi { color: var(--soluk); font-size: 13px; white-space: nowrap; }
+  @media (max-width: 560px) {
+    .oge { grid-template-columns: 28px 1fr; }
+    .oge .tuslar { grid-column: 1 / -1; justify-content: stretch; }
+    .oge .tuslar button { flex: 1; }
+    .kucuk-oge { grid-template-columns: 22px 1fr auto; }
+    .kucuk-oge .sayi { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="kap" id="kok"></div>
+
+<script>
+(() => {
+  const kok = document.getElementById("kok");
+  let sifre = "";
+  try { sifre = sessionStorage.getItem("vitrinSifre") || ""; } catch {}
+
+  const kacir = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const guvenliRenk = (r) => (/^#[0-9a-f]{6}$/i.test(r) ? r : "#888888");
+  const tarih = (t) => new Date(t).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" });
+
+  async function istek(yol, yontem = "GET") {
+    const y = await fetch(yol, { method: yontem, headers: { "x-admin-sifre": sifre } });
+    const v = await y.json().catch(() => ({}));
+    if (y.status === 401) { cikis("Şifre yanlış."); throw new Error("401"); }
+    if (!y.ok) throw new Error(v.hata || "Bir sorun çıktı.");
+    return v;
+  }
+
+  function girisGoster(hata = "") {
+    kok.innerHTML = `
+      <form class="giris" id="giris">
+        <h1>Vitrin Yönetimi</h1>
+        <p>Gelen projeleri onaylamak için şifreni gir.</p>
+        <input type="password" name="sifre" placeholder="Yönetici şifresi" autocomplete="current-password" autofocus>
+        <button class="ana" type="submit">Giriş</button>
+        <div class="hata">${kacir(hata)}</div>
+      </form>`;
+    document.getElementById("giris").onsubmit = (e) => {
+      e.preventDefault();
+      sifre = e.target.sifre.value;
+      try { sessionStorage.setItem("vitrinSifre", sifre); } catch {}
+      yukle();
+    };
+  }
+
+  function cikis(hata) {
+    sifre = "";
+    try { sessionStorage.removeItem("vitrinSifre"); } catch {}
+    girisGoster(hata);
+  }
+
+  async function yukle() {
+    let veri;
+    try { veri = await istek("api/admin/durum"); }
+    catch (e) { if (e.message !== "401") girisGoster(e.message); return; }
+    const { bekleyenler, yayindakiler } = veri;
+
+    kok.innerHTML = `
+      <header>
+        <div><h1>Vitrin Yönetimi</h1><a class="geri" href="./">← Vitrine dön</a></div>
+        <button class="cikis" id="cikisTus">Çıkış</button>
+      </header>
+      <h2>Onay bekleyenler <span class="rozet ${bekleyenler.length ? "dolu" : ""}">${bekleyenler.length}</span></h2>
+      <div class="liste" id="bekleyen">
+        ${bekleyenler.length ? bekleyenler.slice().reverse().map((b) => `
+          <div class="oge" data-id="${kacir(b.id)}">
+            <div class="top" style="background:${guvenliRenk(b.renk)}"></div>
+            <div>
+              <h3>${kacir(b.ad)}</h3>
+              <p>${kacir(b.aciklama)}</p>
+              <div class="ek">
+                ${b.etiketler?.length ? `<span>${b.etiketler.map(kacir).join(" · ")}</span>` : ""}
+                ${b.link && b.link !== "#" ? `<a href="${kacir(b.link)}" target="_blank" rel="noopener noreferrer nofollow">${kacir(b.link)}</a>` : "<span>link yok</span>"}
+                ${b.iletisim ? `<span>İletişim: ${kacir(b.iletisim)}</span>` : ""}
+                <span>${tarih(b.tarih)}</span>
+              </div>
+            </div>
+            <div class="tuslar">
+              <button class="reddet" data-islem="reddet">Reddet</button>
+              <button class="onayla" data-islem="onayla">Onayla</button>
+            </div>
+          </div>`).join("") : `<div class="bos">Şu an bekleyen başvuru yok.</div>`}
+      </div>
+      <h2>Vitrinde olanlar <span class="rozet">${yayindakiler.length}</span></h2>
+      <div class="liste" id="yayinda">
+        ${yayindakiler.map((p) => `
+          <div class="oge kucuk-oge" data-id="${kacir(p.id)}">
+            <div class="top" style="background:${guvenliRenk(p.renk)}"></div>
+            <h3>${kacir(p.ad)}</h3>
+            <span class="sayi">${p.goruntulenme.toLocaleString("tr-TR")} görüntülenme</span>
+            <button class="kaldir" data-islem="kaldir">Kaldır</button>
+          </div>`).join("")}
+      </div>`;
+
+    document.getElementById("cikisTus").onclick = () => cikis("");
+    kok.querySelectorAll("button[data-islem]").forEach((tus) => {
+      tus.onclick = async () => {
+        const oge = tus.closest(".oge");
+        const id = oge.dataset.id;
+        const islem = tus.dataset.islem;
+        const ad = oge.querySelector("h3").textContent;
+        if (islem === "reddet" && !confirm(`"${ad}" başvurusu reddedilsin mi? Bu geri alınamaz.`)) return;
+        if (islem === "kaldir" && !confirm(`"${ad}" vitrinden kaldırılsın mı?`)) return;
+        oge.querySelectorAll("button").forEach((b) => (b.disabled = true));
+        try {
+          const yol = islem === "kaldir"
+            ? `api/admin/proje/${encodeURIComponent(id)}/kaldir`
+            : `api/admin/basvuru/${encodeURIComponent(id)}/${islem}`;
+          await istek(yol, "POST");
+          yukle();
+        } catch (e) {
+          if (e.message !== "401") { alert(e.message); oge.querySelectorAll("button").forEach((b) => (b.disabled = false)); }
+        }
+      };
+    });
+  }
+
+  sifre ? yukle() : girisGoster();
+})();
+</script>
+</body>
+</html>
