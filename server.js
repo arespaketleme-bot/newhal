@@ -3897,7 +3897,10 @@ app.delete('/api/profile/me', requireAuth, async (req, res) => {
 require('./seo')(app, { db, getClaims, siteUrl: SITE_URL });
 
 // ── Proje vitrini (/projevitrini): görüntülendikçe büyüyen proje topları ──
-require('./projevitrini')(app, { db });
+require('./projevitrini')(app, {
+  db, webpush,
+  vapidAnahtari: async () => { await vapidInitialization; return vapidConfigured ? vapidPublicKey : ''; },
+});
 
 // ── Kripto ödeme sayfası (/payments) ──
 require('./payments')(app, { db, requireAdmin, siteUrl: SITE_URL });

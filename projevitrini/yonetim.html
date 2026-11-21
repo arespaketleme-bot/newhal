@@ -43,6 +43,7 @@
   .bos { color: var(--soluk); background: var(--kart); border: 1px dashed var(--cizgi); border-radius: 16px; padding: 22px; text-align: center; font-size: 14px; }
   .cikis { background: rgba(255,255,255,.06); color: var(--soluk); }
   .kucuk-oge { grid-template-columns: 22px 1fr auto auto auto; align-items: center; padding: 10px 14px; }
+  .abone { color: var(--soluk); font-size: 13px; margin-top: 8px; }
   .tg { background: var(--kart); border: 1px solid var(--cizgi); border-radius: 18px; padding: 18px; }
   .tg-bas { display: flex; align-items: center; gap: 10px; font-size: 16px; }
   .tg-ikon { font-size: 18px; }
@@ -130,7 +131,7 @@
 
     kok.innerHTML = `
       <header>
-        <div><h1>Vitrin Yönetimi</h1><a class="geri" href="./">← Vitrine dön</a></div>
+        <div><h1>Vitrin Yönetimi</h1><a class="geri" href="./">← Vitrine dön</a>${veri.aboneSayisi != null ? `<div class="abone">🔔 ${Number(veri.aboneSayisi).toLocaleString("tr-TR")} kişi yeni proje bildirimi alıyor. Bir başvuruyu onaylayınca hepsine bildirim gider.</div>` : ""}</div>
         <button class="cikis" id="cikisTus">Çıkış</button>
       </header>
       <div class="tg" id="tgKutu"></div>
