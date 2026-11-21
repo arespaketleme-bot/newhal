@@ -3129,3 +3129,9 @@ body { overflow-x: clip; max-width: 100%; }
 
 /* Logo altında test uyarısı */
 .logo-test { display: inline-block; align-self: flex-start; margin-top: 2px; padding: 1px 6px; border-radius: 5px; background: #dc2626; color: #fff; font-size: 9.5px; font-weight: 800; letter-spacing: .6px; line-height: 1.5; white-space: nowrap; }
+
+/* Vitrinde sessiz oynayan videolar */
+.vitrin-slide video.vitrin-video { background: #000; }
+.vitrin-slide iframe.vitrin-yt { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; z-index: 1; background: #000; }
+.vitrin-slide .vitrin-overlay { z-index: 2; }
+.vitrin-slide .vitrin-sound { z-index: 3; top: 14px; left: auto; right: 14px; transform: none; width: 40px; height: 40px; padding: 0; font-size: 17px; }

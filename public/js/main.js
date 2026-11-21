@@ -5513,7 +5513,18 @@ function renderVitrin(ads) {
       || (ad.video && ad.video.type === 'youtube' ? `https://i.ytimg.com/vi/${encodeURIComponent(ad.video.id)}/hqdefault.jpg` : null)
       || (ad.video ? null : AD_LOGO_URL);
     if (cover === AD_LOGO_URL) slide.classList.add('logo-slide');
-    if (cover) {
+    if (ad.video) slide.dataset.vid = '1';
+    if (ad.video && ad.video.type === 'file') {
+      const v = document.createElement('video');
+      v.className = 'vitrin-img vitrin-video';
+      v.src = ad.video.url;
+      if (cover) v.poster = cover;
+      v.muted = true; v.defaultMuted = true; v.setAttribute('muted', '');
+      v.playsInline = true; v.setAttribute('playsinline', '');
+      v.loop = true;
+      v.preload = i === 0 ? 'auto' : 'metadata';
+      slide.appendChild(v);
+    } else if (cover) {
       const bg = document.createElement('div');
       bg.className = 'vitrin-bg';
       bg.style.backgroundImage = `url("${cover.replace(/"/g, '%22')}")`;
@@ -5534,10 +5545,14 @@ function renderVitrin(ads) {
     } else {
       slide.classList.add('text-only');
     }
+    if (ad.video && ad.video.type === 'youtube') {
+      slide.dataset.yt = ad.video.id;   // görünür olunca sessiz oynatıcı eklenir
+    }
     if (ad.video) {
       const play = document.createElement('span');
-      play.className = 'vitrin-play';
-      play.textContent = '▶';
+      play.className = 'vitrin-play vitrin-sound';
+      play.textContent = '🔇';
+      play.title = 'Sesli izlemek için dokunun';
       slide.appendChild(play);
     }
 
@@ -5623,7 +5638,32 @@ function vitrinStep(dir) {
   restartVitrinTimer();
 }
 
+// Vitrinde yalnız görünen slayttaki video sessiz oynar; diğerleri durur
+function syncVitrinVideos() {
+  const track = document.getElementById('vitrinTrack');
+  if (!track) return;
+  [...track.children].forEach((slide, i) => {
+    const on = i === vitrinIndex && !document.hidden;
+    const v = slide.querySelector('video.vitrin-video');
+    if (v) { if (on) { v.muted = true; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } else v.pause(); }
+    if (slide.dataset.yt) {
+      let f = slide.querySelector('iframe.vitrin-yt');
+      if (on && !f) {
+        f = document.createElement('iframe');
+        f.className = 'vitrin-yt';
+        const id = encodeURIComponent(slide.dataset.yt);
+        f.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${id}&playsinline=1&modestbranding=1&rel=0`;
+        f.allow = 'autoplay; encrypted-media';
+        f.setAttribute('tabindex', '-1');
+        f.title = 'Vitrin videosu';
+        slide.insertBefore(f, slide.querySelector('.vitrin-overlay'));
+      } else if (!on && f) f.remove();
+    }
+  });
+}
+document.addEventListener('visibilitychange', () => syncVitrinVideos());
 function updateVitrinDots() {
+  setTimeout(syncVitrinVideos, 0);
   document.querySelectorAll('.vitrin-dot').forEach((d, i) => d.classList.toggle('active', i === vitrinIndex));
 }
 
