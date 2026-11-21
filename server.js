@@ -2518,6 +2518,7 @@ async function fbBotFinish(ctx, candidates, { notifySummary }) {
     if (!c.keywordHit && !images.length) { run.skipped++; continue; }
     const ad = cleanAd({ body: c.text, images });
     if (!ad.title) { run.skipped++; continue; }
+    if (!c.video && /\/(videos|reel|watch)\b|\/share\/(v|r)\/|[?&]v=\d/i.test(c.url || '')) c.video = c.url;
     // Gönderide video varsa bağlantısı ilan yazısında görünür
     if (c.video && !String(ad.body || '').includes(c.video)) ad.body = `${ad.body ? ad.body + '\n\n' : ''}🎬 Video: ${c.video}`;
     newAds.push({
