@@ -45,6 +45,7 @@
   .kucuk-oge { grid-template-columns: 22px 1fr auto auto auto; align-items: center; padding: 10px 14px; }
   .abone { color: var(--soluk); font-size: 13px; margin-top: 8px; }
   .tg { background: var(--kart); border: 1px solid var(--cizgi); border-radius: 18px; padding: 18px; }
+  .tg + .tg { margin-top: 12px; }
   .tg-bas { display: flex; align-items: center; gap: 10px; font-size: 16px; }
   .tg-ikon { font-size: 18px; }
   .tg .rozet.acik { background: rgba(47,208,138,.18); color: var(--yesil); }
@@ -134,6 +135,14 @@
         <div><h1>Vitrin Yönetimi</h1><a class="geri" href="./">← Vitrine dön</a>${veri.aboneSayisi != null ? `<div class="abone">🔔 ${Number(veri.aboneSayisi).toLocaleString("tr-TR")} kişi yeni proje bildirimi alıyor. Bir başvuruyu onaylayınca hepsine bildirim gider.</div>` : ""}</div>
         <button class="cikis" id="cikisTus">Çıkış</button>
       </header>
+      <div class="tg" id="pushKutu">
+        <div class="tg-bas"><span class="tg-ikon">🔔</span><b>Tarayıcı bildirimleri</b></div>
+        <p class="tg-not">Ziyaretçilere giden "yeni proje" bildirimini kendi cihazında dene. Bu cihaz da bildirim listesine eklenir.</p>
+        <div class="tuslar" style="justify-content:flex-start;margin-top:12px">
+          <button class="onayla" id="pushDene">Bu cihaza deneme bildirimi gönder</button>
+        </div>
+        <div id="pushMesaj"></div>
+      </div>
       <div class="tg" id="tgKutu"></div>
       <h2>Onay bekleyenler <span class="rozet ${bekleyenler.length ? "dolu" : ""}">${bekleyenler.length}</span></h2>
       <div class="liste" id="bekleyen">
@@ -169,6 +178,7 @@
       </div>`;
 
     document.getElementById("cikisTus").onclick = () => cikis("");
+    document.getElementById("pushDene").onclick = pushDene;
     telegramGoster();
 
     // Düzenleme formu: satırın altında açılır
@@ -293,6 +303,46 @@
       try { await istek("api/admin/telegram/kaldir", "POST"); telegramGoster("Bağlantı kaldırıldı."); }
       catch (h) { if (h.message !== "401") telegramGoster(h.message, true); }
     };
+  }
+
+  // ---- Tarayıcı bildirimi denemesi ----
+  async function pushDene(e) {
+    const tus = e.currentTarget;
+    const mesaj = document.getElementById("pushMesaj");
+    const yaz = (metin, iyi) => { mesaj.className = iyi ? "bilgi" : "hata"; mesaj.textContent = metin; };
+    yaz("", true);
+    if (!("serviceWorker" in navigator && "PushManager" in window && "Notification" in window)) {
+      const iphone = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      return yaz(iphone
+        ? "iPhone'da bildirim için önce vitrini ana ekrana ekle (Paylaş, Ana Ekrana Ekle), sonra yönetim sayfasını oradan aç."
+        : "Bu tarayıcı bildirim desteklemiyor. Chrome, Edge ya da Firefox ile dene.");
+    }
+    tus.disabled = true; tus.textContent = "Gönderiliyor...";
+    try {
+      const y = await fetch("api/bildirim/anahtar");
+      if (!y.ok) throw new Error("Bildirimler yalnız canlı sitede (newhal.com/projevitrini/yonetim) denenebilir.");
+      const { publicKey } = await y.json();
+      await navigator.serviceWorker.register("sw.js", { scope: "./" });
+      let izin = Notification.permission;
+      if (izin === "default") izin = await Notification.requestPermission();
+      if (izin !== "granted") {
+        throw new Error(izin === "denied"
+          ? "Bu tarayıcıda bildirimler kapalı. Adres çubuğundaki kilit simgesine dokun, Bildirimler'i \"İzin ver\" yap, sonra tekrar dene."
+          : "İzin verilmedi. Tekrar dene ve çıkan pencerede \"İzin ver\"e bas.");
+      }
+      const kayit = await navigator.serviceWorker.ready;
+      let abonelik = await kayit.pushManager.getSubscription();
+      if (!abonelik) {
+        const p = (publicKey + "=".repeat((4 - (publicKey.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/");
+        abonelik = await kayit.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: Uint8Array.from(atob(p), (c) => c.charCodeAt(0)) });
+      }
+      const sonuc = await istek("api/admin/bildirim/dene", "POST", { abonelik: abonelik.toJSON() });
+      yaz(`Gönderildi. Birkaç saniye içinde bildirim gelmeli. Şu an ${sonuc.aboneSayisi} kişi bildirim alıyor.`, true);
+    } catch (h) {
+      if (h.message !== "401") yaz(h.message || "Bildirim gönderilemedi.");
+    } finally {
+      tus.disabled = false; tus.textContent = "Bu cihaza deneme bildirimi gönder";
+    }
   }
 
   sifre ? yukle() : girisGoster();

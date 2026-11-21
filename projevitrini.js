@@ -394,6 +394,31 @@ module.exports = function projeVitrini(app, { db, webpush, vapidAnahtari }) {
     }
   });
 
+  // Yöneticinin kendi cihazına deneme bildirimi (cihaz abone listesine de eklenir)
+  router.post('/api/admin/bildirim/dene', async (req, res) => {
+    const s = aboneDogrula((req.body || {}).abonelik);
+    if (!s) return res.status(400).json({ hata: 'Bu cihazın bildirim bilgisi alınamadı.' });
+    if (!webpush || !vapidAnahtari || !(await vapidAnahtari().catch(() => ''))) {
+      return res.status(503).json({ hata: 'Bildirim altyapısı şu an kapalı.' });
+    }
+    try {
+      const liste = await aboneHazirla();
+      const i = liste.findIndex((x) => x.endpoint === s.endpoint);
+      if (i >= 0) liste[i] = s; else liste.push(s);
+      aboneKaydet();
+      await webpush.sendNotification(s, JSON.stringify({
+        title: 'Deneme bildirimi 🔔',
+        body: 'Proje Vitrini bildirimleri bu cihazda çalışıyor.',
+        url: '/projevitrini/',
+        tag: 'vitrin-deneme',
+      }), { TTL: 600 });
+      res.json({ tamam: true, aboneSayisi: abonelikler.length });
+    } catch (e) {
+      const kod = e.statusCode;
+      res.status(502).json({ hata: kod === 404 || kod === 410 ? 'Bu cihazın aboneliği geçersiz olmuş. Sayfayı yenileyip tekrar dene.' : 'Bildirim gönderilemedi' + (kod ? ` (kod ${kod})` : '') + '.' });
+    }
+  });
+
   router.post('/api/admin/proje/:id/duzenle', (req, res) => {
     if (!projeListesi().some((p) => p.id === req.params.id)) return res.status(404).json({ hata: 'Proje bulunamadı.' });
     const { hata, veri } = basvuruDogrula(req.body || {});
