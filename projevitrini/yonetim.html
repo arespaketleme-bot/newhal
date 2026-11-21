@@ -42,7 +42,15 @@
   button:disabled { opacity: .5; cursor: wait; }
   .bos { color: var(--soluk); background: var(--kart); border: 1px dashed var(--cizgi); border-radius: 16px; padding: 22px; text-align: center; font-size: 14px; }
   .cikis { background: rgba(255,255,255,.06); color: var(--soluk); }
-  .kucuk-oge { grid-template-columns: 22px 1fr auto auto; align-items: center; padding: 10px 14px; }
+  .kucuk-oge { grid-template-columns: 22px 1fr auto auto auto; align-items: center; padding: 10px 14px; }
+  .duzenle-tus:hover { color: var(--yazi) !important; }
+  .duzen-form { grid-column: 1 / -1; display: grid; gap: 12px; padding: 14px 0 4px; border-top: 1px solid var(--cizgi); margin-top: 4px; }
+  .duzen-form label { display: grid; gap: 6px; font-size: 13px; color: var(--soluk); }
+  .duzen-form textarea { font: inherit; width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--cizgi); background: rgba(255,255,255,.04); color: var(--yazi); outline: none; resize: vertical; }
+  .duzen-form textarea:focus { border-color: #4a9dff; }
+  .duzen-form .renk-satir { display: flex; align-items: center; gap: 12px; }
+  .duzen-form input[type=color] { width: 52px; height: 36px; padding: 2px; border-radius: 10px; cursor: pointer; }
+  .duzen-form .hata { margin: 0; }
   .kucuk-oge .top { width: 22px; height: 22px; }
   .kucuk-oge h3 { font-size: 15px; font-weight: 500; }
   .kucuk-oge .sayi { color: var(--soluk); font-size: 13px; white-space: nowrap; }
@@ -50,7 +58,7 @@
     .oge { grid-template-columns: 28px 1fr; }
     .oge .tuslar { grid-column: 1 / -1; justify-content: stretch; }
     .oge .tuslar button { flex: 1; }
-    .kucuk-oge { grid-template-columns: 22px 1fr auto; }
+    .kucuk-oge { grid-template-columns: 22px 1fr auto auto; }
     .kucuk-oge .sayi { display: none; }
   }
 </style>
@@ -68,8 +76,10 @@
   const guvenliRenk = (r) => (/^#[0-9a-f]{6}$/i.test(r) ? r : "#888888");
   const tarih = (t) => new Date(t).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" });
 
-  async function istek(yol, yontem = "GET") {
-    const y = await fetch(yol, { method: yontem, headers: { "x-admin-sifre": sifre } });
+  async function istek(yol, yontem = "GET", govde) {
+    const basliklar = { "x-admin-sifre": sifre };
+    if (govde) basliklar["Content-Type"] = "application/json";
+    const y = await fetch(yol, { method: yontem, headers: basliklar, body: govde ? JSON.stringify(govde) : undefined });
     const v = await y.json().catch(() => ({}));
     if (y.status === 401) { cikis("Şifre yanlış."); throw new Error("401"); }
     if (!y.ok) throw new Error(v.hata || "Bir sorun çıktı.");
@@ -138,11 +148,53 @@
             <div class="top" style="background:${guvenliRenk(p.renk)}"></div>
             <h3>${kacir(p.ad)}</h3>
             <span class="sayi">${p.goruntulenme.toLocaleString("tr-TR")} görüntülenme</span>
+            <button class="kaldir duzenle-tus" data-duzenle>Düzenle</button>
             <button class="kaldir" data-islem="kaldir">Kaldır</button>
           </div>`).join("")}
       </div>`;
 
     document.getElementById("cikisTus").onclick = () => cikis("");
+
+    // Düzenleme formu: satırın altında açılır
+    kok.querySelectorAll("button[data-duzenle]").forEach((tus) => {
+      tus.onclick = () => {
+        const oge = tus.closest(".oge");
+        const acik = oge.querySelector(".duzen-form");
+        kok.querySelectorAll(".duzen-form").forEach((f) => f.remove());
+        if (acik) return; // ikinci tıklama kapatır
+        const p = yayindakiler.find((x) => x.id === oge.dataset.id);
+        const form = document.createElement("form");
+        form.className = "duzen-form";
+        form.innerHTML = `
+          <label>Proje adı<input name="ad" maxlength="40" value="${kacir(p.ad)}"></label>
+          <label>Açıklama<textarea name="aciklama" maxlength="280" rows="3">${kacir(p.aciklama)}</textarea></label>
+          <label>Link<input name="link" maxlength="300" placeholder="ornek.com (boş bırakılabilir)" value="${p.link && p.link !== "#" ? kacir(p.link) : ""}"></label>
+          <label>Etiketler<input name="etiketler" maxlength="90" placeholder="Web, Oyun" value="${kacir((p.etiketler || []).join(", "))}"></label>
+          <label class="renk-satir">Top rengi<input type="color" name="renk" value="${guvenliRenk(p.renk)}"></label>
+          <div class="hata" data-hata></div>
+          <div class="tuslar">
+            <button type="button" class="reddet" data-vazgec>Vazgeç</button>
+            <button type="submit" class="onayla">Kaydet</button>
+          </div>`;
+        oge.appendChild(form);
+        form.ad.focus();
+        form.querySelector("[data-vazgec]").onclick = () => form.remove();
+        form.onsubmit = async (e) => {
+          e.preventDefault();
+          const kaydetTus = form.querySelector("button[type=submit]");
+          kaydetTus.disabled = true;
+          try {
+            await istek(`api/admin/proje/${encodeURIComponent(p.id)}/duzenle`, "POST", {
+              ad: form.ad.value, aciklama: form.aciklama.value, link: form.link.value,
+              etiketler: form.etiketler.value, renk: form.renk.value,
+            });
+            yukle();
+          } catch (hata) {
+            if (hata.message !== "401") { form.querySelector("[data-hata]").textContent = hata.message; kaydetTus.disabled = false; }
+          }
+        };
+      };
+    });
     kok.querySelectorAll("button[data-islem]").forEach((tus) => {
       tus.onclick = async () => {
         const oge = tus.closest(".oge");

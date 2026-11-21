@@ -131,6 +131,15 @@
   }
   .git:hover { filter: brightness(1.1); }
   .git[hidden] { display: none; }
+  .link-kutu {
+    position: relative; display: flex; align-items: center; gap: 10px; margin-top: 18px;
+    padding: 11px 14px; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px solid var(--cizgi);
+    font-size: 14px; min-width: 0;
+  }
+  .link-kutu a { color: color-mix(in srgb, var(--renk) 70%, #fff); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .link-kutu a:hover { text-decoration: underline; }
+  .link-kutu #kartLinkYok { color: var(--soluk); }
+  .link-kutu [hidden] { display: none; }
 
   header { display: grid; grid-template-columns: 1fr auto 1fr; }
   header .sag { justify-self: end; }
@@ -272,6 +281,11 @@
     <h2 id="kartBaslik"></h2>
     <p class="aciklama" id="kartAciklama"></p>
     <div class="etiketler" id="kartEtiket"></div>
+    <div class="link-kutu">
+      <span class="link-ikon" aria-hidden="true">🔗</span>
+      <a id="kartLinkYazi" target="_blank" rel="noopener nofollow"></a>
+      <span id="kartLinkYok">Bu proje için link eklenmemiş.</span>
+    </div>
     <div class="alt">
       <div class="goz">görüntülenme<b id="kartSayi">0</b></div>
       <a class="git" id="kartLink" target="_blank" rel="noopener">Projeye git →</a>
@@ -561,7 +575,15 @@
       const s = document.createElement("span"); s.textContent = e; etiket.appendChild(s);
     });
     const link = document.getElementById("kartLink");
-    if (v.link && v.link !== "#") { link.href = v.link; link.hidden = false; } else link.hidden = true;
+    const linkYazi = document.getElementById("kartLinkYazi");
+    const linkYok = document.getElementById("kartLinkYok");
+    const linkVar = v.link && v.link !== "#" && /^https?:\/\//i.test(v.link);
+    if (linkVar) {
+      link.href = linkYazi.href = v.link;
+      linkYazi.textContent = v.link.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "");
+    }
+    link.hidden = linkYazi.hidden = !linkVar;
+    linkYok.hidden = linkVar;
     document.getElementById("kartSayi").textContent = bicim(v.goruntulenme);
     perde.classList.add("acik");
     document.getElementById("kapat").focus();

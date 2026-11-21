@@ -23,7 +23,7 @@ module.exports = function projeVitrini(app, { db }) {
     if (durum) return durum;
     if (!yukleniyor) {
       yukleniyor = db.getPrivateJson(DOSYA).then((v) => {
-        durum = { sayaclar: {}, basvurular: [], onaylananlar: [], gizlenenler: [], ...(v || {}) };
+        durum = { sayaclar: {}, basvurular: [], onaylananlar: [], gizlenenler: [], duzenlemeler: {}, ...(v || {}) };
         return durum;
       }).finally(() => { yukleniyor = null; });
     }
@@ -42,6 +42,7 @@ module.exports = function projeVitrini(app, { db }) {
     const gizli = new Set(durum.gizlenenler);
     return [...hazirProjeler(), ...durum.onaylananlar]
       .filter((p) => !gizli.has(p.id))
+      .map((p) => ({ ...p, ...(durum.duzenlemeler[p.id] || {}) }))
       .map((p) => ({
         id: p.id, ad: p.ad, aciklama: p.aciklama, etiketler: p.etiketler || [], link: p.link || '#', renk: p.renk,
         goruntulenme: (p.baslangicGoruntulenme || 0) + (durum.sayaclar[p.id] || 0),
@@ -181,6 +182,16 @@ module.exports = function projeVitrini(app, { db }) {
         iletisim: b.iletisim, baslangicGoruntulenme: 0, onayTarihi: new Date().toISOString(),
       });
     }
+    kaydet();
+    res.json({ tamam: true });
+  });
+
+  router.post('/api/admin/proje/:id/duzenle', (req, res) => {
+    if (!projeListesi().some((p) => p.id === req.params.id)) return res.status(404).json({ hata: 'Proje bulunamadı.' });
+    const { hata, veri } = basvuruDogrula(req.body || {});
+    if (hata) return res.status(400).json({ hata });
+    const { iletisim, ...yeni } = veri;
+    durum.duzenlemeler[req.params.id] = yeni;
     kaydet();
     res.json({ tamam: true });
   });
