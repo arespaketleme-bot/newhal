@@ -3994,7 +3994,7 @@ let adViewer = null;   // { ad, items, index }
 
 // Facebook'un kendi oynatıcısı (video Facebook'ta kalır)
 function fbVideoSrc(url, autoplay) {
-  return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false&autoplay=${autoplay ? 1 : 0}&mute=0`;
+  return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false&autoplay=${autoplay ? 1 : 0}&mute=${autoplay ? 1 : 0}`;
 }
 function fbVideoFrame(url, cls) {
   const f = document.createElement('iframe');

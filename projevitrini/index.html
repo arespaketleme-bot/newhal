@@ -719,6 +719,11 @@
   }).observe(alan);
 
   gorunumAyarla(gorunum);
+  // Ziyareti bildir (yönetici Telegram'dan haber alır)
+  fetch("api/ziyaret", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nereden: document.referrer || "" }), keepalive: true,
+  }).catch(() => {});
   yukle().then(() => requestAnimationFrame((s) => { onceki = s; adim(s); }));
   setInterval(() => { if (!document.hidden) yukle().catch(() => {}); }, 15000);
 })();

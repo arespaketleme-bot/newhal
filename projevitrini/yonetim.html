@@ -43,6 +43,19 @@
   .bos { color: var(--soluk); background: var(--kart); border: 1px dashed var(--cizgi); border-radius: 16px; padding: 22px; text-align: center; font-size: 14px; }
   .cikis { background: rgba(255,255,255,.06); color: var(--soluk); }
   .kucuk-oge { grid-template-columns: 22px 1fr auto auto auto; align-items: center; padding: 10px 14px; }
+  .tg { background: var(--kart); border: 1px solid var(--cizgi); border-radius: 18px; padding: 18px; }
+  .tg-bas { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+  .tg-ikon { font-size: 18px; }
+  .tg .rozet.acik { background: rgba(47,208,138,.18); color: var(--yesil); }
+  .tg-not { color: #c5c8d6; font-size: 14px; margin-top: 10px; line-height: 1.5; }
+  .tg-adim { color: #c5c8d6; font-size: 14px; line-height: 1.6; margin: 12px 0 0 20px; }
+  .tg-adim a { color: #7fb6ff; }
+  .tg-form { display: flex; gap: 8px; margin-top: 14px; }
+  .tg-form input { flex: 1; min-width: 0; }
+  .tg-secim { display: grid; gap: 8px; margin: 14px 0; font-size: 14px; }
+  .tg-secim label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .tg-secim input { width: 18px; height: 18px; accent-color: var(--yesil); }
+  .bilgi { color: var(--yesil); font-size: 14px; margin-top: 10px; }
   .duzenle-tus:hover { color: var(--yazi) !important; }
   .duzen-form { grid-column: 1 / -1; display: grid; gap: 12px; padding: 14px 0 4px; border-top: 1px solid var(--cizgi); margin-top: 4px; }
   .duzen-form label { display: grid; gap: 6px; font-size: 13px; color: var(--soluk); }
@@ -120,6 +133,7 @@
         <div><h1>Vitrin Yönetimi</h1><a class="geri" href="./">← Vitrine dön</a></div>
         <button class="cikis" id="cikisTus">Çıkış</button>
       </header>
+      <div class="tg" id="tgKutu"></div>
       <h2>Onay bekleyenler <span class="rozet ${bekleyenler.length ? "dolu" : ""}">${bekleyenler.length}</span></h2>
       <div class="liste" id="bekleyen">
         ${bekleyenler.length ? bekleyenler.slice().reverse().map((b) => `
@@ -154,6 +168,7 @@
       </div>`;
 
     document.getElementById("cikisTus").onclick = () => cikis("");
+    telegramGoster();
 
     // Düzenleme formu: satırın altında açılır
     kok.querySelectorAll("button[data-duzenle]").forEach((tus) => {
@@ -215,6 +230,68 @@
         }
       };
     });
+  }
+
+  // ---- Telegram bildirimleri ----
+  async function telegramGoster(mesaj = "", hataMi = false) {
+    const kutu = document.getElementById("tgKutu");
+    if (!kutu) return;
+    let d;
+    try { d = await istek("api/admin/telegram"); } catch (e) { if (e.message !== "401") kutu.innerHTML = `<div class="hata">${kacir(e.message)}</div>`; return; }
+    const not = mesaj ? `<div class="${hataMi ? "hata" : "bilgi"}">${kacir(mesaj)}</div>` : "";
+    if (d.yerel) {
+      kutu.innerHTML = `<div class="tg-bas"><span class="tg-ikon">✈️</span><b>Telegram bildirimleri</b></div>
+        <p class="tg-not">Telegram bağlantısı yalnız canlı sitede (newhal.com/projevitrini/yonetim) kurulur.</p>`;
+      return;
+    }
+    if (!d.bagli) {
+      kutu.innerHTML = `
+        <div class="tg-bas"><span class="tg-ikon">✈️</span><b>Telegram bildirimleri</b><span class="rozet">kapalı</span></div>
+        <ol class="tg-adim">
+          <li>Telegram'da <a href="https://t.me/BotFather" target="_blank" rel="noopener">BotFather</a>'ı aç, <b>/newbot</b> yaz, bota bir ad ver.</li>
+          <li>BotFather'ın verdiği uzun kodu aşağıya yapıştır.</li>
+          <li>Yeni botunu Telegram'da aç ve <b>Başlat</b>'a bas.</li>
+          <li>Burada <b>Bağla</b>'ya bas.</li>
+        </ol>
+        <form class="tg-form" id="tgForm">
+          <input name="token" type="password" placeholder="Bot kodu (ör. 123456:ABC...)" autocomplete="off">
+          <button class="onayla" type="submit">Bağla</button>
+        </form>${not}`;
+      document.getElementById("tgForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const t = e.target.querySelector("button"); t.disabled = true; t.textContent = "Bağlanıyor...";
+        try { await istek("api/admin/telegram/bagla", "POST", { token: e.target.token.value }); telegramGoster("Bağlandı. Telegram'a deneme mesajı gönderildi."); }
+        catch (h) { if (h.message !== "401") telegramGoster(h.message, true); }
+      };
+      return;
+    }
+    kutu.innerHTML = `
+      <div class="tg-bas"><span class="tg-ikon">✈️</span><b>Telegram bildirimleri</b><span class="rozet acik">bağlı</span></div>
+      <p class="tg-not">Bildirimler <b>${kacir(d.sohbetAdi)}</b> sohbetine, <b>@${kacir(d.botAdi)}</b> botuyla gidiyor.</p>
+      <div class="tg-secim">
+        <label><input type="checkbox" data-ayar="ziyaret" ${d.ziyaret ? "checked" : ""}> Yeni ziyaretçi gelince</label>
+        <label><input type="checkbox" data-ayar="proje" ${d.proje ? "checked" : ""}> Yeni proje gönderilince</label>
+      </div>
+      <div class="tuslar" style="justify-content:flex-start">
+        <button class="kaldir" id="tgDene">Deneme mesajı gönder</button>
+        <button class="kaldir" id="tgKaldir">Bağlantıyı kaldır</button>
+      </div>${not}`;
+    kutu.querySelectorAll("[data-ayar]").forEach((k) => {
+      k.onchange = async () => {
+        try { await istek("api/admin/telegram/ayar", "POST", { [k.dataset.ayar]: k.checked }); }
+        catch (h) { if (h.message !== "401") telegramGoster(h.message, true); }
+      };
+    });
+    document.getElementById("tgDene").onclick = async (e) => {
+      e.target.disabled = true;
+      try { await istek("api/admin/telegram/dene", "POST"); telegramGoster("Deneme mesajı gönderildi, Telegram'a bak."); }
+      catch (h) { if (h.message !== "401") telegramGoster(h.message, true); }
+    };
+    document.getElementById("tgKaldir").onclick = async () => {
+      if (!confirm("Telegram bildirimleri kapatılsın mı?")) return;
+      try { await istek("api/admin/telegram/kaldir", "POST"); telegramGoster("Bağlantı kaldırıldı."); }
+      catch (h) { if (h.message !== "401") telegramGoster(h.message, true); }
+    };
   }
 
   sifre ? yukle() : girisGoster();
