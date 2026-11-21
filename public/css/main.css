@@ -3146,3 +3146,6 @@ body { overflow-x: clip; max-width: 100%; }
 .fb-video-box { height: auto; overflow: visible; }
 
 .ad-viewer-media:has(.fb-video-box) { height: auto; }
+
+.fb-video-box { overflow: hidden; align-items: flex-start; }
+.fb-video-box .fb-video { flex: none; }
