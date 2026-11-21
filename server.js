@@ -2444,7 +2444,7 @@ function fbBotCandidate(post, ctx) {
   const photos = post.photos || [];
   if (post.force) {   // yönetici gönderiyi kendisi seçti: kelime ve yapay zeka elemesi yok
     run.matched++;
-    return { text, photos, keywordHit: true, forced: true, url, author: post.author || '' };
+    return { text, photos, keywordHit: true, forced: true, url, video: post.video || '', author: post.author || '' };
   }
   const low = trLower(text);
   const hasPhone = (text.replace(/\D/g, '').match(/0?5\d{9}/) || []).length > 0;
@@ -2458,7 +2458,7 @@ function fbBotCandidate(post, ctx) {
 ${text}`;
   }
   run.matched++;
-  return { text, photos, keywordHit, url, author: post.author || '' };
+  return { text, photos, keywordHit, url, video: post.video || '', author: post.author || '' };
 }
 
 async function fbBotContext(s) {
@@ -2518,6 +2518,8 @@ async function fbBotFinish(ctx, candidates, { notifySummary }) {
     if (!c.keywordHit && !images.length) { run.skipped++; continue; }
     const ad = cleanAd({ body: c.text, images });
     if (!ad.title) { run.skipped++; continue; }
+    // Gönderide video varsa bağlantısı ilan yazısında görünür
+    if (c.video && !String(ad.body || '').includes(c.video)) ad.body = `${ad.body ? ad.body + '\n\n' : ''}🎬 Video: ${c.video}`;
     newAds.push({
       id: crypto.randomUUID(), ...ad, featured: false, active: true,
       ...(publish === 'pending' || c.forced ? { pending: true } : {}),
@@ -2643,6 +2645,7 @@ app.post('/api/collector/posts', express.json({ limit: '300kb' }), async (req, r
   const manual = b.mode === 'manual';
   const posts = (Array.isArray(b.posts) ? b.posts : []).slice(0, manual ? 1 : COLLECTOR_MAX_POSTS).map(p => ({
     url: FB_URL.test(String(p && p.url || '')) ? String(p.url).slice(0, 500) : '',
+    video: FB_URL.test(String(p && p.video || '')) ? String(p.video).slice(0, 500) : '',
     text: String(p && p.text || '').slice(0, 5000),
     author: String(p && p.author || '').slice(0, 120),
     photos: (Array.isArray(p && p.images) ? p.images : []).filter(u => typeof u === 'string' && FB_CDN_URL.test(u)).slice(0, 6),

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         NewHal: Facebook ilan toplayıcı
 // @namespace    https://newhal.com/
-// @version      2.1.0
+// @version      2.2.0
 // @description  Facebook'ta gezerken hal ilanlarını Apify'sız toplar: gönderilere "NewHal'e Gönder" düğmesi ekler, toplama modu açıkken gruplarda ekrandan geçen uygun gönderileri NewHal ilan ajanına yollar.
 // @author       NewHal
 // @match        https://facebook.com/*
@@ -229,10 +229,24 @@
     return out;
   }
 
+  // Gönderide video varsa videonun Facebook bağlantısı
+  const VIDEO_RX = /\/(videos|reel|watch)\b|\/share\/(v|r)\/|[?&]v=\d/i;
+  function readVideo(article, url) {
+    const hasVideo = [...article.querySelectorAll('video')].some(v => own(v, article));
+    for (const a of article.querySelectorAll('a[href]')) {
+      if (!own(a, article)) continue;
+      const href = a.getAttribute('href') || '';
+      if (VIDEO_RX.test(href)) { const l = cleanLink(href); if (l) return l; }
+    }
+    return hasVideo && url ? url : '';
+  }
+
   async function extract(article, { expandText }) {
     if (expandText) await expand(article);
+    const url = (await resolveLink(article)) || '';
     return {
-      url: (await resolveLink(article)) || '',
+      url,
+      video: readVideo(article, url),
       text: readText(article).slice(0, 5000),
       author: readAuthor(article),
       images: readImages(article),
