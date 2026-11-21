@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Proje Vitrini</title>
 <meta name="description" content="Projelerimiz burada yüzüyor. En çok bakılan en büyük.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#07080c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Proje Vitrini">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
@@ -176,7 +182,9 @@
     box-shadow: 0 14px 40px -12px rgba(0,0,0,.7);
     animation: seritGel .4s cubic-bezier(.2,.9,.3,1.2);
   }
-  #bildirimSerit[hidden] { display: none; }
+  #bildirimSerit[hidden], #bildirimSerit [hidden] { display: none; }
+  #bildirimSerit.uzun { border-radius: 18px; padding: 10px 6px 10px 16px; width: min(560px, calc(100% - 24px)); }
+  #bildirimSerit.uzun .metin { font-size: 13px; line-height: 1.45; flex: 1; }
   @keyframes seritGel { from { opacity: 0; transform: translate(-50%, 12px); } }
   #bildirimSerit .metin { font-size: 14px; color: var(--yazi); }
   #bildirimSerit #bildirimAc {
@@ -782,21 +790,47 @@
       body: JSON.stringify({ abonelik: abonelik.toJSON() }),
     });
   }
-  function seritGoster(goster) {
-    bildirimSerit.hidden = !goster;
-    ipucu.style.visibility = goster ? "hidden" : "";
+  const seritMetin = bildirimSerit.querySelector(".metin");
+  const seritTus = document.getElementById("bildirimAc");
+  const METINLER = {
+    sor: "Yeni proje eklenince haber verelim mi?",
+    kapali: "Bildirimler bu tarayıcıda kapalı. Açmak için adres çubuğundaki kilit ya da zil simgesine dokun, Bildirimler'i \"İzin ver\" yap.",
+    iphone: "iPhone'da bildirim için: alttaki Paylaş simgesine dokun, \"Ana Ekrana Ekle\"yi seç, sonra vitrini ana ekrandan aç.",
+  };
+  const iphone = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const anaEkranda = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+
+  function sormaZamani() {
+    try { return Date.now() < (Number(localStorage.getItem(SERIT_ANAHTAR)) || 0); } catch { return false; }
   }
-  async function izinIste() {
-    let sonuc = "default";
-    try { sonuc = await Notification.requestPermission(); } catch {}
+  function seritGoster(tur) {
+    if (tur && sormaZamani()) tur = null;
+    bildirimSerit.hidden = !tur;
+    ipucu.style.visibility = tur ? "hidden" : "";
+    if (!tur) return;
+    seritMetin.textContent = METINLER[tur];
+    seritTus.hidden = tur !== "sor";
+    bildirimSerit.classList.toggle("uzun", tur !== "sor");
+  }
+  async function izinSonucu(sonuc) {
     if (sonuc === "granted") {
-      seritGoster(false);
+      seritGoster(null);
       try { await aboneOl(); } catch (e) { console.warn("Bildirim aboneliği kurulamadı", e); }
+    } else if (sonuc === "denied") {
+      seritGoster(null); // kişi açıkça "engelle" dedi, ısrar etme
     }
-    return sonuc;
+  }
+  function izinIste() {
+    let p;
+    try { p = Notification.requestPermission(); } catch { p = null; }
+    return Promise.resolve(p).catch(() => "default").then((s) => s || Notification.permission);
   }
   async function bildirimKur() {
-    if (!bildirimDestek) return;
+    if (!bildirimDestek) {
+      // iPhone'da bildirim yalnız ana ekrana eklenen sitede çalışır
+      if (iphone && !anaEkranda) seritGoster("iphone");
+      return;
+    }
     try {
       const y = await fetch("api/bildirim/anahtar");
       if (!y.ok) return;
@@ -804,19 +838,19 @@
       await navigator.serviceWorker.register("sw.js", { scope: "./" });
     } catch { return; }
     if (Notification.permission === "granted") { aboneOl().catch(() => {}); return; }
-    if (Notification.permission === "denied") return;
-    // Sayfa açılır açılmaz izin iste. Tarayıcı bunu tıklama olmadan göstermezse aşağıdaki şerit çıkar.
-    const sonuc = await izinIste();
-    let sorma = 0;
-    try { sorma = Number(localStorage.getItem(SERIT_ANAHTAR)) || 0; } catch {}
-    if (sonuc === "default" && Date.now() > sorma) seritGoster(true);
+    if (Notification.permission === "denied") { seritGoster("kapali"); return; }
+    // Sayfa açılır açılmaz izin iste. Bazı tarayıcılar pencereyi göstermez ya da yalnız
+    // adres çubuğunda küçük bir zil gösterip bekler; o yüzden cevabı beklemeden şerit de çıkar.
+    izinIste().then(izinSonucu);
+    setTimeout(() => { if (Notification.permission === "default") seritGoster("sor"); }, 1200);
   }
-  document.getElementById("bildirimAc").onclick = async () => {
+  seritTus.onclick = async () => {
     const sonuc = await izinIste();
-    if (sonuc === "denied") seritGoster(false);
+    if (sonuc === "default") seritGoster("kapali"); // tarayıcı pencereyi göstermedi
+    else izinSonucu(sonuc);
   };
   document.getElementById("bildirimKapat").onclick = () => {
-    seritGoster(false);
+    seritGoster(null);
     try { localStorage.setItem(SERIT_ANAHTAR, String(Date.now() + 7 * 864e5)); } catch {}
   };
   bildirimKur();

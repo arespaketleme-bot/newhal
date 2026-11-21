@@ -228,6 +228,11 @@ module.exports = function projeVitrini(app, { db, webpush, vapidAnahtari }) {
     res.set({ 'Cache-Control': 'no-cache', 'Content-Type': 'text/javascript; charset=utf-8' });
     res.sendFile(path.join(KLASOR, 'sw.js'));
   });
+  // Ana ekrana ekleme bilgisi (iPhone'da bildirim için gerekli)
+  router.get('/manifest.webmanifest', (req, res) => {
+    res.set({ 'Cache-Control': 'no-cache', 'Content-Type': 'application/manifest+json; charset=utf-8' });
+    res.sendFile(path.join(KLASOR, 'manifest.webmanifest'));
+  });
   router.get('/yonetim', (req, res, next) => {
     res.set('X-Robots-Tag', 'noindex, nofollow');
     sayfa('yonetim.html')(req, res, next);
