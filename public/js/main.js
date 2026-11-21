@@ -4007,6 +4007,40 @@ function fbVideoFrame(url, cls) {
   f.title = 'Facebook videosu';
   return f;
 }
+// Facebook oynatıcısı komutla başlatılır (tek dokunuşta oynasın)
+let fbSdkPromise = null;
+function loadFbSdk() {
+  if (window.FB && window.FB.XFBML) return Promise.resolve(window.FB);
+  if (fbSdkPromise) return fbSdkPromise;
+  fbSdkPromise = new Promise((resolve, reject) => {
+    window.fbAsyncInit = () => { window.FB.init({ xfbml: false, version: 'v19.0' }); resolve(window.FB); };
+    const sc = document.createElement('script');
+    sc.async = true; sc.defer = true; sc.crossOrigin = 'anonymous';
+    sc.src = 'https://connect.facebook.net/tr_TR/sdk.js';
+    sc.onerror = () => { fbSdkPromise = null; reject(new Error('fb sdk')); };
+    document.head.appendChild(sc);
+    setTimeout(() => reject(new Error('fb sdk zaman')), 8000);
+  });
+  return fbSdkPromise;
+}
+function playFbVideo(media, url) {
+  const box = document.createElement('div');
+  box.className = 'fb-video-box';
+  const id = 'fbv' + Math.random().toString(36).slice(2);
+  box.innerHTML = `<div class="fb-video" id="${id}" data-href="${url.replace(/"/g, '%22')}" data-autoplay="true" data-allowfullscreen="true" data-show-text="false" data-width="auto"></div>`;
+  media.appendChild(box);
+  loadFbSdk().then(FB => {
+    const onReady = msg => {
+      if (msg.type !== 'video' || msg.id !== id) return;
+      try { msg.instance.mute(); msg.instance.play(); } catch {}
+      // Sessizlik ilk dokunuşta kalkar
+      box.addEventListener('pointerdown', () => { try { msg.instance.unmute(); } catch {} }, { once: true });
+      FB.Event.unsubscribe('xfbml.ready', onReady);
+    };
+    FB.Event.subscribe('xfbml.ready', onReady);
+    FB.XFBML.parse(box);
+  }).catch(() => { box.replaceWith(fbVideoFrame(url, '')); });
+}
 // Pencerede gösterilecek parçalar: önce video (varsa), sonra resimler
 function adViewerItems(ad) {
   const items = [];
@@ -4111,7 +4145,7 @@ function renderAdViewer() {
     iframe.title = ad.title || 'İlan videosu';
     media.appendChild(iframe);
   } else if (item && item.kind === 'facebook') {
-    media.appendChild(fbVideoFrame(item.value, ''));
+    playFbVideo(media, item.value);
   }
   const multi = items.length > 1;
   el.querySelectorAll('.ad-viewer-nav').forEach(b => { b.hidden = !multi; });
