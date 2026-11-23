@@ -3895,6 +3895,12 @@ app.delete('/api/profile/me', requireAuth, async (req, res) => {
 
 // ── Arama motoru sayfaları (işletme sayfaları, site haritası) ──
 require('./seo')(app, { db, getClaims, siteUrl: SITE_URL });
+// Herkese açık ilan API'si (belgesi /api)
+require('./api-v1')(app, {
+  getAds: async () => (await publicAdsWithEngagement(await getAdsWithFeaturedExpiry(), null)).map(publicAd),
+  siteUrl: SITE_URL, adPath: seoHelpers.adPath, isPublicAd: seoHelpers.isPublicAd, getIp,
+});
+app.get('/api', (req, res) => res.sendFile(path.join(__dirname, 'public', 'api.html')));
 
 // ── Proje vitrini (/projevitrini): görüntülendikçe büyüyen proje topları ──
 require('./projevitrini')(app, {

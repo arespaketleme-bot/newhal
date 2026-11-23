@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NewHal İlan API · Geliştiriciler için</title>
+  <meta name="description" content="Mersin Hal Kompleksi ilanlarını kendi uygulamanızda ya da sitenizde kullanın: ücretsiz, herkese açık NewHal İlan API'si." />
+  <link rel="canonical" href="https://newhal.com/api" />
+  <link rel="icon" href="/icons/favicon-32.png" />
+  <meta name="theme-color" content="#f4f7f5" />
+  <style>
+    :root { --bg:#f4f7f5; --card:#fff; --text:#0f172a; --muted:#526072; --border:rgba(15,23,42,.12); --green:#059669; --code:#0b1220; --code-text:#e2e8f0; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#080c16; --card:#0e1626; --text:#f8fafc; --muted:#94a3b8; --border:rgba(255,255,255,.1); --green:#34d399; } }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:-apple-system, 'Segoe UI', Inter, system-ui, sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+    main { max-width:860px; margin:0 auto; padding:28px 16px 60px; }
+    header a { color:var(--green); font-weight:700; text-decoration:none; }
+    h1 { font-size:30px; margin:18px 0 6px; } h2 { font-size:21px; margin:34px 0 10px; } h3 { font-size:16px; margin:20px 0 6px; }
+    p { margin:8px 0; } .muted { color:var(--muted); }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; margin:12px 0; }
+    code { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13.5px; background:rgba(5,150,105,.1); padding:1px 6px; border-radius:6px; overflow-wrap:anywhere; }
+    pre { background:var(--code); color:var(--code-text); padding:14px; border-radius:12px; overflow-x:auto; font-size:13px; line-height:1.5; }
+    pre code { background:none; padding:0; color:inherit; }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:top; }
+    th { font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+    .ep { display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-family:ui-monospace, Menlo, monospace; font-size:15px; }
+    .get { background:var(--green); color:#fff; font-weight:800; font-size:12px; padding:3px 8px; border-radius:6px; }
+    a { color:var(--green); }
+    .try { display:inline-block; margin-top:6px; font-weight:700; }
+    .table-wrap { overflow-x:auto; }
+  </style>
+</head>
+<body>
+<main>
+  <header><a href="/">← NewHal</a></header>
+  <h1>NewHal İlan API</h1>
+  <p class="muted">Mersin Hal Kompleksi'ndeki ilanları kendi uygulamanızda, sitenizde ya da tablonuzda kullanın. Ücretsizdir, kayıt ve anahtar gerekmez.</p>
+
+  <div class="card">
+    <b>Adres:</b> <code>https://newhal.com/api/v1</code><br />
+    <b>Biçim:</b> JSON · <b>Sınır:</b> IP başına dakikada 120 istek ·
+    <b>Tanım dosyası:</b> <a href="/api/v1/openapi.json">openapi.json</a> (Postman, Swagger vb. için)
+  </div>
+
+  <h2>İlan listesi</h2>
+  <div class="ep"><span class="get">GET</span> /api/v1/ilanlar</div>
+  <p>Yayındaki ilanları en yeniden eskiye, sayfa sayfa verir.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Parametre</th><th>Açıklama</th><th>Örnek</th></tr>
+    <tr><td><code>ara</code></td><td>Başlık ve açıklamada arar. Birden çok kelimenin hepsi geçmeli. Türkçe harf farkı gözetmez.</td><td><code>ara=limon</code></td></tr>
+    <tr><td><code>sayfa</code></td><td>Sayfa numarası (1'den başlar).</td><td><code>sayfa=2</code></td></tr>
+    <tr><td><code>adet</code></td><td>Sayfadaki ilan sayısı, en fazla 100 (varsayılan 20).</td><td><code>adet=50</code></td></tr>
+    <tr><td><code>siralama</code></td><td><code>yeni</code> (varsayılan), <code>eski</code> ya da <code>begeni</code>.</td><td><code>siralama=begeni</code></td></tr>
+    <tr><td><code>vitrin</code></td><td><code>1</code> ise yalnızca vitrindeki ilanlar.</td><td><code>vitrin=1</code></td></tr>
+    <tr><td><code>resimli</code></td><td><code>1</code> ise yalnızca fotoğraflı ilanlar.</td><td><code>resimli=1</code></td></tr>
+    <tr><td><code>tarihten</code></td><td>Bu tarihten sonra verilen ilanlar.</td><td><code>tarihten=2026-11-20</code></td></tr>
+  </table></div>
+  <a class="try" href="/api/v1/ilanlar?ara=limon&amp;adet=5" target="_blank" rel="noopener">▶ Dene: limon ilanları</a>
+
+  <h3>Örnek cevap</h3>
+<pre><code>{
+  "toplam": 37,
+  "sayfa": 1,
+  "adet": 5,
+  "sayfa_sayisi": 8,
+  "onceki": null,
+  "sonraki": "https://newhal.com/api/v1/ilanlar?ara=limon&amp;adet=5&amp;sayfa=2",
+  "ilanlar": [
+    {
+      "id": "e146ecd8-e00d-423d-9015-dab546e4eebb",
+      "no": 412,
+      "baslik": "Satılık limon 20 ton",
+      "aciklama": "Kaliteli, halde teslim. 0532 111 22 33",
+      "telefonlar": ["05321112233"],
+      "resimler": ["https://…/limon.jpg"],
+      "video": null,
+      "vitrin": false,
+      "ilan_veren": "Ahmet",
+      "begeni": 4,
+      "yorum_sayisi": 1,
+      "etiket": { "tur": "satilik", "urun": "limon", "miktar": "20 ton", "fiyat": "", "yer": "" },
+      "tarih": "2026-11-22T08:15:00.000Z",
+      "guncelleme": null,
+      "link": "https://newhal.com/ilan/412-satilik-limon-20-ton"
+    }
+  ]
+}</code></pre>
+
+  <h2>Tek ilan</h2>
+  <div class="ep"><span class="get">GET</span> /api/v1/ilanlar/{no}</div>
+  <p>İlan numarasıyla (<code>/api/v1/ilanlar/412</code>) ya da kimliğiyle getirir. İlan yayından kalktıysa <code>404</code> döner.</p>
+
+  <h2>Alanlar</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Alan</th><th>Açıklama</th></tr>
+    <tr><td><code>no</code></td><td>Sitede görünen ilan numarası (#412).</td></tr>
+    <tr><td><code>telefonlar</code></td><td>Metinde geçen telefon numaraları, 0 ile başlayan 11 hane.</td></tr>
+    <tr><td><code>etiket</code></td><td>Yapay zekanın ilandan çıkardığı tür, ürün, miktar, fiyat ve yer. Yalnızca İlan Ajanı'nın bulduğu ilanlarda vardır, diğerlerinde <code>null</code>.</td></tr>
+    <tr><td><code>link</code></td><td>İlanın NewHal sayfası. İlanı gösterirken bu bağlantıyı vermenizi rica ederiz.</td></tr>
+  </table></div>
+
+  <h2>Kod örnekleri</h2>
+  <h3>Komut satırı</h3>
+<pre><code>curl "https://newhal.com/api/v1/ilanlar?ara=domates&amp;adet=10"</code></pre>
+  <h3>JavaScript</h3>
+<pre><code>const r = await fetch('https://newhal.com/api/v1/ilanlar?ara=mandalina');
+const { toplam, ilanlar } = await r.json();
+ilanlar.forEach(i =&gt; console.log(i.no, i.baslik, i.link));</code></pre>
+  <h3>Python</h3>
+<pre><code>import requests
+r = requests.get("https://newhal.com/api/v1/ilanlar", params={"ara": "nakliye", "adet": 50})
+for ilan in r.json()["ilanlar"]:
+    print(ilan["no"], ilan["baslik"], ilan["telefonlar"])</code></pre>
+  <h3>Google E-Tablolar</h3>
+<pre><code>=IMPORTDATA("https://newhal.com/api/v1/ilanlar?ara=limon")</code></pre>
+  <p class="muted">E-Tablolar JSON'u doğrudan tablo yapmaz; düzgün tablo için Apps Script ya da bir JSON eklentisi kullanın.</p>
+
+  <h2>Kurallar</h2>
+  <ul>
+    <li>İlanları gösterirken kaynak olarak <b>NewHal</b>'i ve ilanın <code>link</code> bağlantısını belirtin.</li>
+    <li>İlanlardaki telefon numaralarını toplu mesaj, arama ya da reklam için kullanmayın; ilan sahiplerinin izni yoktur.</li>
+    <li>Dakikada 120 istek sınırı aşılırsa <code>429</code> döner; <code>Retry-After</code> başlığındaki saniye kadar bekleyin. Cevaplar 1 dakika önbelleğe alınabilir.</li>
+    <li>Daha yüksek sınır ya da yeni alan ihtiyacınız için <a href="/iletisim">bize yazın</a>.</li>
+  </ul>
+</main>
+</body>
+</html>
