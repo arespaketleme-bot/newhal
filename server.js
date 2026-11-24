@@ -4251,21 +4251,34 @@ async function buildBulten() {
   const ads = (await db.getAds()).filter(a => a.active !== false && !a.pending && a.created_at && new Date(a.created_at).getTime() > weekAgo)
     .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
   const ai = a => (a.source && a.source.ai) || {};
+  const PRODUCTS = ['domates', 'salatalık', 'biber', 'patlıcan', 'kabak', 'fasulye', 'marul', 'ıspanak', 'lahana', 'karnabahar', 'brokoli', 'havuç', 'patates', 'soğan', 'sarımsak', 'pırasa', 'mantar', 'portakal', 'mandalina', 'limon', 'greyfurt', 'elma', 'armut', 'ayva', 'nar', 'muz', 'üzüm', 'çilek', 'kivi', 'avokado', 'ceviz', 'fındık', 'zeytin', 'kestane', 'hurma', 'karpuz', 'kavun', 'trabzon hurması', 'kayısı', 'şeftali', 'erik', 'kiraz', 'turp', 'pancar', 'bamya', 'enginar'];
+  const textOf = a => `${a.title || ''} ${a.body || ''}`.replace(/🎬 Video:\S+|https?:\/\/\S+/g, ' ');
+  const productOf = a => {
+    if (ai(a).product) return String(ai(a).product).trim().toLocaleLowerCase('tr-TR');
+    const t = textOf(a).toLocaleLowerCase('tr-TR');
+    return PRODUCTS.find(w => new RegExp(`(?:^|[^a-zçğıöşü])${w}`).test(t)) || '';
+  };
+  const priceOf = a => {
+    if (ai(a).price && /\d/.test(ai(a).price)) return String(ai(a).price);
+    const m = textOf(a).match(/(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:tl|₺|lira)\b(?:\s*\/?\s*(?:kg|kilo|ton|kasa|adet))?|₺\s*\d{1,4}(?:[.,]\d{1,2})?/i);
+    return m ? m[0].trim() : '';
+  };
+  const titleOf = a => String(a.title || '').trim() || String(a.body || '').split('\n').map(x => x.trim()).find(x => x && !x.startsWith('🎬')) || '';
   const prices = [];
   const seen = new Set();
   for (const a of ads) {
-    const i = ai(a);
-    if (!i.product || !i.price || !/\d/.test(i.price)) continue;
-    const key = `${String(i.product).toLocaleLowerCase('tr-TR')}|${i.price}`;
+    const product = productOf(a), price = priceOf(a);
+    if (!product || !price) continue;
+    const key = `${product}|${price}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    prices.push({ product: String(i.product).slice(0, 60), price: String(i.price).slice(0, 60), location: String(i.location || '').slice(0, 60), kind: i.kind || '', id: a.id });
+    prices.push({ product: product.slice(0, 60), price: price.slice(0, 60), location: String(ai(a).location || '').slice(0, 60), kind: ai(a).kind || '', id: a.id });
     if (prices.length >= 15) break;
   }
   const counts = {};
-  for (const a of ads) { const p = ai(a).product; if (p) { const k = String(p).trim().toLocaleLowerCase('tr-TR'); counts[k] = (counts[k] || 0) + 1; } }
+  for (const a of ads) { const k = productOf(a); if (k) counts[k] = (counts[k] || 0) + 1; }
   const topProducts = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, n]) => ({ name, n }));
-  const newAds = ads.slice(0, 10).map(a => ({ id: a.id, title: String(a.title || ai(a).product || 'İlan').slice(0, 120), location: String(ai(a).location || '').slice(0, 60) }));
+  const newAds = ads.filter(a => titleOf(a)).slice(0, 10).map(a => ({ id: a.id, title: titleOf(a).slice(0, 120), location: String(ai(a).location || '').slice(0, 60) }));
   const ihaleler = (await getIhaleler()).filter(i => i.date && new Date(i.date).getTime() > now);
   const newIhale = ihaleler.filter(i => i.seen && new Date(i.seen).getTime() > weekAgo);
   const ihaleList = [...ihaleler].sort((a, b) => String(a.date).localeCompare(String(b.date))).slice(0, 8)
