@@ -4260,7 +4260,7 @@ async function buildBulten() {
   };
   const priceOf = a => {
     if (ai(a).price && /\d/.test(ai(a).price)) return String(ai(a).price);
-    const m = textOf(a).match(/(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:tl|₺|lira)\b(?:\s*\/?\s*(?:kg|kilo|ton|kasa|adet))?|₺\s*\d{1,4}(?:[.,]\d{1,2})?/i);
+    const m = textOf(a).match(/(?<![\d.,])(?:\d{1,3}(?:\.\d{3})+|\d{1,5})(?:,\d{1,2})?\s*(?:tl|₺|lira)\b(?:\s*\/?\s*(?:kg|kilo|ton|kasa|adet))?|₺\s*\d{1,4}(?:[.,]\d{1,2})?/i);
     return m ? m[0].trim() : '';
   };
   const titleOf = a => String(a.title || '').trim() || String(a.body || '').split('\n').map(x => x.trim()).find(x => x && !x.startsWith('🎬')) || '';
