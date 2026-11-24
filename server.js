@@ -4195,9 +4195,9 @@ app.post('/api/sanal/cikis', (req, res) => {
 const IHALE_FILE = 'tarim-ihaleleri.json';
 const IHALE_RSS = 'https://www.ihalesoft.com/rss';
 const IHALE_RX = /(?:^|[^a-zçğıöşü])(?:sebze|meyve|meyva|narenciye|yaş gıda|patates|soğan|domates|salatalık|biber|limon|portakal|mandalina|elma|armut|muz|üzüm|karpuz|kavun|marul|ıspanak|havuç|lahana|kuru ?(soğan|sarımsak)|sarımsak|hububat|buğday|arpa|mısır|fındık|ceviz|zeytin|çilek|kiraz|nar\b|ayva|şeftali|kayısı|erik|pırasa|kabak|patlıcan)/i;
-let ihaleCache = null;
-async function getIhaleler() {
-  if (!ihaleCache) ihaleCache = (await db.getPrivateJson(IHALE_FILE)) || [];
+let ihaleCache = null, ihaleCacheAt = 0;
+async function getIhaleler(fresh) {
+  if (fresh || !ihaleCache || Date.now() - ihaleCacheAt > 5 * 60 * 1000) { ihaleCache = (await db.getPrivateJson(IHALE_FILE)) || []; ihaleCacheAt = Date.now(); }
   return ihaleCache;
 }
 const ihaleXml = (s) => String(s || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
@@ -4224,7 +4224,7 @@ async function collectIhaleler() {
     const xml = await r.text();
     const items = (xml.match(/<item>[\s\S]*?<\/item>/g) || []).map(parseIhaleItem).filter(Boolean)
       .filter(i => IHALE_RX.test(`${i.title} ${i.about}`) && !/satış|kiraya|kiralama/i.test(i.title));
-    const list = await getIhaleler();
+    const list = await getIhaleler(true);
     const known = new Set(list.map(i => i.id));
     const fresh = items.filter(i => !known.has(i.id));
     const cutoff = Date.now() - 24 * 3600 * 1000;
