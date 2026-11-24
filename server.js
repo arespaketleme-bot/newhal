@@ -4244,10 +4244,112 @@ app.get('/api/ihaleler', async (req, res) => {
   res.set('Cache-Control', 'public, max-age=300').json(list);
 });
 
+// ── Haftalık bülten: her pazartesi geçen haftanın fiyatları, yeni ilanlar ve yeni ihaleler ──
+const BULTEN_FILE = 'haftalik-bulten.json';
+async function buildBulten() {
+  const now = Date.now(), weekAgo = now - 7 * 24 * 3600 * 1000;
+  const ads = (await db.getAds()).filter(a => a.active !== false && !a.pending && a.created_at && new Date(a.created_at).getTime() > weekAgo)
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  const ai = a => (a.source && a.source.ai) || {};
+  const prices = [];
+  const seen = new Set();
+  for (const a of ads) {
+    const i = ai(a);
+    if (!i.product || !i.price || !/\d/.test(i.price)) continue;
+    const key = `${String(i.product).toLocaleLowerCase('tr-TR')}|${i.price}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    prices.push({ product: String(i.product).slice(0, 60), price: String(i.price).slice(0, 60), location: String(i.location || '').slice(0, 60), kind: i.kind || '', id: a.id });
+    if (prices.length >= 15) break;
+  }
+  const counts = {};
+  for (const a of ads) { const p = ai(a).product; if (p) { const k = String(p).trim().toLocaleLowerCase('tr-TR'); counts[k] = (counts[k] || 0) + 1; } }
+  const topProducts = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, n]) => ({ name, n }));
+  const newAds = ads.slice(0, 10).map(a => ({ id: a.id, title: String(a.title || ai(a).product || 'İlan').slice(0, 120), location: String(ai(a).location || '').slice(0, 60) }));
+  const ihaleler = (await getIhaleler()).filter(i => i.date && new Date(i.date).getTime() > now);
+  const newIhale = ihaleler.filter(i => i.seen && new Date(i.seen).getTime() > weekAgo);
+  const ihaleList = [...ihaleler].sort((a, b) => String(a.date).localeCompare(String(b.date))).slice(0, 8)
+    .map(i => ({ title: i.title, org: i.org, city: i.city, date: i.date, link: i.link }));
+  const fmtDay = d => new Date(d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', timeZone: 'Europe/Istanbul' });
+  return {
+    week: todayInIstanbul(), range: `${fmtDay(weekAgo)} - ${fmtDay(now)}`, createdAt: new Date(now).toISOString(),
+    adCount: ads.length, ihaleNew: newIhale.length, ihaleOpen: ihaleler.length,
+    prices, topProducts, newAds, ihaleList,
+  };
+}
+function bultenText(b) {
+  const lines = [`🌱 NewHal haftalık bülten (${b.range})`, ''];
+  lines.push(`📢 Geçen hafta ${b.adCount} yeni ilan eklendi.`);
+  if (b.topProducts.length) lines.push(`En çok ilan: ${b.topProducts.slice(0, 5).map(p => `${p.name} (${p.n})`).join(', ')}`);
+  if (b.prices.length) {
+    lines.push('', '💰 İlanlardaki fiyatlar:');
+    b.prices.slice(0, 8).forEach(p => lines.push(`• ${p.product}: ${p.price}${p.location ? ` (${p.location})` : ''}`));
+  }
+  lines.push('', `🏛️ ${b.ihaleNew} yeni sebze meyve ihalesi, toplam ${b.ihaleOpen} açık ihale var.`);
+  b.ihaleList.slice(0, 3).forEach(i => lines.push(`• ${i.title} (${(i.city || '').split(' / ')[0]})`));
+  lines.push('', 'Tamamı: https://newhal.com/bulten');
+  return lines.join('\n');
+}
+let bultenCache = null;
+async function getBulten() {
+  if (!bultenCache) bultenCache = (await db.getPrivateJson(BULTEN_FILE)) || null;
+  return bultenCache;
+}
+async function sendBulten(b) {
+  const title = `Haftalık bülten: ${b.adCount} yeni ilan, ${b.ihaleNew} yeni ihale`;
+  const body = bultenText(b);
+  const users = [];
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await db.supabase.from('users').select('id,email').order('id', { ascending: true }).range(offset, offset + 999);
+    if (error) throw new Error('Kullanıcı listesi alınamadı');
+    users.push(...(data || []));
+    if (!data || data.length < 1000) break;
+  }
+  const ids = users.map(u => u.id);
+  for (let offset = 0; offset < ids.length; offset += 500) {
+    const rows = ids.slice(offset, offset + 500).map(recipient_id => ({ recipient_id, actor_id: null, type: 'announcement', title, body }));
+    const { error } = await db.supabase.from('user_notifications').insert(rows);
+    if (error) console.error('Bülten bildirimi yazılamadı:', error.message);
+  }
+  await sendBrowserPushMany(ids, { title, body: 'Geçen haftanın fiyatları, yeni ilanlar ve ihaleler', url: '/bulten', tag: `bulten-${b.week}` });
+  const email = await emailNotifications.sendNotificationEmails(users, { subject: `NewHal ${title}`, title, body, path: '/bulten' });
+  return { users: ids.length, email };
+}
+async function runBulten(force) {
+  try {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en', { timeZone: 'Europe/Istanbul', weekday: 'short', hour: '2-digit', hourCycle: 'h23' })
+      .formatToParts(new Date()).map(p => [p.type, p.value]));
+    if (!force && !(parts.weekday === 'Mon' && Number(parts.hour) >= 9)) return null;
+    const last = await getBulten();
+    if (!force && last && last.week === todayInIstanbul()) return null;
+    const b = await buildBulten();
+    b.text = bultenText(b);
+    bultenCache = b;
+    await db.savePrivateJson(BULTEN_FILE, b);
+    b.sent = await sendBulten(b);
+    await db.savePrivateJson(BULTEN_FILE, b);
+    sendTelegram(`📰 <b>Haftalık bülten gönderildi</b>\n${b.adCount} ilan · ${b.ihaleNew} yeni ihale · ${b.sent.users} üyeye bildirim · e-posta: ${b.sent.email.sent} gitti\nWhatsApp grubuna atmak için: https://newhal.com/bulten`).catch(() => {});
+    return b;
+  } catch (e) { console.error('Haftalık bülten hazırlanamadı:', e.message); return null; }
+}
+setTimeout(() => runBulten(false), 60 * 1000);
+setInterval(() => runBulten(false), 15 * 60 * 1000);
+app.get('/api/bulten', async (req, res) => {
+  let b = await getBulten();
+  if (!b) { b = await buildBulten(); b.text = bultenText(b); b.preview = true; }
+  const { sent, ...pub } = b;
+  res.set('Cache-Control', 'public, max-age=300').json(pub);
+});
+app.post('/api/admin/bulten/gonder', requireAdmin, async (req, res) => {
+  const b = await runBulten(true);
+  if (!b) return res.status(500).json({ error: 'Bülten hazırlanamadı' });
+  res.json({ ok: true, sent: b.sent });
+});
+
 // Eski adres yeni adrese yönlenir
 app.get('/sanalofis', (req, res) => res.redirect(301, '/sanalhal' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '')));
 
-for (const sayfa of ['hakkimizda', 'iletisim', 'kullanim-sartlari', 'sanalhal', 'ihaleler', 'hasat-takvimi']) {
+for (const sayfa of ['hakkimizda', 'iletisim', 'kullanim-sartlari', 'sanalhal', 'ihaleler', 'hasat-takvimi', 'bulten']) {
   app.get(`/${sayfa}`, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', `${sayfa}.html`));
   });

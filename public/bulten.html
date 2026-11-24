@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Haftalık Bülten: Fiyatlar, İlanlar, İhaleler | NewHal</title>
+<meta name="description" content="NewHal haftalık bülteni: geçen haftanın sebze meyve fiyatları, yeni ilanlar ve yeni tarım ihaleleri. Her pazartesi yenilenir." />
+<link rel="canonical" href="https://newhal.com/bulten" />
+<link rel="icon" href="/favicon.ico" />
+<style>
+  :root { --bg: #f4f7f2; --panel: #fff; --line: #e2e8dc; --text: #17211a; --muted: #5d6b60; --accent: #16a34a; --wa: #25d366; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0f1511; --panel: #172019; --line: #263228; --text: #e9f1ea; --muted: #9aab9d; --accent: #4ade80; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 16px 16px 60px; }
+  .top a { display: inline-block; color: var(--text); text-decoration: none; font-weight: 800; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); margin-bottom: 14px; }
+  h1 { font-size: 24px; margin: 6px 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 14px; font-size: 14.5px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px; text-align: center; }
+  .stat b { display: block; font-size: 24px; color: var(--accent); }
+  .stat span { font-size: 12.5px; color: var(--muted); }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  li { font-size: 14.5px; line-height: 1.4; }
+  li a { color: var(--text); }
+  .m { color: var(--muted); font-size: 13px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips a { padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; text-decoration: none; color: var(--text); font-size: 13.5px; }
+  .share { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .share a, .share button { flex: 1 1 200px; min-height: 46px; border-radius: 12px; border: 0; font-weight: 800; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+  .share .wa { background: var(--wa); color: #fff; }
+  .share button { background: var(--panel); color: var(--text); border: 1px solid var(--line); }
+  .empty { color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="/">← NewHal</a></div>
+  <h1>📰 Haftalık bülten</h1>
+  <p class="sub" id="sub">Yükleniyor…</p>
+  <div class="stats">
+    <div class="stat"><b id="sAds">-</b><span>yeni ilan</span></div>
+    <div class="stat"><b id="sNew">-</b><span>yeni ihale</span></div>
+    <div class="stat"><b id="sOpen">-</b><span>açık ihale</span></div>
+  </div>
+  <div class="share">
+    <a class="wa" id="wa" href="#" target="_blank" rel="noopener">WhatsApp'ta paylaş</a>
+    <button type="button" id="copy">Metni kopyala</button>
+  </div>
+  <section><h2>💰 Geçen haftanın fiyatları</h2><ul id="prices"></ul></section>
+  <section><h2>🔥 En çok ilan verilen ürünler</h2><div class="chips" id="top"></div></section>
+  <section><h2>📢 Yeni ilanlar</h2><ul id="ads"></ul></section>
+  <section><h2>🏛️ Yaklaşan ihaleler</h2><ul id="ihale"></ul><p class="m" style="margin:10px 0 0"><a href="/ihaleler">Tüm ihaleler</a></p></section>
+  <p class="m">Fiyatlar NewHal'deki ilanlarda yazan fiyatlardır, resmi hal fiyatı değildir. Bülten her pazartesi sabah yenilenir; üyelere bildirim ve e-postayla gider.</p>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const li = (box, html) => { const l = document.createElement('li'); l.innerHTML = html; box.appendChild(l); };
+const esc = s => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = d => new Date(d).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul' });
+fetch('/api/bulten').then(r => r.json()).then(b => {
+  $('sub').textContent = `${b.range}${b.preview ? ' · İlk bülten pazartesi sabah gönderilecek, bu bir ön izleme' : ''}`;
+  $('sAds').textContent = b.adCount; $('sNew').textContent = b.ihaleNew; $('sOpen').textContent = b.ihaleOpen;
+  $('wa').href = 'https://wa.me/?text=' + encodeURIComponent(b.text);
+  $('copy').onclick = () => navigator.clipboard.writeText(b.text).then(() => { $('copy').textContent = 'Kopyalandı ✓'; });
+  if (!b.prices.length) $('prices').innerHTML = '<li class="empty">Bu hafta fiyat yazılan ilan yok.</li>';
+  b.prices.forEach(p => li($('prices'), `<a href="/?ilan=${encodeURIComponent(p.id)}"><b>${esc(p.product)}</b></a>: ${esc(p.price)} <span class="m">${esc(p.location)}</span>`));
+  if (!b.topProducts.length) $('top').innerHTML = '<span class="empty">Veri yok.</span>';
+  b.topProducts.forEach(p => { const a = document.createElement('a'); a.href = '/?ara=' + encodeURIComponent(p.name); a.textContent = `${p.name} · ${p.n}`; $('top').appendChild(a); });
+  if (!b.newAds.length) $('ads').innerHTML = '<li class="empty">Bu hafta yeni ilan yok.</li>';
+  b.newAds.forEach(a => li($('ads'), `<a href="/?ilan=${encodeURIComponent(a.id)}">${esc(a.title)}</a> <span class="m">${esc(a.location)}</span>`));
+  if (!b.ihaleList.length) $('ihale').innerHTML = '<li class="empty">Açık ihale yok.</li>';
+  b.ihaleList.forEach(i => li($('ihale'), `<a href="${esc(i.link)}" target="_blank" rel="noopener">${esc(i.title)}</a><br><span class="m">${esc(i.org)} · ${esc((i.city || '').split(' / ')[0])} · ${fmt(i.date)}</span>`));
+}).catch(() => { $('sub').textContent = 'Bülten şu an yüklenemedi.'; });
+</script>
+</body>
+</html>
