@@ -9,7 +9,7 @@
 <link rel="icon" href="/favicon.ico" />
 <style>
   :root { --bg: #f4f7f2; --panel: #fff; --line: #e2e8dc; --text: #17211a; --muted: #5d6b60; --accent: #16a34a; --on: #22c55e; --peak: #15803d; --off: #eef2ea; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #0f1511; --panel: #172019; --line: #263228; --text: #e9f1ea; --muted: #9aab9d; --accent: #4ade80; --on: #2f8f4e; --peak: #4ade80; --off: #1d281f; } }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0f1511; --panel: #172019; --line: #263228; --text: #e9f1ea; --muted: #9aab9d; --accent: #4ade80; --on: #3fae63; --peak: #86efac; --off: #1d281f; } }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   .wrap { max-width: 1000px; margin: 0 auto; padding: 16px 16px 60px; }
@@ -112,7 +112,7 @@ const adsLink = n => '/?ara=' + encodeURIComponent(n.split(' (')[0]);
 function drawMonths() {
   const box = document.getElementById('months'); box.innerHTML = '';
   AY.forEach((a, i) => { const b = document.createElement('button'); b.textContent = a + (i + 1 === cur ? ' ·' : ''); b.className = i + 1 === month ? 'on' : ''; b.onclick = () => { month = i + 1; drawAll(); }; box.appendChild(b); });
-  box.children[month - 1].scrollIntoView({ inline: 'center', block: 'nearest' });
+  const btn = box.children[month - 1]; box.scrollLeft = btn.offsetLeft - box.clientWidth / 2 + btn.offsetWidth / 2;
 }
 function drawNow() {
   const list = U.filter(u => u[2].includes(month)).sort((a, b) => b[3].includes(month) - a[3].includes(month));
