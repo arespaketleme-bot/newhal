@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Hasat Takvimi: Hangi Sebze Meyve Hangi Ay Çıkar? | NewHal</title>
+<meta name="description" content="Türkiye sebze meyve hasat takvimi: domatesten narenciyeye, hangi ürün hangi ay ve hangi bölgeden hale gelir. Ay ay ve ürün ürün hasat dönemleri." />
+<link rel="canonical" href="https://newhal.com/hasat-takvimi" />
+<link rel="icon" href="/favicon.ico" />
+<style>
+  :root { --bg: #f4f7f2; --panel: #fff; --line: #e2e8dc; --text: #17211a; --muted: #5d6b60; --accent: #16a34a; --on: #22c55e; --peak: #15803d; --off: #eef2ea; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0f1511; --panel: #172019; --line: #263228; --text: #e9f1ea; --muted: #9aab9d; --accent: #4ade80; --on: #2f8f4e; --peak: #4ade80; --off: #1d281f; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 16px 16px 60px; }
+  .top a { display: inline-block; color: var(--text); text-decoration: none; font-weight: 800; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); margin-bottom: 14px; }
+  h1 { font-size: 24px; margin: 4px 0; }
+  .sub { color: var(--muted); margin: 0 0 14px; font-size: 14.5px; }
+  .months { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; scrollbar-width: thin; }
+  .months button { flex: none; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-weight: 700; cursor: pointer; font-size: 14px; }
+  .months button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tools input, .tools select { flex: 1 1 180px; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-size: 15px; }
+  .now { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 16px; }
+  .now h2 { font-size: 17px; margin: 0 0 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips a { text-decoration: none; color: var(--text); padding: 6px 11px; border-radius: 999px; border: 1px solid var(--line); font-size: 14px; }
+  .chips a.peak { border-color: var(--peak); font-weight: 700; }
+  .table { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13.5px; }
+  th, td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: center; }
+  th:first-child, td:first-child { text-align: left; padding-left: 12px; position: sticky; left: 0; background: var(--panel); min-width: 150px; }
+  td:first-child a { color: var(--text); text-decoration: none; font-weight: 700; }
+  td:first-child small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
+  th.cur { color: var(--accent); }
+  td.c span { display: block; height: 18px; border-radius: 5px; background: var(--off); }
+  td.c.on span { background: var(--on); opacity: .55; }
+  td.c.peak span { background: var(--peak); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+  .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 5px; }
+  .note { margin-top: 16px; font-size: 12.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="/">← NewHal</a></div>
+  <h1>🌾 Hasat takvimi</h1>
+  <p class="sub">Hangi sebze ve meyve hangi ay, hangi bölgeden hale gelir? Bir ay seçin ya da ürün arayın.</p>
+  <div class="months" id="months"></div>
+  <section class="now" id="now"></section>
+  <div class="tools">
+    <input type="search" id="q" placeholder="Ürün ara: domates, nar, limon..." aria-label="Ürün ara" />
+    <select id="kind" aria-label="Tür"><option value="">Sebze ve meyve</option><option value="sebze">Sebze</option><option value="meyve">Meyve</option></select>
+  </div>
+  <div class="table"><table id="tbl"></table></div>
+  <div class="legend"><span><i style="background:var(--peak)"></i>En yoğun dönem</span><span><i style="background:var(--on);opacity:.55"></i>Hasat var</span><span><i style="background:var(--off)"></i>Hasat yok ya da az (örtü altı ve depo ürünü olabilir)</span></div>
+  <p class="note">Tarihler Türkiye geneli için yaklaşıktır. Bölgeye, havaya ve seraya göre birkaç hafta değişebilir. Ürün adına dokunarak NewHal'deki ilanları görebilirsiniz.</p>
+</div>
+<script>
+const AY = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+// [ad, tür, hasat ayları (1-12), en yoğun aylar, başlıca bölgeler]
+const U = [
+  ['Domates', 'sebze', [1,2,3,4,5,6,7,8,9,10,11,12], [7,8,9], 'Antalya, Mersin (sera); Bursa, Manisa, Çanakkale (tarla)'],
+  ['Biber', 'sebze', [1,2,3,4,5,6,7,8,9,10,11,12], [7,8,9], 'Antalya, Mersin (sera); Bursa, İzmir, Hatay'],
+  ['Hıyar (salatalık)', 'sebze', [1,2,3,4,5,6,7,8,9,10,11,12], [5,6,7], 'Antalya, Mersin, Muğla (sera)'],
+  ['Patlıcan', 'sebze', [5,6,7,8,9,10], [7,8,9], 'Antalya, Mersin, Adana, İzmir'],
+  ['Kabak', 'sebze', [3,4,5,6,7,8,9,10], [5,6,7], 'Antalya, Mersin, İzmir'],
+  ['Fasulye (taze)', 'sebze', [5,6,7,8,9,10], [6,7,8], 'Antalya, Mersin, Bursa, Samsun'],
+  ['Patates', 'sebze', [5,6,7,8,9,10,11], [8,9,10], 'Niğde, Nevşehir, Afyon, İzmir Ödemiş; erkenci: Adana, Mersin'],
+  ['Kuru soğan', 'sebze', [5,6,7,8,9,10], [7,8,9], 'Ankara Polatlı, Amasya, Bursa, Çorum'],
+  ['Havuç', 'sebze', [1,2,3,4,5,6,9,10,11,12], [11,12,1], 'Konya Ereğli, Hatay, Adana, Mersin'],
+  ['Lahana', 'sebze', [1,2,3,10,11,12], [11,12,1], 'Samsun, Bursa, İzmir'],
+  ['Karnabahar', 'sebze', [1,2,3,4,10,11,12], [11,12,1], 'İzmir, Bursa, Mersin'],
+  ['Brokoli', 'sebze', [1,2,3,4,10,11,12], [12,1,2], 'Bursa, İzmir, Mersin'],
+  ['Marul', 'sebze', [1,2,3,4,5,10,11,12], [12,1,2,3], 'Mersin, Antalya, İzmir, Bursa'],
+  ['Ispanak', 'sebze', [1,2,3,4,10,11,12], [12,1,2], 'Bursa, İzmir, Mersin'],
+  ['Pırasa', 'sebze', [1,2,3,10,11,12], [12,1,2], 'Bursa, İzmir, Konya'],
+  ['Sarımsak', 'sebze', [5,6,7], [6], 'Kastamonu Taşköprü, Balıkesir, Gaziantep'],
+  ['Bezelye', 'sebze', [3,4,5,6], [4,5], 'Mersin, Antalya, Bursa'],
+  ['Enginar', 'sebze', [2,3,4,5], [3,4], 'İzmir Urla, Aydın, Mersin'],
+  ['Mantar', 'sebze', [1,2,3,4,5,6,7,8,9,10,11,12], [10,11,12,1], 'Antalya, Mersin, Kocaeli (kapalı üretim)'],
+  ['Portakal', 'meyve', [1,2,3,4,5,11,12], [12,1,2], 'Adana, Mersin, Hatay, Antalya'],
+  ['Mandalina', 'meyve', [1,2,3,10,11,12], [11,12], 'İzmir Seferihisar, Mersin, Adana, Hatay'],
+  ['Limon', 'meyve', [1,2,3,4,5,9,10,11,12], [10,11,12], 'Mersin, Adana, Hatay, Antalya'],
+  ['Greyfurt', 'meyve', [1,2,3,4,10,11,12], [11,12,1], 'Adana, Mersin, Hatay'],
+  ['Elma', 'meyve', [7,8,9,10,11], [9,10], 'Isparta, Karaman, Niğde, Antalya Elmalı (yıl boyu depodan)'],
+  ['Armut', 'meyve', [7,8,9,10], [8,9], 'Bursa, Konya, Antalya, Afyon'],
+  ['Ayva', 'meyve', [9,10,11,12], [10,11], 'Sakarya, Bursa, Bilecik'],
+  ['Nar', 'meyve', [9,10,11,12], [10,11], 'Antalya, Mersin, Muğla, Denizli, Adana'],
+  ['Muz', 'meyve', [1,2,3,4,5,6,7,8,9,10,11,12], [10,11,12,1,2,3], 'Mersin Anamur, Antalya Alanya'],
+  ['Üzüm', 'meyve', [6,7,8,9,10], [8,9], 'Manisa, Denizli, Mardin, Kırşehir'],
+  ['Karpuz', 'meyve', [5,6,7,8,9], [7,8], 'Adana, Diyarbakır, Antalya, Mersin'],
+  ['Kavun', 'meyve', [6,7,8,9], [7,8], 'Ankara Polatlı, Konya, Manisa, Diyarbakır'],
+  ['Çilek', 'meyve', [3,4,5,6,7], [4,5], 'Mersin Silifke, Aydın, Bursa, Antalya'],
+  ['Kiraz', 'meyve', [5,6,7], [6], 'Manisa, Afyon, Konya, Isparta'],
+  ['Vişne', 'meyve', [6,7], [6,7], 'Afyon, Konya, Kütahya'],
+  ['Kayısı', 'meyve', [5,6,7], [6,7], 'Malatya, Mersin (erkenci), Elazığ'],
+  ['Şeftali', 'meyve', [5,6,7,8,9], [7,8], 'Bursa, Çanakkale, Mersin, İzmir'],
+  ['Erik', 'meyve', [5,6,7,8], [6,7], 'Bursa, Denizli, Mersin'],
+  ['İncir', 'meyve', [7,8,9], [8], 'Aydın, İzmir'],
+  ['Trabzon hurması', 'meyve', [10,11,12], [11], 'Bursa, Mersin, Hatay'],
+  ['Kivi', 'meyve', [10,11,12,1], [11,12], 'Yalova, Ordu, Rize'],
+  ['Avokado', 'meyve', [1,2,3,4,11,12], [12,1,2], 'Antalya Alanya, Mersin'],
+  ['Fındık', 'meyve', [8,9], [8], 'Ordu, Giresun, Samsun, Düzce'],
+  ['Ceviz', 'meyve', [9,10], [9,10], 'Bursa, Kahramanmaraş, Hakkari, Niğde'],
+  ['Kestane', 'meyve', [9,10,11], [10], 'Aydın, Bursa, Sinop, Kastamonu'],
+];
+const cur = new Date().getMonth() + 1;
+let month = cur;
+const low = s => String(s || '').toLocaleLowerCase('tr-TR');
+const adsLink = n => '/?ara=' + encodeURIComponent(n.split(' (')[0]);
+function drawMonths() {
+  const box = document.getElementById('months'); box.innerHTML = '';
+  AY.forEach((a, i) => { const b = document.createElement('button'); b.textContent = a + (i + 1 === cur ? ' ·' : ''); b.className = i + 1 === month ? 'on' : ''; b.onclick = () => { month = i + 1; drawAll(); }; box.appendChild(b); });
+  box.children[month - 1].scrollIntoView({ inline: 'center', block: 'nearest' });
+}
+function drawNow() {
+  const list = U.filter(u => u[2].includes(month)).sort((a, b) => b[3].includes(month) - a[3].includes(month));
+  const box = document.getElementById('now');
+  box.innerHTML = `<h2>${AY[month - 1]} ayında hasat edilenler (${list.length})</h2><div class="chips"></div>`;
+  const chips = box.querySelector('.chips');
+  list.forEach(u => { const a = document.createElement('a'); a.href = adsLink(u[0]); a.textContent = (u[3].includes(month) ? '⭐ ' : '') + u[0]; if (u[3].includes(month)) a.className = 'peak'; a.title = u[4]; chips.appendChild(a); });
+}
+function drawTable() {
+  const q = low(document.getElementById('q').value.trim()), k = document.getElementById('kind').value;
+  const rows = U.filter(u => (!k || u[1] === k) && (!q || low(u[0] + ' ' + u[4]).includes(q)));
+  const t = document.getElementById('tbl');
+  t.innerHTML = '<thead><tr><th>Ürün</th>' + AY.map((a, i) => `<th class="${i + 1 === month ? 'cur' : ''}">${a.slice(0, 3)}</th>`).join('') + '</tr></thead>';
+  const body = document.createElement('tbody');
+  rows.forEach(u => {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    const a = document.createElement('a'); a.href = adsLink(u[0]); a.textContent = u[0];
+    const sm = document.createElement('small'); sm.textContent = u[4];
+    td.append(a, sm); tr.appendChild(td);
+    for (let m = 1; m <= 12; m++) {
+      const c = document.createElement('td');
+      c.className = 'c' + (u[3].includes(m) ? ' peak' : u[2].includes(m) ? ' on' : '');
+      c.title = `${u[0]} · ${AY[m - 1]}: ${u[3].includes(m) ? 'en yoğun dönem' : u[2].includes(m) ? 'hasat var' : 'hasat yok ya da az'}`;
+      c.innerHTML = '<span></span>';
+      tr.appendChild(c);
+    }
+    body.appendChild(tr);
+  });
+  if (!rows.length) body.innerHTML = '<tr><td colspan="13">Aramanıza uyan ürün yok.</td></tr>';
+  t.appendChild(body);
+}
+function drawAll() { drawMonths(); drawNow(); drawTable(); }
+document.getElementById('q').addEventListener('input', drawTable);
+document.getElementById('kind').addEventListener('change', drawTable);
+drawAll();
+</script>
+</body>
+</html>

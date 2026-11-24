@@ -3629,6 +3629,14 @@ function initAdsSearch() {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && input.value) { e.stopPropagation(); clearAdsSearch(); }
   });
+  // Başka sayfadan gelen arama (ör. hasat takvimi: /?ara=nar)
+  const gelen = new URLSearchParams(location.search).get('ara');
+  if (gelen) {
+    input.value = gelen.slice(0, 60);
+    adsQuery = input.value.trim();
+    document.getElementById('adsSearchClear').hidden = !adsQuery;
+    setTimeout(() => { renderAdsGrid(); input.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 600);
+  }
 }
 
 // İlanlar listesinde Facebook sayfasının hikaye kartı
