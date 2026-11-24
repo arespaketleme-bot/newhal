@@ -4191,10 +4191,63 @@ app.post('/api/sanal/cikis', (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Tarım ihaleleri: İhaleSoft'un herkese açık RSS akışından sebze meyve ihaleleri birikir ──
+const IHALE_FILE = 'tarim-ihaleleri.json';
+const IHALE_RSS = 'https://www.ihalesoft.com/rss';
+const IHALE_RX = /(?:^|[^a-zçğıöşü])(?:sebze|meyve|meyva|narenciye|yaş gıda|patates|soğan|domates|salatalık|biber|limon|portakal|mandalina|elma|armut|muz|üzüm|karpuz|kavun|marul|ıspanak|havuç|lahana|kuru ?(soğan|sarımsak)|sarımsak|hububat|buğday|arpa|mısır|fındık|ceviz|zeytin|çilek|kiraz|nar\b|ayva|şeftali|kayısı|erik|pırasa|kabak|patlıcan)/i;
+let ihaleCache = null;
+async function getIhaleler() {
+  if (!ihaleCache) ihaleCache = (await db.getPrivateJson(IHALE_FILE)) || [];
+  return ihaleCache;
+}
+const ihaleXml = (s) => String(s || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&apos;/g, "'").replace(/&amp;/g, '&').trim();
+function parseIhaleItem(xml) {
+  const tag = t => { const m = xml.match(new RegExp(`<${t}>([\\s\\S]*?)</${t}>`)); return m ? ihaleXml(m[1]) : ''; };
+  const title = tag('title'), link = tag('link'), desc = tag('description'), category = tag('category');
+  if (!title || !/^https:\/\/www\.ihalesoft\.com\/ihale\//.test(link)) return null;
+  // "Açıklama — Kurum · İl · İhale: 25.11.2026 12:00"
+  const [about, tail = ''] = desc.split(' — ');
+  const parts = tail.split(' · ');
+  const dm = tail.match(/İhale:\s*(\d{2})\.(\d{2})\.(\d{4})\s*(\d{2}):(\d{2})/);
+  const date = dm ? new Date(`${dm[3]}-${dm[2]}-${dm[1]}T${dm[4]}:${dm[5]}:00+03:00`).toISOString() : null;
+  return {
+    id: link.split('-').pop().slice(0, 20), title: title.slice(0, 200), about: (about || '').slice(0, 400),
+    org: (parts[0] || '').slice(0, 200), city: (parts[1] || '').replace(/İhale:.*$/, '').trim().slice(0, 60),
+    date, category: category.slice(0, 40), link, seen: new Date().toISOString(),
+  };
+}
+async function collectIhaleler() {
+  try {
+    const r = await fetch(IHALE_RSS, { headers: { 'User-Agent': 'NewHal/1.0 (+https://newhal.com)' }, signal: AbortSignal.timeout(20000) });
+    if (!r.ok) return;
+    const xml = await r.text();
+    const items = (xml.match(/<item>[\s\S]*?<\/item>/g) || []).map(parseIhaleItem).filter(Boolean)
+      .filter(i => IHALE_RX.test(`${i.title} ${i.about}`) && !/satış|kiraya|kiralama/i.test(i.title));
+    const list = await getIhaleler();
+    const known = new Set(list.map(i => i.id));
+    const fresh = items.filter(i => !known.has(i.id));
+    const cutoff = Date.now() - 24 * 3600 * 1000;
+    const next = [...fresh, ...list].filter(i => !i.date || new Date(i.date).getTime() > cutoff).slice(0, 600);
+    if (fresh.length || next.length !== list.length) {
+      ihaleCache = next;
+      await db.savePrivateJson(IHALE_FILE, next);
+    }
+  } catch (e) { console.error('İhale akışı okunamadı:', e.message); }
+}
+setTimeout(collectIhaleler, 15000);
+setInterval(collectIhaleler, 20 * 60 * 1000);
+app.get('/api/ihaleler', async (req, res) => {
+  const now = Date.now();
+  const list = (await getIhaleler()).filter(i => !i.date || new Date(i.date).getTime() > now - 3600 * 1000)
+    .sort((a, b) => String(a.date || '9').localeCompare(String(b.date || '9')));
+  res.set('Cache-Control', 'public, max-age=300').json(list);
+});
+
 // Eski adres yeni adrese yönlenir
 app.get('/sanalofis', (req, res) => res.redirect(301, '/sanalhal' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '')));
 
-for (const sayfa of ['hakkimizda', 'iletisim', 'kullanim-sartlari', 'sanalhal']) {
+for (const sayfa of ['hakkimizda', 'iletisim', 'kullanim-sartlari', 'sanalhal', 'ihaleler']) {
   app.get(`/${sayfa}`, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', `${sayfa}.html`));
   });

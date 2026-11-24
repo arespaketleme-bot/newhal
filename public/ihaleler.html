@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Tarım İhaleleri: Sebze Meyve Alım İhaleleri | NewHal</title>
+<meta name="description" content="Türkiye genelinde kamu kurumlarının açtığı güncel sebze meyve alım ihaleleri. Kurum, il ve ihale tarihiyle her gün güncellenir." />
+<link rel="canonical" href="https://newhal.com/ihaleler" />
+<link rel="icon" href="/favicon.ico" />
+<style>
+  :root { --bg: #f4f7f2; --panel: #fff; --line: #e2e8dc; --text: #17211a; --muted: #5d6b60; --accent: #16a34a; --warn: #b45309; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0f1511; --panel: #172019; --line: #263228; --text: #e9f1ea; --muted: #9aab9d; --accent: #4ade80; --warn: #fbbf24; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 16px 16px 60px; }
+  .top { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .top a { color: var(--text); text-decoration: none; font-weight: 800; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  h1 { font-size: 24px; margin: 6px 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 14px; font-size: 14.5px; }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tools input, .tools select { flex: 1 1 200px; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-size: 15px; }
+  .list { display: grid; gap: 10px; }
+  .item { display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; text-decoration: none; color: var(--text); }
+  .item:hover { border-color: var(--accent); }
+  .item h2 { font-size: 16.5px; margin: 0 0 6px; }
+  .item .org { color: var(--muted); font-size: 13.5px; margin-bottom: 8px; }
+  .item .about { font-size: 14px; margin: 0 0 8px; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12.5px; }
+  .tags span { padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); }
+  .tags .when { color: var(--warn); border-color: currentColor; font-weight: 700; }
+  .empty { padding: 30px 16px; text-align: center; color: var(--muted); background: var(--panel); border: 1px dashed var(--line); border-radius: 14px; }
+  .note { margin-top: 18px; font-size: 12.5px; color: var(--muted); }
+  .note a { color: inherit; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="/">← NewHal</a></div>
+  <h1>🏛️ Tarım ihaleleri</h1>
+  <p class="sub" id="sub">Kamu kurumlarının açtığı sebze meyve alım ihaleleri yükleniyor…</p>
+  <div class="tools">
+    <input type="search" id="q" placeholder="Ara: ürün, kurum ya da il" aria-label="İhalelerde ara" />
+    <select id="city" aria-label="İl seçin"><option value="">Tüm iller</option></select>
+  </div>
+  <div class="list" id="list"></div>
+  <p class="note">İhale bilgileri <a href="https://www.ihalesoft.com/" rel="noopener" target="_blank">İhaleSoft</a> akışından alınır. Başvuru şartları ve güncel durum için ihalenin kendi sayfasını inceleyin.</p>
+</div>
+<script>
+const fmt = d => d ? new Date(d).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul' }) : 'Tarih belirtilmemiş';
+const left = d => { if (!d) return ''; const h = (new Date(d) - Date.now()) / 3600000; return h < 0 ? 'Süresi doldu' : h < 24 ? `${Math.max(1, Math.round(h))} saat kaldı` : `${Math.round(h / 24)} gün kaldı`; };
+const low = s => String(s || '').toLocaleLowerCase('tr-TR');
+let all = [];
+function render() {
+  const q = low(document.getElementById('q').value.trim()), c = document.getElementById('city').value;
+  const rows = all.filter(i => (!c || i.city.split(' / ')[0] === c) && (!q || low(`${i.title} ${i.about} ${i.org} ${i.city}`).includes(q)));
+  const box = document.getElementById('list');
+  box.innerHTML = '';
+  if (!rows.length) { box.innerHTML = `<div class="empty">${all.length ? 'Aramanıza uyan ihale yok.' : 'Şu an listede ihale yok. Yeni ihaleler gün içinde eklenir.'}</div>`; return; }
+  for (const i of rows) {
+    const a = document.createElement('a');
+    a.className = 'item'; a.href = i.link; a.target = '_blank'; a.rel = 'noopener';
+    const h = document.createElement('h2'); h.textContent = i.title;
+    const o = document.createElement('div'); o.className = 'org'; o.textContent = [i.org, i.city].filter(Boolean).join(' · ');
+    a.append(h, o);
+    if (i.about && i.about !== i.title) { const p = document.createElement('p'); p.className = 'about'; p.textContent = i.about; a.appendChild(p); }
+    const t = document.createElement('div'); t.className = 'tags';
+    t.innerHTML = '<span class="when"></span><span class="day"></span><span>Meyve ve sebze</span>';
+    t.querySelector('.when').textContent = '🕒 ' + fmt(i.date);
+    t.querySelector('.day').textContent = left(i.date) || i.category || 'İhale';
+    a.appendChild(t);
+    box.appendChild(a);
+  }
+}
+fetch('/api/ihaleler').then(r => r.json()).then(list => {
+  all = Array.isArray(list) ? list : [];
+  document.getElementById('sub').textContent = `Türkiye genelinden ${all.length} güncel sebze meyve alım ihalesi. Her gün güncellenir.`;
+  const cities = [...new Set(all.map(i => i.city.split(' / ')[0]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
+  const sel = document.getElementById('city');
+  cities.forEach(c => { const o = document.createElement('option'); o.value = o.textContent = c; sel.appendChild(o); });
+  render();
+}).catch(() => { document.getElementById('sub').textContent = 'İhaleler şu an yüklenemedi. Biraz sonra tekrar deneyin.'; });
+document.getElementById('q').addEventListener('input', render);
+document.getElementById('city').addEventListener('change', render);
+</script>
+</body>
+</html>
