@@ -1,6 +1,8 @@
 // Sağ altta WhatsApp baloncuğu: "1 yeni mesaj" rozeti, karşılama kartı ve sekme başlığında yanıp sönen bildirim
 fetch('/api/wa-bubble/status').then(r => r.json()).catch(() => ({ enabled: true })).then(st => { if (st.enabled !== false) nhWaBubble(st); });
 function nhWaBubble(c) {
+  // Ziyaretçi balonu X ile kapattıysa bir gün boyunca gösterilmez
+  try { if (Number(localStorage.getItem('nh_wa_bubble_hidden') || 0) > Date.now()) return; } catch {}
   const esc = s => String(s || '').replace(/[&<>"']/g, x => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[x]));
   const link = (t, u) => t && u ? `<a href="${esc(u)}"${/^https:/.test(u) ? ' target="_blank" rel="noopener"' : ''}>${esc(t)}</a>` : '';
   const KEY = 'nh_wa_bubble_seen';
@@ -12,6 +14,7 @@ function nhWaBubble(c) {
   .nhwa { position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 9990; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   .nhwa-btn { width: 60px; height: 60px; border-radius: 50%; border: 0; background: #25d366; color: #fff; cursor: pointer; display: grid; place-items: center; box-shadow: 0 6px 20px rgba(0,0,0,.25); position: relative; animation: nhwa-pulse 2.4s infinite; }
   .nhwa-btn svg { width: 32px; height: 32px; }
+  .nhwa-close { position: absolute; top: -8px; left: -8px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: #374151; color: #fff; font-size: 15px; line-height: 1; cursor: pointer; display: grid; place-items: center; box-shadow: 0 2px 6px rgba(0,0,0,.3); z-index: 1; }
   .nhwa-badge { position: absolute; top: -2px; right: -2px; min-width: 22px; height: 22px; border-radius: 11px; background: #ef4444; color: #fff; font-size: 13px; font-weight: 800; display: grid; place-items: center; border: 2px solid #fff; }
   .nhwa-card { position: absolute; right: 0; bottom: 74px; width: min(290px, calc(100vw - 36px)); background: #fff; color: #17211a; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 14px; display: none; }
   .nhwa.open .nhwa-card { display: block; animation: nhwa-in .25s ease; }
@@ -32,6 +35,7 @@ function nhWaBubble(c) {
       ${link(c.btn1Text, c.btn1Url)}
       ${link(c.btn2Text, c.btn2Url)}
     </div>
+    <button class="nhwa-close" type="button" aria-label="WhatsApp balonunu kapat" title="Kapat">×</button>
     <button class="nhwa-btn" type="button" aria-label="WhatsApp, 1 yeni mesaj">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.1-.2.3-.8.9-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.6-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.6 0-3.1-.4-4.4-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg>
       <span class="nhwa-badge">${esc(c.badge)}</span>
@@ -62,6 +66,11 @@ function nhWaBubble(c) {
   };
   box.querySelector('.nhwa-btn').addEventListener('click', () => (box.classList.contains('open') ? box.classList.remove('open') : open()));
   box.querySelector('.nhwa-x').addEventListener('click', () => box.classList.remove('open'));
+  box.querySelector('.nhwa-close').addEventListener('click', () => {
+    stopTitle();
+    box.remove();
+    try { localStorage.setItem('nh_wa_bubble_hidden', String(Date.now() + 24 * 3600 * 1000)); } catch {}
+  });
 
   if (!c.badge) badge.style.display = 'none';
   if (seen) { badge.style.display = 'none'; return; }
