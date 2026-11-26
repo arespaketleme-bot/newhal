@@ -75,5 +75,6 @@ fetch('/api/bulten').then(r => r.json()).then(b => {
   b.ihaleList.forEach(i => li($('ihale'), `<a href="${esc(i.link)}" target="_blank" rel="noopener">${esc(i.title)}</a><br><span class="m">${esc(i.org)} · ${esc((i.city || '').split(' / ')[0])} · ${fmt(i.date)}</span>`));
 }).catch(() => { $('sub').textContent = 'Bülten şu an yüklenemedi.'; });
 </script>
+<script src="/js/wa-bubble.js" defer></script>
 </body>
 </html>
