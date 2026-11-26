@@ -1324,7 +1324,23 @@ app.put('/api/admin/categories/:name', requireAdmin, async (req, res) => {
 
 
 // ── PUBLIC: Chat Endpoints ────────────────────────────────────
+// Yönetici genel sohbeti tamamen açıp kapatabilir
+const CHAT_CFG_FILE = 'sohbet-ayar.json';
+let chatEnabled = null;
+async function isChatEnabled() {
+  if (chatEnabled === null) { const c = await db.getPrivateJson(CHAT_CFG_FILE).catch(() => null); chatEnabled = !c || c.enabled !== false; }
+  return chatEnabled;
+}
+app.get('/api/chat/status', async (req, res) => {
+  res.set('Cache-Control', 'no-store').json({ enabled: await isChatEnabled() });
+});
+app.put('/api/admin/chat/enabled', requireAdmin, async (req, res) => {
+  chatEnabled = req.body.enabled !== false;
+  await db.savePrivateJson(CHAT_CFG_FILE, { enabled: chatEnabled });
+  res.json({ enabled: chatEnabled });
+});
 app.get('/api/chat', async (req, res) => {
+  if (!(await isChatEnabled())) return res.json([]);
   res.json((await db.getChatMessages()).map(stripIp));
 });
 
@@ -1340,6 +1356,7 @@ function getIp(req) {
 }
 
 app.post('/api/chat', requireAuth, async (req, res) => {
+  if (!(await isChatEnabled())) return res.status(403).json({ error: 'Sohbet şu an kapalı' });
   const { message } = req.body;
   if (!message || !message.trim()) {
     return res.status(400).json({ error: 'Mesaj boş olamaz' });

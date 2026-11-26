@@ -173,9 +173,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Sohbet her ekranda kapalı başlar (index.html'de "collapsed" sınıfıyla gelir)
   document.getElementById('chatWidget')?.classList.add('collapsed');
 
-  // Chat initialization & polling
-  loadChatMessages();
-  setInterval(loadChatMessages, 3000);
+  // Chat initialization & polling (yönetici sohbeti kapattıysa kutu hiç görünmez)
+  fetch('/api/chat/status').then(r => r.json()).catch(() => ({ enabled: true })).then(st => {
+    if (st.enabled === false) { const w = document.getElementById('chatWidget'); if (w) w.style.display = 'none'; return; }
+    loadChatMessages();
+    setInterval(loadChatMessages, 3000);
+  });
   // Sağ alttaki sohbet (WhatsApp) simgesi sabit durur, sürüklenmez
   initChatAutoCollapse();
 

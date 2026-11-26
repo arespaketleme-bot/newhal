@@ -2238,6 +2238,22 @@ async function clearLogs() {
   await loadLogs();
 }
 
+let chatOn = true;
+function renderChatToggle() {
+  const b = document.getElementById('chatToggle');
+  if (!b) return;
+  b.textContent = chatOn ? '🟢 Sohbet açık · Kapat' : '⏸️ Sohbet kapalı · Aç';
+  b.style.background = chatOn ? '#16a34a' : '#64748b'; b.style.color = '#fff'; b.style.border = 'none';
+}
+fetch('/api/chat/status').then(r => r.json()).then(s => { chatOn = s.enabled !== false; renderChatToggle(); }).catch(() => {});
+async function toggleChatEnabled() {
+  const res = await api('/api/admin/chat/enabled', { method: 'PUT', body: JSON.stringify({ enabled: !chatOn }) });
+  if (!res || !res.ok) return showToast('Ayar kaydedilemedi', 'error');
+  chatOn = (await res.json()).enabled;
+  renderChatToggle();
+  showToast(chatOn ? 'Sohbet sitede açıldı' : 'Sohbet siteden tamamen kaldırıldı', 'success');
+}
+
 async function clearChat() {
   if (!confirm('Tüm sohbet geçmişini silmek istediğinize emin misiniz?')) return;
   const res = await api('/api/admin/chat', { method: 'DELETE' });
