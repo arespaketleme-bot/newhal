@@ -1,5 +1,6 @@
 // Sağ altta WhatsApp baloncuğu: "1 yeni mesaj" rozeti, karşılama kartı ve sekme başlığında yanıp sönen bildirim
-(function () {
+fetch('/api/wa-bubble/status').then(r => r.json()).catch(() => ({ enabled: true })).then(st => { if (st.enabled !== false) nhWaBubble(); });
+function nhWaBubble() {
   const GROUP = 'https://chat.whatsapp.com/LmYOXYNJ6cMKMEE8LM6WPP';
   const KEY = 'nh_wa_bubble_seen';
   let seen = false;
@@ -65,4 +66,4 @@
   // Rozet ve sekme bildirimi ziyaretçi baloncuğu açana kadar sürer
   startTitle();
   setTimeout(() => { if (!seen) box.classList.add('open'); }, 6000);
-})();
+}

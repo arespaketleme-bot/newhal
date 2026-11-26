@@ -2254,6 +2254,22 @@ async function toggleChatEnabled() {
   showToast(chatOn ? 'Sohbet sitede açıldı' : 'Sohbet siteden tamamen kaldırıldı', 'success');
 }
 
+let waBubbleOn = true;
+function renderWaBubbleToggle() {
+  const b = document.getElementById('waBubbleToggle');
+  if (!b) return;
+  b.textContent = waBubbleOn ? '🟢 WhatsApp balonu açık · Kapat' : '⏸️ WhatsApp balonu kapalı · Aç';
+  b.style.background = waBubbleOn ? '#16a34a' : '#64748b'; b.style.color = '#fff'; b.style.border = 'none';
+}
+fetch('/api/wa-bubble/status').then(r => r.json()).then(s => { waBubbleOn = s.enabled !== false; renderWaBubbleToggle(); }).catch(() => {});
+async function toggleWaBubble() {
+  const res = await api('/api/admin/wa-bubble/enabled', { method: 'PUT', body: JSON.stringify({ enabled: !waBubbleOn }) });
+  if (!res || !res.ok) return showToast('Ayar kaydedilemedi', 'error');
+  waBubbleOn = (await res.json()).enabled;
+  renderWaBubbleToggle();
+  showToast(waBubbleOn ? 'WhatsApp balonu sitede açıldı' : 'WhatsApp balonu siteden kaldırıldı', 'success');
+}
+
 async function clearChat() {
   if (!confirm('Tüm sohbet geçmişini silmek istediğinize emin misiniz?')) return;
   const res = await api('/api/admin/chat', { method: 'DELETE' });

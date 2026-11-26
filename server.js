@@ -1339,6 +1339,21 @@ app.put('/api/admin/chat/enabled', requireAdmin, async (req, res) => {
   await db.savePrivateJson(CHAT_CFG_FILE, { enabled: chatEnabled });
   res.json({ enabled: chatEnabled });
 });
+// WhatsApp baloncuğu da yöneticiden açılıp kapanır
+const WA_BUBBLE_FILE = 'wa-baloncuk-ayar.json';
+let waBubbleOn = null;
+async function isWaBubbleOn() {
+  if (waBubbleOn === null) { const c = await db.getPrivateJson(WA_BUBBLE_FILE).catch(() => null); waBubbleOn = !c || c.enabled !== false; }
+  return waBubbleOn;
+}
+app.get('/api/wa-bubble/status', async (req, res) => {
+  res.set('Cache-Control', 'no-store').json({ enabled: await isWaBubbleOn() });
+});
+app.put('/api/admin/wa-bubble/enabled', requireAdmin, async (req, res) => {
+  waBubbleOn = req.body.enabled !== false;
+  await db.savePrivateJson(WA_BUBBLE_FILE, { enabled: waBubbleOn });
+  res.json({ enabled: waBubbleOn });
+});
 app.get('/api/chat', async (req, res) => {
   if (!(await isChatEnabled())) return res.json([]);
   res.json((await db.getChatMessages()).map(stripIp));
