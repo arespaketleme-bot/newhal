@@ -1,7 +1,8 @@
 // Sağ altta WhatsApp baloncuğu: "1 yeni mesaj" rozeti, karşılama kartı ve sekme başlığında yanıp sönen bildirim
-fetch('/api/wa-bubble/status').then(r => r.json()).catch(() => ({ enabled: true })).then(st => { if (st.enabled !== false) nhWaBubble(); });
-function nhWaBubble() {
-  const GROUP = 'https://chat.whatsapp.com/LmYOXYNJ6cMKMEE8LM6WPP';
+fetch('/api/wa-bubble/status').then(r => r.json()).catch(() => ({ enabled: true })).then(st => { if (st.enabled !== false) nhWaBubble(st); });
+function nhWaBubble(c) {
+  const esc = s => String(s || '').replace(/[&<>"']/g, x => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[x]));
+  const link = (t, u) => t && u ? `<a href="${esc(u)}"${/^https:/.test(u) ? ' target="_blank" rel="noopener"' : ''}>${esc(t)}</a>` : '';
   const KEY = 'nh_wa_bubble_seen';
   let seen = false;
   try { seen = sessionStorage.getItem(KEY) === '1'; } catch {}
@@ -27,13 +28,13 @@ function nhWaBubble() {
   box.innerHTML = `
     <div class="nhwa-card" role="dialog" aria-label="NewHal WhatsApp">
       <button class="nhwa-x" type="button" aria-label="Kapat">×</button>
-      <div class="nhwa-msg">👋 Merhaba! Hal'deki yeni ilanlar, fiyatlar ve duyurular WhatsApp grubumuzda. Katılmak ister misin?</div>
-      <a href="${GROUP}" target="_blank" rel="noopener">WhatsApp grubuna katıl</a>
-      <a href="/bulten">Bu haftanın bültenini gör</a>
+      ${c.message ? `<div class="nhwa-msg">${esc(c.message).replace(/\n/g, '<br>')}</div>` : ''}
+      ${link(c.btn1Text, c.btn1Url)}
+      ${link(c.btn2Text, c.btn2Url)}
     </div>
     <button class="nhwa-btn" type="button" aria-label="WhatsApp, 1 yeni mesaj">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.1-.2.3-.8.9-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.6-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.6 0-3.1-.4-4.4-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg>
-      <span class="nhwa-badge">1</span>
+      <span class="nhwa-badge">${esc(c.badge)}</span>
     </button>`;
   document.body.appendChild(box);
   // Alt menü varsa baloncuk onun üstünde durur
@@ -50,7 +51,7 @@ function nhWaBubble() {
   let flip = false, timer = null;
   const startTitle = () => {
     if (timer) return;
-    timer = setInterval(() => { flip = !flip; document.title = flip ? '(1) Yeni mesaj' : baseTitle; }, 1500);
+    timer = setInterval(() => { flip = !flip; document.title = flip ? c.tabText : baseTitle; }, 1500);
   };
   const stopTitle = () => { clearInterval(timer); timer = null; document.title = baseTitle; };
   const open = () => {
@@ -62,8 +63,9 @@ function nhWaBubble() {
   box.querySelector('.nhwa-btn').addEventListener('click', () => (box.classList.contains('open') ? box.classList.remove('open') : open()));
   box.querySelector('.nhwa-x').addEventListener('click', () => box.classList.remove('open'));
 
+  if (!c.badge) badge.style.display = 'none';
   if (seen) { badge.style.display = 'none'; return; }
   // Rozet ve sekme bildirimi ziyaretçi baloncuğu açana kadar sürer
-  startTitle();
-  setTimeout(() => { if (!seen) box.classList.add('open'); }, 6000);
+  if (c.tabBlink !== false && c.tabText) startTitle();
+  if (c.autoOpen !== false) setTimeout(() => { if (!seen) box.classList.add('open'); }, (Number(c.openAfter) || 0) * 1000);
 }

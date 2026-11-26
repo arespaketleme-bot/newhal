@@ -259,6 +259,24 @@
             <button class="btn-reject" onclick="clearChat()" style="padding: 10px 20px; border-radius: var(--radius); font-weight: 600; cursor: pointer; border: none; background: #dc2626; color: white; display: flex; align-items: center; gap: 6px;">🗑️ Sohbet Geçmişini Sil</button>
           </div>
         </div>
+        <div class="recent-section" style="margin-top: 24px;">
+          <div class="recent-header"><h3>💬 WhatsApp balonu ayarları</h3></div>
+          <div id="waBubbleForm" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; display: grid; gap: 12px;">
+            <label>Karşılama mesajı<textarea id="wbMessage" rows="3" maxlength="500" style="width:100%"></textarea></label>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+              <label>1. tuş yazısı<input id="wbBtn1Text" maxlength="60" style="width:100%"></label>
+              <label>1. tuş bağlantısı<input id="wbBtn1Url" maxlength="300" placeholder="https://... ya da /sayfa" style="width:100%"></label>
+              <label>2. tuş yazısı<input id="wbBtn2Text" maxlength="60" style="width:100%"></label>
+              <label>2. tuş bağlantısı<input id="wbBtn2Url" maxlength="300" placeholder="Boş bırakılırsa tuş görünmez" style="width:100%"></label>
+              <label>Rozetteki sayı<input id="wbBadge" maxlength="3" placeholder="Boşsa rozet çıkmaz" style="width:100%"></label>
+              <label>Sekmede yanıp sönen yazı<input id="wbTabText" maxlength="60" style="width:100%"></label>
+              <label>Kart kaç saniye sonra açılsın<input id="wbOpenAfter" type="number" min="0" max="120" style="width:100%"></label>
+            </div>
+            <label><input type="checkbox" id="wbAutoOpen"> Kart kendiliğinden açılsın</label>
+            <label><input type="checkbox" id="wbTabBlink"> Sekme başlığı yanıp sönsün</label>
+            <div><button class="btn-sm btn-approve" type="button" onclick="saveWaBubble()" style="padding:10px 20px">💾 Kaydet</button></div>
+          </div>
+        </div>
       </section>
 
       <!-- ── PENDING ── -->

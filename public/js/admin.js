@@ -2261,7 +2261,26 @@ function renderWaBubbleToggle() {
   b.textContent = waBubbleOn ? '🟢 WhatsApp balonu açık · Kapat' : '⏸️ WhatsApp balonu kapalı · Aç';
   b.style.background = waBubbleOn ? '#16a34a' : '#64748b'; b.style.color = '#fff'; b.style.border = 'none';
 }
-fetch('/api/wa-bubble/status').then(r => r.json()).then(s => { waBubbleOn = s.enabled !== false; renderWaBubbleToggle(); }).catch(() => {});
+const WB_FIELDS = { wbMessage: 'message', wbBtn1Text: 'btn1Text', wbBtn1Url: 'btn1Url', wbBtn2Text: 'btn2Text', wbBtn2Url: 'btn2Url', wbBadge: 'badge', wbTabText: 'tabText', wbOpenAfter: 'openAfter' };
+function fillWaBubbleForm(s) {
+  for (const [id, k] of Object.entries(WB_FIELDS)) { const el = document.getElementById(id); if (el) el.value = s[k] ?? ''; }
+  const a = document.getElementById('wbAutoOpen'); if (a) a.checked = s.autoOpen !== false;
+  const t = document.getElementById('wbTabBlink'); if (t) t.checked = s.tabBlink !== false;
+}
+fetch('/api/wa-bubble/status').then(r => r.json()).then(s => { waBubbleOn = s.enabled !== false; renderWaBubbleToggle(); fillWaBubbleForm(s); }).catch(() => {});
+async function saveWaBubble() {
+  const body = {};
+  for (const [id, k] of Object.entries(WB_FIELDS)) body[k] = document.getElementById(id).value;
+  body.autoOpen = document.getElementById('wbAutoOpen').checked;
+  body.tabBlink = document.getElementById('wbTabBlink').checked;
+  for (const k of ['btn1Url', 'btn2Url']) {
+    if (body[k].trim() && !/^(https:\/\/|\/(?!\/))/.test(body[k].trim())) return showToast('Bağlantı https:// ya da / ile başlamalı', 'error');
+  }
+  const res = await api('/api/admin/wa-bubble', { method: 'PUT', body: JSON.stringify(body) });
+  if (!res || !res.ok) return showToast('Ayarlar kaydedilemedi', 'error');
+  fillWaBubbleForm(await res.json());
+  showToast('WhatsApp balonu güncellendi', 'success');
+}
 async function toggleWaBubble() {
   const res = await api('/api/admin/wa-bubble/enabled', { method: 'PUT', body: JSON.stringify({ enabled: !waBubbleOn }) });
   if (!res || !res.ok) return showToast('Ayar kaydedilemedi', 'error');

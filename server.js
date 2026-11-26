@@ -1341,18 +1341,38 @@ app.put('/api/admin/chat/enabled', requireAdmin, async (req, res) => {
 });
 // WhatsApp baloncuğu da yöneticiden açılıp kapanır
 const WA_BUBBLE_FILE = 'wa-baloncuk-ayar.json';
-let waBubbleOn = null;
-async function isWaBubbleOn() {
-  if (waBubbleOn === null) { const c = await db.getPrivateJson(WA_BUBBLE_FILE).catch(() => null); waBubbleOn = !c || c.enabled !== false; }
-  return waBubbleOn;
+const WA_BUBBLE_DEF = {
+  enabled: true,
+  message: "👋 Merhaba! Hal'deki yeni ilanlar, fiyatlar ve duyurular WhatsApp grubumuzda. Katılmak ister misin?",
+  btn1Text: 'WhatsApp grubuna katıl', btn1Url: 'https://chat.whatsapp.com/LmYOXYNJ6cMKMEE8LM6WPP',
+  btn2Text: 'Bu haftanın bültenini gör', btn2Url: '/bulten',
+  badge: '1', tabText: '(1) Yeni mesaj', tabBlink: true, openAfter: 6, autoOpen: true,
+};
+let waBubbleCfg = null;
+async function getWaBubble() {
+  if (!waBubbleCfg) waBubbleCfg = { ...WA_BUBBLE_DEF, ...((await db.getPrivateJson(WA_BUBBLE_FILE).catch(() => null)) || {}) };
+  return waBubbleCfg;
 }
+const cleanBubbleUrl = u => { u = String(u || '').trim().slice(0, 300); return /^(https:\/\/|\/(?!\/))/.test(u) ? u : ''; };
 app.get('/api/wa-bubble/status', async (req, res) => {
-  res.set('Cache-Control', 'no-store').json({ enabled: await isWaBubbleOn() });
+  res.set('Cache-Control', 'no-store').json(await getWaBubble());
 });
 app.put('/api/admin/wa-bubble/enabled', requireAdmin, async (req, res) => {
-  waBubbleOn = req.body.enabled !== false;
-  await db.savePrivateJson(WA_BUBBLE_FILE, { enabled: waBubbleOn });
-  res.json({ enabled: waBubbleOn });
+  const cfg = { ...(await getWaBubble()), enabled: req.body.enabled !== false };
+  await db.savePrivateJson(WA_BUBBLE_FILE, cfg); waBubbleCfg = cfg;
+  res.json(cfg);
+});
+app.put('/api/admin/wa-bubble', requireAdmin, async (req, res) => {
+  const b = req.body || {}, t = (v, n) => String(v || '').trim().slice(0, n);
+  const cfg = {
+    ...(await getWaBubble()),
+    message: t(b.message, 500), btn1Text: t(b.btn1Text, 60), btn1Url: cleanBubbleUrl(b.btn1Url),
+    btn2Text: t(b.btn2Text, 60), btn2Url: cleanBubbleUrl(b.btn2Url), badge: t(b.badge, 3),
+    tabText: t(b.tabText, 60), tabBlink: b.tabBlink !== false, autoOpen: b.autoOpen !== false,
+    openAfter: Math.min(120, Math.max(0, Number(b.openAfter) || 0)),
+  };
+  await db.savePrivateJson(WA_BUBBLE_FILE, cfg); waBubbleCfg = cfg;
+  res.json(cfg);
 });
 app.get('/api/chat', async (req, res) => {
   if (!(await isChatEnabled())) return res.json([]);
