@@ -35,6 +35,14 @@
       <span class="nhwa-badge">1</span>
     </button>`;
   document.body.appendChild(box);
+  // Alt menü varsa baloncuk onun üstünde durur
+  const lift = () => {
+    const nav = document.querySelector('.bottom-nav');
+    const h = nav && getComputedStyle(nav).display !== 'none' ? nav.getBoundingClientRect().height : 0;
+    box.style.bottom = h ? `${Math.round(h + 14)}px` : '';
+  };
+  lift();
+  addEventListener('resize', lift);
 
   const badge = box.querySelector('.nhwa-badge');
   const baseTitle = document.title;
