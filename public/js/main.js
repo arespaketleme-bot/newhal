@@ -5781,8 +5781,10 @@ async function loadUserAdBalance() {
 function updateUserAdVitrinHint() {
   const sel = document.getElementById('userAdVitrin'), hint = document.getElementById('userAdVitrinHint');
   if (!sel || !hint) return;
+  const balEl = document.getElementById('userAdBalance');
+  if (balEl) balEl.textContent = userAdBalance === null ? '💰 Para Puan bakiyeniz alınamadı' : `💰 Para Puan bakiyeniz: ${userAdBalance.toLocaleString('tr-TR')}`;
   const days = Number(sel.value) || 0, cost = days * 1000;
-  const bal = userAdBalance === null ? '' : ` Bakiyeniz: ${userAdBalance.toLocaleString('tr-TR')} Para Puan.`;
+  const bal = '';
   if (!days) { hint.textContent = `İlanınız seçtiğiniz gün kadar en üstteki vitrinde görünür.${bal}`; hint.style.color = ''; return; }
   const low = userAdBalance !== null && userAdBalance < cost;
   hint.textContent = low
