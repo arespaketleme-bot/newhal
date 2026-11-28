@@ -3154,3 +3154,11 @@ body { overflow-x: clip; max-width: 100%; }
 
 .ads-head .ihale-link { color: var(--accent, #16a34a); font-weight: 800; text-decoration: none; white-space: nowrap; }
 .ads-head .ihale-link:hover { text-decoration: underline; }
+
+/* İlan verirken Para Puan ile vitrin: göze çarpan kutu */
+.vitrin-buy-row .form-group { background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #f59e0b; border-radius: 14px; padding: 12px 14px; }
+.vitrin-buy-row label { color: #92400e !important; font-weight: 800; font-size: 15px; }
+.vitrin-buy-row .field-hint { color: #78350f; }
+.vitrin-buy-row select { border-color: #f59e0b !important; font-weight: 700; }
+:root:not([data-theme="light"]) .vitrin-buy-row .form-group { background: rgba(245, 158, 11, .14); }
+:root:not([data-theme="light"]) .vitrin-buy-row label, :root:not([data-theme="light"]) .vitrin-buy-row .field-hint { color: #fbbf24 !important; }
