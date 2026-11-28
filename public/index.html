@@ -931,6 +931,22 @@
         </div>
         <div class="form-row">
           <div class="form-group full">
+            <label for="userAdVitrin">⭐ Vitrin ilanı <span class="field-hint">(isteğe bağlı)</span></label>
+            <select id="userAdVitrin" onchange="updateUserAdVitrinHint()">
+              <option value="0">Vitrin olmasın</option>
+              <option value="1">1 gün vitrin · 1.000 Para Puan</option>
+              <option value="2">2 gün vitrin · 2.000 Para Puan</option>
+              <option value="3">3 gün vitrin · 3.000 Para Puan</option>
+              <option value="4">4 gün vitrin · 4.000 Para Puan</option>
+              <option value="5">5 gün vitrin · 5.000 Para Puan</option>
+              <option value="6">6 gün vitrin · 6.000 Para Puan</option>
+              <option value="7">7 gün vitrin · 7.000 Para Puan</option>
+            </select>
+            <span class="field-hint" id="userAdVitrinHint">İlanınız seçtiğiniz gün kadar en üstteki vitrinde görünür.</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group full">
             <label>📷 Resimler <span class="field-hint">(isteğe bağlı, en fazla 5)</span></label>
             <button type="button" class="btn-outline user-ad-camera-btn" onclick="captureUserAdPhoto()">📷 Resim Çek</button>
             <input type="file" id="userAdCameraInput" accept="image/*" capture="environment" hidden onchange="addUserAdCameraPhoto(this)" />

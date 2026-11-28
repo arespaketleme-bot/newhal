@@ -5766,6 +5766,29 @@ function openUserAdModal() {
   document.getElementById('userAdModal').classList.add('open');
   loadMyAds();
   loadMyShops();
+  loadUserAdBalance();
+}
+
+// Vitrin seçimi için Para Puan bakiyesi
+let userAdBalance = null;
+async function loadUserAdBalance() {
+  try {
+    const res = await fetch('/api/profile/me', { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('userToken') } });
+    if (res.ok) userAdBalance = Number((await res.json()).points_balance || 0);
+  } catch {}
+  updateUserAdVitrinHint();
+}
+function updateUserAdVitrinHint() {
+  const sel = document.getElementById('userAdVitrin'), hint = document.getElementById('userAdVitrinHint');
+  if (!sel || !hint) return;
+  const days = Number(sel.value) || 0, cost = days * 1000;
+  const bal = userAdBalance === null ? '' : ` Bakiyeniz: ${userAdBalance.toLocaleString('tr-TR')} Para Puan.`;
+  if (!days) { hint.textContent = `İlanınız seçtiğiniz gün kadar en üstteki vitrinde görünür.${bal}`; hint.style.color = ''; return; }
+  const low = userAdBalance !== null && userAdBalance < cost;
+  hint.textContent = low
+    ? `Bakiyeniz yetmiyor: ${cost.toLocaleString('tr-TR')} Para Puan gerekir.${bal}`
+    : `İlanınız hemen vitrine çıkar, ${days} gün kalır. ${cost.toLocaleString('tr-TR')} Para Puan düşülür.${bal}`;
+  hint.style.color = low ? '#dc2626' : '';
 }
 
 function captureUserAdPhoto() {
@@ -5819,9 +5842,15 @@ async function submitUserAd(e) {
     pinId: document.getElementById('userAdShopRow').hidden ? undefined : document.getElementById('userAdShop').value,
     images: userAdPhotos.getUrls(),
     video: youtube ? { type: 'youtube', url: youtube } : null,
+    vitrin_days: Number(document.getElementById('userAdVitrin').value) || 0,
   };
   if (!payload.body.trim() && !payload.images.length && !payload.video) {
     return showToast('İlana yazı ya da resim ekleyin', 'error');
+  }
+  if (payload.vitrin_days) {
+    const cost = payload.vitrin_days * 1000;
+    if (userAdBalance !== null && userAdBalance < cost) return showToast(`Vitrin için ${cost.toLocaleString('tr-TR')} Para Puan gerekir`, 'error');
+    if (!confirm(`${payload.vitrin_days} günlük vitrin için ${cost.toLocaleString('tr-TR')} Para Puan düşülecek. Onaylıyor musunuz?`)) return;
   }
   const btn = document.getElementById('userAdSubmitBtn');
   btn.disabled = true;
@@ -5834,13 +5863,15 @@ async function submitUserAd(e) {
     const data = await res.json();
     if (res.status === 401) { closeUserAdModal(); openAuthModal(); throw new Error('Oturum süresi doldu, tekrar giriş yapın'); }
     if (!res.ok) throw new Error(data.error || 'İlan gönderilemedi');
-    showToast(data.story ? '✅ İlanınız yayınlandı, 24 saat haritada dükkanınızda görünecek' : '✅ İlanınız yayınlandı', 'success');
+    showToast(data.vitrin_days ? `⭐ İlanınız yayınlandı ve ${data.vitrin_days} gün vitrinde` : data.story ? '✅ İlanınız yayınlandı, 24 saat haritada dükkanınızda görünecek' : '✅ İlanınız yayınlandı', 'success');
+    if (data.points_spent && userAdBalance !== null) userAdBalance -= data.points_spent;
     logEvent(`Yeni ilan verdi: '${String(payload.title || payload.body || '').split(/\n/)[0].slice(0, 60)}'`);
     if (window.newhalOlcum) window.newhalOlcum('ilan');
     const shop = document.getElementById('userAdShop').value;
     document.getElementById('userAdForm').reset();
     document.getElementById('userAdShop').value = shop;
     userAdPhotos.setUrls([]);
+    loadUserAdBalance();
     loadMyAds();
     loadAds();
   } catch (err) {

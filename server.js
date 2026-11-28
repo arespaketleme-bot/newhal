@@ -2028,6 +2028,14 @@ app.post('/api/ads', requireAuth, async (req, res) => {
   if (req.body.video && req.body.video.url && !ad.video) {
     return res.status(400).json({ error: 'YouTube bağlantısı anlaşılamadı' });
   }
+  // İlan verirken Para Puan ile vitrin: gün başına 1.000, en fazla 7 gün
+  const vitrinDays = Math.min(VITRIN_BUY_MAX_DAYS, Math.max(0, Math.round(Number(req.body.vitrin_days) || 0)));
+  const vitrinCost = vitrinDays * VITRIN_DAY_POINTS;
+  let balance = null;
+  if (vitrinDays) {
+    try { balance = await userPointsBalance(req.user.id); } catch { return res.status(500).json({ error: 'Para Puan bakiyesi alınamadı' }); }
+    if (balance < vitrinCost) return res.status(400).json({ error: `${vitrinDays} günlük vitrin için ${vitrinCost.toLocaleString('tr-TR')} Para Puan gerekir. Bakiyeniz: ${balance.toLocaleString('tr-TR')}` });
+  }
   const ads = await db.getAds();
   const mine = ads.filter(a => a.owner && a.owner.id === req.user.id);
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -2041,10 +2049,26 @@ app.post('/api/ads', requireAuth, async (req, res) => {
     owner: { id: req.user.id, name: (owner && owner.name) || req.user.name || 'Kullanıcı' }, created_at: new Date().toISOString(),
   };
   setAdStory(created, await userStoryPin(req.user.id, req.body.pinId));
-  if (!(await db.saveAds([created, ...ads]))) return res.status(500).json({ error: 'İlan kaydedilemedi' });
+  const vitrinKey = `vitrin-buy:${created.id}`;
+  if (vitrinDays) {
+    const { error } = await db.supabase.from('newhal_points_ledger').insert({
+      user_id: req.user.id, amount: vitrinCost, reason: 'admin_credit', idempotency_key: vitrinKey, created_by: 'economy:vitrin_purchase',
+    });
+    if (error) return res.status(500).json({ error: 'Para Puan kullanılamadı, ilan gönderilmedi' });
+    setFeatured(created, true, vitrinDays);
+    created.featured_paid_points = vitrinCost;
+  }
+  if (!(await db.saveAds([created, ...ads]))) {
+    // İlan kaydedilemezse harcanan puan geri verilir
+    if (vitrinDays) await db.supabase.from('newhal_points_ledger').delete().eq('idempotency_key', vitrinKey);
+    return res.status(500).json({ error: 'İlan kaydedilemedi' });
+  }
   void notifyAdAlerts(created);
   const reward = await awardEconomyPoints(req.user.id, 'ad_created', `ad:${created.id}`);
-  res.status(201).json({ id: created.id, story: !!created.pinId, points_awarded: reward.amount, message: 'İlanınız yayınlandı' });
+  res.status(201).json({
+    id: created.id, story: !!created.pinId, points_awarded: reward.amount, message: 'İlanınız yayınlandı',
+    vitrin_days: vitrinDays, points_spent: vitrinCost, ...(vitrinDays ? { featured_until: created.featured_until } : {}),
+  });
 });
 
 // Kullanıcının sahibi olduğu dükkanlar (ilanı hangi dükkan adına vereceğini seçer)
@@ -2063,6 +2087,8 @@ app.get('/api/my-ads', requireAuth, async (req, res) => {
 });
 
 const VITRIN_APPLICATION_POINTS = 1000;
+const VITRIN_DAY_POINTS = 1000;
+const VITRIN_BUY_MAX_DAYS = 7;
 const ledgerAmount = row => row.created_by === 'economy:vitrin_purchase' ? -Math.abs(Number(row.amount || 0)) : Number(row.amount || 0);
 
 async function userPointsBalance(userId) {
